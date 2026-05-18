@@ -95,7 +95,7 @@ export default function HostScreen() {
           const { url } = await uploadEventImage(dataUrl, 'cover', session.access_token);
           setCoverUri(url);
           showToast('Cover image uploaded', 'success');
-        } catch (err) {
+        } catch {
           showToast('Failed to upload image', 'error');
         } finally {
           setCoverUploading(false);

@@ -15,6 +15,7 @@ import { EventCard } from '../../components/EventCard';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { getEvents } from '../../lib/api';
 import { COLORS, EVENT_TYPES } from '../../lib/constants';
+import { logger } from '../../lib/logger';
 import type { Event } from '../../lib/types';
 
 const C = COLORS.dark;
@@ -47,7 +48,7 @@ export default function ExploreScreen() {
     offset: 0,
   }), [selectedType, formatFilter, priceFilter, search]);
 
-  const fetchEvents = useCallback(async (reset = false) => {
+  const fetchEvents = useCallback(async (_reset = false) => {
     try {
       const params = buildParams();
       const res = await getEvents(params);
@@ -55,13 +56,14 @@ export default function ExploreScreen() {
       setOffset(res.events.length);
       setHasMore(res.events.length === LIMIT);
     } catch (err) {
-      console.error('Explore fetch error', err);
+      logger.error('Explore fetch error', { error: String(err) });
     }
   }, [buildParams]);
 
   useEffect(() => {
     setLoading(true);
     fetchEvents(true).finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedType, formatFilter, priceFilter]);
 
   // Debounce search
@@ -74,6 +76,7 @@ export default function ExploreScreen() {
     return () => {
       if (searchTimeout.current) clearTimeout(searchTimeout.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   const handleRefresh = async () => {
@@ -92,7 +95,7 @@ export default function ExploreScreen() {
       setOffset(prev => prev + res.events.length);
       setHasMore(res.events.length === LIMIT);
     } catch (err) {
-      console.error('Load more error', err);
+      logger.error('Load more error', { error: String(err) });
     } finally {
       setLoadingMore(false);
     }

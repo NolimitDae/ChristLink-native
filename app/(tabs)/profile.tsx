@@ -12,7 +12,6 @@ import {
   Platform,
   RefreshControl,
   Alert,
-  FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -26,6 +25,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { updateProfile, uploadAvatar, getMyEvents, getMyRsvps } from '../../lib/api';
 import { COLORS } from '../../lib/constants';
+import { logger } from '../../lib/logger';
 import type { Event, RSVP } from '../../lib/types';
 
 const C = COLORS.dark;
@@ -74,7 +74,7 @@ export default function ProfileScreen() {
       setMyEvents(eventsRes.events);
       setMyRsvps(rsvpsRes.rsvps);
     } catch (err) {
-      console.error('Failed to load profile data', err);
+      logger.error('Failed to load profile data', { error: String(err) });
     } finally {
       setLoadingData(false);
     }

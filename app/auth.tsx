@@ -8,8 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Image,
-  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,7 +18,6 @@ import { supabase } from '../lib/supabase';
 import { COLORS } from '../lib/constants';
 
 const C = COLORS.dark;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type AuthStep = 'email' | 'otp' | 'name';
 
@@ -34,7 +31,6 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
 
   const otpRefs = useRef<(TextInput | null)[]>([]);
 
@@ -103,7 +99,7 @@ export default function AuthScreen() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { error } = await supabase.auth.verifyOtp({
         email: email.trim().toLowerCase(),
         token: codeToVerify,
         type: 'email',
@@ -237,7 +233,7 @@ export default function AuthScreen() {
                 <TextInput
                   key={index}
                   ref={ref => (otpRefs.current[index] = ref)}
-                  style={[styles.otpInput, digit && styles.otpInputFilled]}
+                  style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
                   value={digit}
                   onChangeText={value => handleOtpChange(value, index)}
                   onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, index)}

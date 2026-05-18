@@ -8,7 +8,6 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  Dimensions,
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,10 +17,10 @@ import { EventCard } from '../../components/EventCard';
 import { LoadingSpinner } from '../../components/LoadingSpinner';
 import { getEvents } from '../../lib/api';
 import { COLORS, EVENT_TYPES } from '../../lib/constants';
+import { logger } from '../../lib/logger';
 import type { Event as EventModel } from '../../lib/types';
 
 const C = COLORS.dark;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type CategoryType = (typeof EVENT_TYPES)[number];
 
@@ -44,13 +43,14 @@ export default function HomeScreen() {
       });
       setEvents(res.events);
     } catch (err) {
-      console.error('Failed to fetch events', err);
+      logger.error('Failed to fetch events', { error: String(err) });
     }
   }, [selectedCategory]);
 
   useEffect(() => {
     setLoading(true);
     fetchEvents().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCategoryChange = (category: CategoryType) => {
@@ -59,7 +59,7 @@ export default function HomeScreen() {
     setLoading(true);
     getEvents({ type: category === 'All' ? undefined : category, limit: 50 })
       .then(res => setEvents(res.events))
-      .catch(console.error)
+      .catch((err: unknown) => logger.error('Category change failed', { error: String(err) }))
       .finally(() => setLoading(false));
   };
 
@@ -86,7 +86,7 @@ export default function HomeScreen() {
         limit: 50,
       });
       setLocationEvents(res.events);
-    } catch (err) {
+    } catch {
       Alert.alert('Error', 'Could not get your location. Please try again.');
     } finally {
       setNearMeLoading(false);

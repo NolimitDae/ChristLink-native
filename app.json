@@ -18,10 +18,12 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.christlink.app",
+      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "ChristLink uses your camera to capture event and profile photos.",
         "NSPhotoLibraryUsageDescription": "ChristLink accesses your photo library to set event covers and profile pictures.",
-        "NSLocationWhenInUseUsageDescription": "ChristLink uses your location to find faith events near you."
+        "NSLocationWhenInUseUsageDescription": "ChristLink uses your location to find faith events near you.",
+        "NSUserNotificationUsageDescription": "ChristLink sends notifications for events you're attending and community updates."
       }
     },
     "android": {
@@ -30,12 +32,15 @@
         "backgroundColor": "#0A0A0F"
       },
       "package": "com.christlink.app",
+      "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "CAMERA"
+        "CAMERA",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ]
     },
     "web": {
@@ -61,12 +66,19 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#C9A84C"
+          "color": "#C9A84C",
+          "sounds": []
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
     }
   }
 }

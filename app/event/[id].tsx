@@ -445,7 +445,6 @@ const styles = StyleSheet.create({
   },
   heroGradient: {
     ...StyleSheet.absoluteFillObject,
-    background: 'linear-gradient(to bottom, transparent 50%, rgba(10,10,15,0.8) 100%)',
     backgroundColor: 'transparent',
   },
   heroNav: {

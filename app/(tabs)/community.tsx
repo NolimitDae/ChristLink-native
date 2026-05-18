@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { getCommunityPosts, createCommunityPost, amenPost } from '../../lib/api';
 import { COLORS } from '../../lib/constants';
+import { logger } from '../../lib/logger';
 import type { CommunityPost } from '../../lib/types';
 
 const C = COLORS.dark;
@@ -42,7 +42,7 @@ interface PostItemProps {
   currentUserId?: string;
 }
 
-function PostItem({ post, onAmen, currentUserId }: PostItemProps) {
+function PostItem({ post, onAmen, currentUserId: _currentUserId }: PostItemProps) {
   const profile = post.profiles;
   return (
     <View style={styles.post}>
@@ -102,7 +102,7 @@ export default function CommunityScreen() {
       const res = await getCommunityPosts(session?.access_token);
       setPosts(res.posts);
     } catch (err) {
-      console.error('Failed to fetch posts', err);
+      logger.error('Failed to fetch posts', { error: String(err) });
     }
   }, [session]);
 
@@ -182,6 +182,7 @@ export default function CommunityScreen() {
     ({ item }: { item: CommunityPost }) => (
       <PostItem post={item} onAmen={handleAmen} currentUserId={user?.id} />
     ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [user?.id, session],
   );
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../lib/constants';
@@ -15,7 +15,7 @@ interface TabBarIconProps {
   color: string;
 }
 
-function TabIcon({ name, focused, color }: TabBarIconProps) {
+function TabIcon({ name, focused: _focused, color }: TabBarIconProps) {
   return (
     <View style={styles.tabIconContainer}>
       <Ionicons name={name} size={24} color={color} />
