@@ -1,930 +1,356 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Image,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Switch,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { GoldButton } from '../../components/GoldButton';
+import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { createEvent, uploadEventImage, createTicketType, publishEvent } from '../../lib/api';
-import { COLORS, EVENT_TYPES, EVENT_FORMATS, AGE_GROUPS } from '../../lib/constants';
-import type { CreateEventPayload } from '../../lib/types';
+import { duplicateEvent, getEventSales, getHostStats, getMyEvents, publishEvent } from '../../lib/api';
+import { formatCents, salesPerDay, summarizeSales } from '../../lib/fees';
+import { haptic } from '../../lib/haptics';
+import { pluralize } from '../../lib/format';
+import type { Event, HostStats, Ticket } from '../../lib/types';
+import {
+  AppText,
+  BottomSheet,
+  Button,
+  Card,
+  EmptyState,
+  IconButton,
+  LineArt,
+  ListRow,
+  SectionHeader,
+  Segmented,
+  Skeleton,
+  SkeletonGroup,
+  StatTile,
+} from '../../components/ui';
+import { HostEventRow, type RowAction } from '../../components/host/HostEventRow';
+import { RequirementRow } from '../../components/host/RequirementCard';
+import { errorMessage } from '../../components/host/errors';
 
-const C = COLORS.dark;
+type Tab = 'upcoming' | 'drafts' | 'past';
+const HOUR = 3_600_000;
 
-type Step = 1 | 2 | 3 | 4;
-
-interface TicketDraft {
-  name: string;
-  price: string;
-  quantity: string;
+function endMs(e: Event): number {
+  if (e.end_date) return new Date(e.end_date).getTime();
+  if (e.start_date) return new Date(e.start_date).getTime() + 2 * HOUR;
+  return Number.POSITIVE_INFINITY;
 }
 
-const EVENT_TYPE_OPTIONS = EVENT_TYPES.slice(1); // Remove 'All'
+function bucket(events: Event[], now = Date.now()): Record<Tab, Event[]> {
+  const drafts = events.filter(e => e.status === 'draft').sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const rest = events.filter(e => e.status !== 'draft');
+  const past = rest
+    .filter(e => e.status === 'completed' || e.status === 'cancelled' || endMs(e) < now)
+    .sort((a, b) => (b.start_date ?? '').localeCompare(a.start_date ?? ''));
+  const upcoming = rest.filter(e => !past.includes(e)).sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''));
+  return { upcoming, drafts, past };
+}
 
-export default function HostScreen() {
-  const insets = useSafeAreaInsets();
+interface SalesSnapshot {
+  trend: number[];
+  sold14: number;
+  net: number;
+}
+
+export default function HostTab() {
+  const t = useTheme();
+  const s = useStyles();
   const router = useRouter();
-  const { session } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { session, user, profile, isAdmin, isVerifiedHost, refreshProfile } = useAuth();
   const { showToast } = useToast();
+  const token = session?.access_token;
 
-  const [step, setStep] = useState<Step>(1);
-  const [submitting, setSubmitting] = useState(false);
-  const [coverUri, setCoverUri] = useState<string | null>(null);
-  const [coverUploading, setCoverUploading] = useState(false);
-  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [stats, setStats] = useState<HostStats | null>(null);
+  const [sales, setSales] = useState<SalesSnapshot | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>('upcoming');
+  const [sheetEvent, setSheetEvent] = useState<Event | null>(null);
+  const [actionBusy, setActionBusy] = useState(false);
+  const loaded = useRef(false);
 
-  // Form state
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [eventType, setEventType] = useState(EVENT_TYPE_OPTIONS[0]);
-  const [isPaid, setIsPaid] = useState(false);
-  const [format, setFormat] = useState<'in_person' | 'online' | 'hybrid'>('in_person');
-  const [ageGroup, setAgeGroup] = useState('All Ages');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [venueName, setVenueName] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [zip, setZip] = useState('');
-  const [onlineUrl, setOnlineUrl] = useState('');
-  const [maxCapacity, setMaxCapacity] = useState('');
-  const [forumEnabled, setForumEnabled] = useState(false);
-  const [tickets, setTickets] = useState<TicketDraft[]>([
-    { name: 'General Admission', price: '', quantity: '' },
-  ]);
-
-  const isAuthenticated = !!session;
-
-  const handlePickCover = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+  const load = useCallback(async () => {
+    if (!token || !user) {
+      setLoading(false);
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setCoverUri(asset.uri);
-      if (asset.base64 && session?.access_token) {
-        setCoverUploading(true);
-        try {
-          const ext = asset.uri.split('.').pop() ?? 'jpg';
-          const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
-          const dataUrl = `data:${mimeType};base64,${asset.base64}`;
-          const { url } = await uploadEventImage(dataUrl, 'cover', session.access_token);
-          setCoverUri(url);
-          showToast('Cover image uploaded', 'success');
-        } catch {
-          showToast('Failed to upload image', 'error');
-        } finally {
-          setCoverUploading(false);
-        }
-      }
-    }
-  };
-
-  const addTicket = () => {
-    setTickets(prev => [...prev, { name: '', price: '', quantity: '' }]);
-  };
-
-  const removeTicket = (index: number) => {
-    setTickets(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateTicket = (index: number, field: keyof TicketDraft, value: string) => {
-    setTickets(prev => prev.map((t, i) => (i === index ? { ...t, [field]: value } : t)));
-  };
-
-  const handleCreateEvent = async () => {
-    if (!session?.access_token) {
-      showToast('Please sign in to create an event', 'error');
+    setError(null);
+    const [evRes, statRes] = await Promise.allSettled([getMyEvents(token), getHostStats(user.id)]);
+    if (statRes.status === 'fulfilled') setStats(statRes.value);
+    if (evRes.status === 'rejected') {
+      setError(errorMessage(evRes.reason, 'Could not load your events.'));
+      setLoading(false);
       return;
     }
-    if (!name.trim()) {
-      showToast('Event name is required', 'error');
-      return;
-    }
+    const list = evRes.value.events;
+    setEvents(list);
+    setLoading(false);
+    loaded.current = true;
 
-    setSubmitting(true);
+    const paid = bucket(list)
+      .upcoming.filter(e => e.is_paid)
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .slice(0, 5);
+    const results = await Promise.allSettled(paid.map(e => getEventSales(e.id, token)));
+    const tickets: Ticket[] = results.flatMap(r => (r.status === 'fulfilled' ? r.value.tickets : []));
+    const trend = salesPerDay(tickets, 14);
+    setSales({ trend, sold14: trend.reduce((a, b) => a + b, 0), net: summarizeSales(tickets, 0).net });
+  }, [token, user]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (loaded.current) load();
+    }, [load]),
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([load(), refreshProfile()]);
+    setRefreshing(false);
+  };
+
+  const buckets = useMemo(() => bucket(events), [events]);
+  const totalGoing = buckets.upcoming.reduce((n, e) => n + (e.going_count ?? 0), 0);
+  const acct = profile?.host_stripe_accounts?.[0];
+  const payoutsReady = !!acct?.payouts_enabled;
+  const needsId = !isVerifiedHost && !profile?.identity_verified;
+
+  const runPublish = async (e: Event) => {
+    if (!token) return;
+    setActionBusy(true);
     try {
-      const payload: CreateEventPayload = {
-        name: name.trim(),
-        description: description.trim() || undefined,
-        event_type: eventType,
-        age_group: ageGroup,
-        format,
-        is_paid: isPaid,
-        absorb_stripe_fee: true,
-        start_date: startDate || undefined,
-        end_date: endDate || undefined,
-        venue_name: venueName.trim() || undefined,
-        address: address.trim() || undefined,
-        city: city.trim() || undefined,
-        state: state.trim() || undefined,
-        zip: zip.trim() || undefined,
-        online_url: onlineUrl.trim() || undefined,
-        max_capacity: maxCapacity ? parseInt(maxCapacity, 10) : undefined,
-        forum_enabled: forumEnabled,
-        cover_url: coverUri && coverUri.startsWith('http') ? coverUri : undefined,
-      };
-
-      const event = await createEvent(payload, session.access_token);
-      setCreatedEventId(event.id);
-
-      // Create ticket types for paid events
-      if (isPaid && tickets.length > 0) {
-        const validTickets = tickets.filter(t => t.name && t.price);
-        for (const ticket of validTickets) {
-          await createTicketType(
-            {
-              event_id: event.id,
-              name: ticket.name,
-              price_cents: Math.round(parseFloat(ticket.price) * 100),
-              quantity: ticket.quantity ? parseInt(ticket.quantity, 10) : undefined,
-            },
-            session.access_token,
-          );
-        }
-      }
-
-      showToast('Event created as draft!', 'success');
-      setStep(4);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to create event';
-      showToast(message, 'error');
+      await publishEvent(e.id, token);
+      haptic.success();
+      showToast(`${e.name} is live`, 'success');
+      setSheetEvent(null);
+      await load();
+    } catch (err) {
+      haptic.error();
+      Alert.alert('Couldn’t publish', errorMessage(err), [
+        { text: 'Open editor', onPress: () => router.push(`/event/create?id=${e.id}`) },
+        { text: 'OK', style: 'cancel' },
+      ]);
     } finally {
-      setSubmitting(false);
+      setActionBusy(false);
     }
   };
 
-  const handlePublish = async () => {
-    if (!session?.access_token || !createdEventId) return;
-    setSubmitting(true);
+  const runDuplicate = async (e: Event) => {
+    if (!token) return;
+    setActionBusy(true);
     try {
-      await publishEvent(createdEventId, session.access_token);
-      showToast('Event published!', 'success');
-      router.replace('/(tabs)');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to publish';
-      showToast(message, 'error');
+      await duplicateEvent(e.id, token);
+      showToast('Duplicated as a draft', 'success');
+      setSheetEvent(null);
+      setTab('drafts');
+      await load();
+    } catch (err) {
+      showToast(errorMessage(err, 'Could not duplicate'), 'error');
     } finally {
-      setSubmitting(false);
+      setActionBusy(false);
     }
   };
 
-  const handleSaveDraft = () => {
-    showToast('Event saved as draft', 'info');
-    router.replace('/(tabs)/profile');
+  const rowActions = (e: Event): RowAction[] => {
+    const salesAction: RowAction = { key: 'sales', label: 'Sales', icon: 'stats-chart-outline', onPress: () => router.push(`/event/${e.id}/sales`) };
+    const checkin: RowAction = { key: 'checkin', label: 'Check-in', icon: 'qr-code-outline', onPress: () => router.push(`/host/scan?eventId=${e.id}`), primary: true };
+    const edit: RowAction = { key: 'edit', label: 'Edit', icon: 'create-outline', onPress: () => router.push(`/event/create?id=${e.id}`) };
+    if (tab === 'drafts') return [{ key: 'publish', label: 'Publish', icon: 'rocket-outline', onPress: () => runPublish(e), primary: true }, edit];
+    if (tab === 'past') return [salesAction, { key: 'dup', label: 'Duplicate', icon: 'copy-outline', onPress: () => runDuplicate(e) }];
+    return [checkin, salesAction, edit];
   };
 
-  if (!isAuthenticated) {
+  if (!session || !user) {
     return (
-      <View style={[styles.container, styles.centered, { paddingTop: insets.top }]}>
-        <Ionicons name="calendar-outline" size={64} color={C.muted} />
-        <Text style={styles.guestTitle}>Host an Event</Text>
-        <Text style={styles.guestSubtext}>Sign in to create and manage faith events</Text>
-        <GoldButton title="Sign In" onPress={() => router.push('/auth')} style={{ marginTop: 16 }} />
+      <View style={[s.root, { paddingTop: insets.top }]}>
+        <View style={s.header}>
+          <AppText variant="display">Host</AppText>
+        </View>
+        <EmptyState
+          art="calendar"
+          title="Host faith events"
+          body="Create worship nights, Bible studies and retreats, sell tickets and check guests in — all from your phone."
+          actionLabel="Sign in"
+          onAction={() => router.push('/auth')}
+        />
       </View>
     );
   }
 
+  const list = buckets[tab];
+  const showChecklist = needsId || !payoutsReady;
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Host an Event</Text>
-          <View style={styles.stepIndicator}>
-            {([1, 2, 3, 4] as Step[]).map(s => (
-              <View key={s} style={[styles.stepDot, step >= s && styles.stepDotActive]} />
-            ))}
+    <View style={[s.root, { paddingTop: insets.top }]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 140 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
+      >
+        <View style={s.header}>
+          <View style={{ flex: 1 }}>
+            <AppText variant="display">Host</AppText>
+            {stats ? (
+              <AppText variant="caption" tone="muted">
+                {pluralize(stats.eventsHosted, 'event')} hosted · {pluralize(stats.totalAttendees, 'guest')} all-time
+              </AppText>
+            ) : null}
           </View>
+          {isAdmin ? <IconButton icon="shield-checkmark-outline" label="Admin" onPress={() => router.push('/admin')} /> : null}
+          <IconButton icon="wallet-outline" label="Payouts" onPress={() => router.push('/host/payouts')} />
         </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Step 1: Basic Info */}
-          {step === 1 && (
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Basic Information</Text>
-              <Text style={styles.stepSubtitle}>Tell us about your event</Text>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Event Type</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }}>
-                  <View style={styles.typeRow}>
-                    {EVENT_TYPE_OPTIONS.map(t => (
-                      <TouchableOpacity
-                        key={t}
-                        style={[styles.typeChip, eventType === t && styles.typeChipActive]}
-                        onPress={() => setEventType(t)}
-                      >
-                        <Text style={[styles.typeChipText, eventType === t && styles.typeChipTextActive]}>
-                          {t}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Event Name *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={name}
-                  onChangeText={setName}
-                  placeholder="e.g. Sunday Morning Worship"
-                  placeholderTextColor={C.muted}
-                  maxLength={120}
+        {showChecklist ? (
+          <View style={s.section}>
+            <Card>
+              <AppText variant="overline" tone="gold">
+                Setup checklist
+              </AppText>
+              <AppText variant="caption" tone="muted" style={{ marginTop: 2, marginBottom: 4 }}>
+                Only needed for paid events — free events can go live right away.
+              </AppText>
+              {needsId ? (
+                <RequirementRow
+                  icon="id-card-outline"
+                  title="Verify your identity"
+                  body="A quick ID check keeps our community safe"
+                  onPress={() => router.push('/host/verify')}
+                  last={payoutsReady}
                 />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Description</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={description}
-                  onChangeText={setDescription}
-                  placeholder="Describe your event..."
-                  placeholderTextColor={C.muted}
-                  multiline
-                  numberOfLines={5}
-                  textAlignVertical="top"
-                  maxLength={2000}
+              ) : null}
+              {!payoutsReady ? (
+                <RequirementRow
+                  icon="card-outline"
+                  title={acct ? 'Finish Stripe setup' : 'Set up payouts'}
+                  body={acct ? 'Stripe needs a few more details before payouts start' : 'Connect Stripe to get paid for ticket sales'}
+                  onPress={() => router.push('/host/payouts')}
+                  last
                 />
-              </View>
+              ) : null}
+            </Card>
+          </View>
+        ) : null}
 
-              <View style={styles.field}>
-                <Text style={styles.label}>Age Group</Text>
-                <View style={styles.chipRow}>
-                  {AGE_GROUPS.map(ag => (
-                    <TouchableOpacity
-                      key={ag}
-                      style={[styles.chip, ageGroup === ag && styles.chipActive]}
-                      onPress={() => setAgeGroup(ag)}
-                    >
-                      <Text style={[styles.chipText, ageGroup === ag && styles.chipTextActive]}>
-                        {ag}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+        <View style={s.section}>
+          {loading ? (
+            <SkeletonGroup label="Loading stats">
+              <View style={s.tiles}>
+                {[0, 1, 2, 3].map(i => (
+                  <Skeleton key={i} height={92} radius={t.radius.lg} style={{ flexBasis: '47%', flexGrow: 1 }} />
+                ))}
               </View>
+            </SkeletonGroup>
+          ) : (
+            <View style={s.tiles}>
+              <StatTile label="Upcoming events" value={String(buckets.upcoming.length)} onPress={() => setTab('upcoming')} />
+              <StatTile label="Total going" value={String(totalGoing)} />
+              <StatTile label="Tickets · 14 days" value={sales ? String(sales.sold14) : '–'} trend={sales?.trend} tone="gold" />
+              <StatTile label="Net earnings" value={sales ? formatCents(sales.net) : '–'} tone="success" />
+            </View>
+          )}
+        </View>
 
-              <View style={styles.field}>
-                <View style={styles.switchRow}>
-                  <View>
-                    <Text style={styles.label}>Paid Event</Text>
-                    <Text style={styles.labelHint}>Charge tickets for attendance</Text>
-                  </View>
-                  <Switch
-                    value={isPaid}
-                    onValueChange={setIsPaid}
-                    trackColor={{ false: C.surface2, true: C.gold }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
+        <View style={s.section}>
+          <Button title="Create an event" icon="add-circle-outline" size="lg" fullWidth onPress={() => router.push('/event/create')} />
+        </View>
+
+        <SectionHeader title="My events" style={{ marginTop: t.space.sm }} />
+        <View style={[s.section, { marginTop: 0 }]}>
+          <Segmented
+            options={[
+              { value: 'upcoming', label: `Upcoming${buckets.upcoming.length ? ` ${buckets.upcoming.length}` : ''}` },
+              { value: 'drafts', label: `Drafts${buckets.drafts.length ? ` ${buckets.drafts.length}` : ''}` },
+              { value: 'past', label: 'Past' },
+            ]}
+            value={tab}
+            onChange={setTab}
+          />
+        </View>
+
+        <View style={[s.section, { gap: t.space.sm }]}>
+          {loading ? (
+            <SkeletonGroup label="Loading events">
+              <View style={{ gap: t.space.sm }}>
+                {[0, 1, 2].map(i => (
+                  <Skeleton key={i} height={128} radius={t.radius.lg} />
+                ))}
               </View>
+            </SkeletonGroup>
+          ) : error ? (
+            <EmptyState compact art="calendar" title="Couldn’t load your events" body={error} actionLabel="Try again" onAction={load} />
+          ) : list.length === 0 ? (
+            <EmptyState
+              compact
+              art={tab === 'drafts' ? 'ticket' : 'calendar'}
+              title={tab === 'upcoming' ? 'No upcoming events' : tab === 'drafts' ? 'No drafts' : 'No past events yet'}
+              body={tab === 'past' ? 'Events you’ve hosted will appear here with their sales.' : 'Start something your community will love.'}
+              actionLabel={tab === 'past' ? undefined : 'Create an event'}
+              onAction={tab === 'past' ? undefined : () => router.push('/event/create')}
+            />
+          ) : (
+            list.map(e => (
+              <HostEventRow key={e.id} event={e} actions={rowActions(e)} onOpen={() => router.push(`/event/${e.id}`)} onMore={() => setSheetEvent(e)} />
+            ))
+          )}
+        </View>
 
-              <GoldButton
-                title="Next: Date & Location"
-                onPress={() => {
-                  if (!name.trim()) {
-                    showToast('Please enter an event name', 'error');
-                    return;
-                  }
-                  setStep(2);
-                }}
+        <View style={s.section}>
+          <Card variant="featured" onPress={() => router.push('/host/serve')} accessibilityLabel="Serve teams: recruit volunteers">
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md }}>
+              <LineArt name="serve" size={64} />
+              <View style={{ flex: 1, gap: 4 }}>
+                <AppText variant="title3">Serve teams</AppText>
+                <AppText variant="callout" tone="muted">
+                  Recruit volunteers, build shifts and check your team in.
+                </AppText>
+              </View>
+            </View>
+          </Card>
+        </View>
+      </ScrollView>
+
+      <BottomSheet visible={!!sheetEvent} onClose={() => setSheetEvent(null)} title={sheetEvent?.name} subtitle="Event actions">
+        {sheetEvent ? (
+          <View style={s.sheetGroup}>
+            <ListRow icon="eye-outline" title="View event page" onPress={() => { setSheetEvent(null); router.push(`/event/${sheetEvent.id}`); }} />
+            <ListRow icon="create-outline" title="Edit details" onPress={() => { setSheetEvent(null); router.push(`/event/create?id=${sheetEvent.id}`); }} />
+            {sheetEvent.status !== 'draft' ? (
+              <ListRow icon="stats-chart-outline" title="Sales & guests" onPress={() => { setSheetEvent(null); router.push(`/event/${sheetEvent.id}/sales`); }} />
+            ) : null}
+            {sheetEvent.status === 'published' ? (
+              <ListRow icon="qr-code-outline" title="Check guests in" onPress={() => { setSheetEvent(null); router.push(`/host/scan?eventId=${sheetEvent.id}`); }} />
+            ) : null}
+            <ListRow icon="hand-left-outline" title="Volunteers" subtitle="Serve roles and shifts" onPress={() => { setSheetEvent(null); router.push(`/host/serve?eventId=${sheetEvent.id}`); }} />
+            <ListRow icon="copy-outline" title="Duplicate" subtitle="Creates a new draft" disabled={actionBusy} onPress={() => runDuplicate(sheetEvent)} last={sheetEvent.status !== 'draft'} />
+            {sheetEvent.status === 'draft' ? (
+              <ListRow
+                icon="rocket-outline"
+                title="Publish now"
+                subtitle={sheetEvent.is_paid && !sheetEvent.listing_fee_paid ? 'Paid events need the listing fee paid first' : undefined}
+                disabled={actionBusy}
+                onPress={() => runPublish(sheetEvent)}
+                last
               />
-            </View>
-          )}
-
-          {/* Step 2: Date & Location */}
-          {step === 2 && (
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Date & Location</Text>
-              <Text style={styles.stepSubtitle}>When and where is your event?</Text>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Format</Text>
-                <View style={styles.chipRow}>
-                  {EVENT_FORMATS.map(f => (
-                    <TouchableOpacity
-                      key={f}
-                      style={[styles.chip, format === f && styles.chipActive]}
-                      onPress={() => setFormat(f)}
-                    >
-                      <Text style={[styles.chipText, format === f && styles.chipTextActive]}>
-                        {f === 'in_person' ? 'In Person' : f.charAt(0).toUpperCase() + f.slice(1)}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Start Date & Time</Text>
-                <TextInput
-                  style={styles.input}
-                  value={startDate}
-                  onChangeText={setStartDate}
-                  placeholder="e.g. 2025-06-15T10:00:00"
-                  placeholderTextColor={C.muted}
-                />
-                <Text style={styles.fieldHint}>Format: YYYY-MM-DDTHH:MM:SS</Text>
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>End Date & Time</Text>
-                <TextInput
-                  style={styles.input}
-                  value={endDate}
-                  onChangeText={setEndDate}
-                  placeholder="e.g. 2025-06-15T13:00:00"
-                  placeholderTextColor={C.muted}
-                />
-              </View>
-
-              {(format === 'in_person' || format === 'hybrid') && (
-                <>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Venue Name</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={venueName}
-                      onChangeText={setVenueName}
-                      placeholder="e.g. Grace Community Church"
-                      placeholderTextColor={C.muted}
-                    />
-                  </View>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Street Address</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={address}
-                      onChangeText={setAddress}
-                      placeholder="123 Main St"
-                      placeholderTextColor={C.muted}
-                    />
-                  </View>
-                  <View style={styles.row2}>
-                    <View style={[styles.field, { flex: 2 }]}>
-                      <Text style={styles.label}>City</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={city}
-                        onChangeText={setCity}
-                        placeholder="City"
-                        placeholderTextColor={C.muted}
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>State</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={state}
-                        onChangeText={setState}
-                        placeholder="ST"
-                        placeholderTextColor={C.muted}
-                        maxLength={2}
-                        autoCapitalize="characters"
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>ZIP</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={zip}
-                        onChangeText={setZip}
-                        placeholder="12345"
-                        placeholderTextColor={C.muted}
-                        keyboardType="numeric"
-                        maxLength={10}
-                      />
-                    </View>
-                  </View>
-                </>
-              )}
-
-              {(format === 'online' || format === 'hybrid') && (
-                <View style={styles.field}>
-                  <Text style={styles.label}>Online URL</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={onlineUrl}
-                    onChangeText={setOnlineUrl}
-                    placeholder="https://zoom.us/..."
-                    placeholderTextColor={C.muted}
-                    keyboardType="url"
-                    autoCapitalize="none"
-                  />
-                </View>
-              )}
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Max Capacity (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={maxCapacity}
-                  onChangeText={setMaxCapacity}
-                  placeholder="Leave blank for unlimited"
-                  placeholderTextColor={C.muted}
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <View style={styles.field}>
-                <View style={styles.switchRow}>
-                  <View>
-                    <Text style={styles.label}>Event Forum</Text>
-                    <Text style={styles.labelHint}>Allow attendees to chat</Text>
-                  </View>
-                  <Switch
-                    value={forumEnabled}
-                    onValueChange={setForumEnabled}
-                    trackColor={{ false: C.surface2, true: C.gold }}
-                    thumbColor="#FFFFFF"
-                  />
-                </View>
-              </View>
-
-              <View style={styles.buttonRow}>
-                <GoldButton
-                  title="Back"
-                  variant="outline"
-                  onPress={() => setStep(1)}
-                  style={{ flex: 1 }}
-                />
-                <GoldButton
-                  title="Next: Cover Photo"
-                  onPress={() => setStep(3)}
-                  style={{ flex: 2 }}
-                />
-              </View>
-            </View>
-          )}
-
-          {/* Step 3: Cover Photo */}
-          {step === 3 && (
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Cover Photo</Text>
-              <Text style={styles.stepSubtitle}>Add an eye-catching photo for your event</Text>
-
-              <TouchableOpacity
-                style={styles.coverPicker}
-                onPress={handlePickCover}
-                disabled={coverUploading}
-              >
-                {coverUri ? (
-                  <Image source={{ uri: coverUri }} style={styles.coverPreview} resizeMode="cover" />
-                ) : (
-                  <View style={styles.coverPlaceholder}>
-                    <Ionicons name="image-outline" size={48} color={C.muted} />
-                    <Text style={styles.coverPlaceholderText}>Tap to add a cover photo</Text>
-                    <Text style={styles.coverPlaceholderHint}>Recommended: 1600×900px</Text>
-                  </View>
-                )}
-                {coverUploading && (
-                  <View style={styles.coverUploading}>
-                    <Text style={styles.coverUploadingText}>Uploading...</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-
-              {coverUri && (
-                <TouchableOpacity
-                  style={styles.removeCover}
-                  onPress={() => setCoverUri(null)}
-                >
-                  <Ionicons name="trash-outline" size={16} color={C.red} />
-                  <Text style={styles.removeCoverText}>Remove photo</Text>
-                </TouchableOpacity>
-              )}
-
-              <View style={[styles.buttonRow, { marginTop: 24 }]}>
-                <GoldButton
-                  title="Back"
-                  variant="outline"
-                  onPress={() => setStep(2)}
-                  style={{ flex: 1 }}
-                />
-                <GoldButton
-                  title={isPaid ? 'Next: Tickets' : 'Create Event'}
-                  onPress={isPaid ? () => setStep(4) : handleCreateEvent}
-                  loading={submitting && !isPaid}
-                  style={{ flex: 2 }}
-                />
-              </View>
-            </View>
-          )}
-
-          {/* Step 4: Tickets (paid) or Confirmation */}
-          {step === 4 && !createdEventId && isPaid && (
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Ticket Types</Text>
-              <Text style={styles.stepSubtitle}>Set up your ticket options</Text>
-
-              {tickets.map((ticket, index) => (
-                <View key={index} style={styles.ticketRow}>
-                  <View style={styles.ticketHeader}>
-                    <Text style={styles.ticketLabel}>Ticket {index + 1}</Text>
-                    {tickets.length > 1 && (
-                      <TouchableOpacity onPress={() => removeTicket(index)}>
-                        <Ionicons name="trash-outline" size={18} color={C.red} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Name</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={ticket.name}
-                      onChangeText={v => updateTicket(index, 'name', v)}
-                      placeholder="e.g. General Admission"
-                      placeholderTextColor={C.muted}
-                    />
-                  </View>
-                  <View style={styles.row2}>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Price ($)</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={ticket.price}
-                        onChangeText={v => updateTicket(index, 'price', v)}
-                        placeholder="0.00"
-                        placeholderTextColor={C.muted}
-                        keyboardType="decimal-pad"
-                      />
-                    </View>
-                    <View style={[styles.field, { flex: 1 }]}>
-                      <Text style={styles.label}>Qty (optional)</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={ticket.quantity}
-                        onChangeText={v => updateTicket(index, 'quantity', v)}
-                        placeholder="Unlimited"
-                        placeholderTextColor={C.muted}
-                        keyboardType="numeric"
-                      />
-                    </View>
-                  </View>
-                </View>
-              ))}
-
-              <TouchableOpacity style={styles.addTicketBtn} onPress={addTicket}>
-                <Ionicons name="add-circle-outline" size={20} color={C.gold} />
-                <Text style={styles.addTicketText}>Add another ticket type</Text>
-              </TouchableOpacity>
-
-              <View style={[styles.buttonRow, { marginTop: 24 }]}>
-                <GoldButton
-                  title="Back"
-                  variant="outline"
-                  onPress={() => setStep(3)}
-                  style={{ flex: 1 }}
-                />
-                <GoldButton
-                  title="Create Event"
-                  onPress={handleCreateEvent}
-                  loading={submitting}
-                  style={{ flex: 2 }}
-                />
-              </View>
-            </View>
-          )}
-
-          {/* Step 4: Success / Publish */}
-          {step === 4 && createdEventId && (
-            <View style={[styles.stepContent, styles.centered]}>
-              <View style={styles.successIcon}>
-                <Ionicons name="checkmark-circle" size={80} color={C.gold} />
-              </View>
-              <Text style={styles.successTitle}>Event Created!</Text>
-              <Text style={styles.successSubtext}>
-                Your event has been saved as a draft. Publish it to make it visible to the community.
-              </Text>
-
-              <GoldButton
-                title="Publish Now"
-                onPress={handlePublish}
-                loading={submitting}
-                style={styles.publishBtn}
-              />
-              <GoldButton
-                title="Save as Draft"
-                variant="outline"
-                onPress={handleSaveDraft}
-                style={styles.draftBtn}
-              />
-            </View>
-          )}
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+            ) : null}
+          </View>
+        ) : null}
+      </BottomSheet>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
-  centered: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    paddingTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    color: C.text,
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  stepIndicator: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: C.border,
-  },
-  stepDotActive: {
-    backgroundColor: C.gold,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-  },
-  stepContent: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  stepTitle: {
-    color: C.text,
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  stepSubtitle: {
-    color: C.muted,
-    fontSize: 14,
-    marginBottom: 24,
-  },
-  field: {
-    marginBottom: 16,
-  },
-  label: {
-    color: C.text,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  labelHint: {
-    color: C.muted,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  fieldHint: {
-    color: C.muted,
-    fontSize: 11,
-    marginTop: 4,
-  },
-  input: {
-    backgroundColor: C.surface,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    color: C.text,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  textArea: {
-    minHeight: 120,
-    paddingTop: 12,
-  },
-  typeRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    paddingBottom: 4,
-  },
-  typeChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  typeChipActive: {
-    backgroundColor: 'rgba(201,168,76,0.15)',
-    borderColor: C.gold,
-  },
-  typeChipText: {
-    color: C.muted,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  typeChipTextActive: {
-    color: C.gold,
-    fontWeight: '700',
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 12,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  chipActive: {
-    backgroundColor: 'rgba(201,168,76,0.15)',
-    borderColor: C.gold,
-  },
-  chipText: {
-    color: C.muted,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: C.gold,
-    fontWeight: '700',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: C.surface,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  row2: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-  },
-  coverPicker: {
-    height: 200,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: C.surface,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    borderStyle: 'dashed',
-    marginBottom: 12,
-  },
-  coverPreview: {
-    width: '100%',
-    height: '100%',
-  },
-  coverPlaceholder: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  coverPlaceholderText: {
-    color: C.muted,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  coverPlaceholderHint: {
-    color: C.muted,
-    fontSize: 12,
-  },
-  coverUploading: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coverUploadingText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  removeCover: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  removeCoverText: {
-    color: C.red,
-    fontSize: 14,
-  },
-  ticketRow: {
-    backgroundColor: C.surface,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginBottom: 12,
-  },
-  ticketHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  ticketLabel: {
-    color: C.gold,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  addTicketBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-  },
-  addTicketText: {
-    color: C.gold,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  successIcon: {
-    marginBottom: 16,
-  },
-  successTitle: {
-    color: C.text,
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  successSubtext: {
-    color: C.muted,
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
-    paddingHorizontal: 16,
-  },
-  publishBtn: {
-    width: '100%',
-    marginBottom: 12,
-  },
-  draftBtn: {
-    width: '100%',
-  },
-  guestTitle: {
-    color: C.text,
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 16,
-  },
-  guestSubtext: {
-    color: C.muted,
-    fontSize: 15,
-    textAlign: 'center',
-    marginTop: 8,
-    paddingHorizontal: 24,
-  },
-});
+const useStyles = makeStyles(t => ({
+  root: { flex: 1, backgroundColor: t.c.bg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, paddingHorizontal: t.space.md, paddingTop: t.space.sm, paddingBottom: t.space.md },
+  section: { paddingHorizontal: t.space.md, marginBottom: t.space.md },
+  tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm },
+  sheetGroup: { backgroundColor: t.c.surface, borderRadius: t.radius.lg, borderWidth: 1, borderColor: t.c.border, paddingHorizontal: 14 },
+}));

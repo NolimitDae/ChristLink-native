@@ -37,3 +37,6 @@ the "plain website wrapper" rejection risk (Guideline 4.2) does not apply.
 ## Open items Claude couldn't finish (add here when a bug fails three fixes)
 - Apple Wallet button hidden until the API offers a signed download link.
 - Stripe balance / payout history endpoint does not exist.
+- No endpoint to update or delete a ticket type, so ticket types are read-only when editing a paid event.
+- `/api/admin/verifications`, `/api/events/:id/attendance` and the `ticket.profiles` field in `/api/tickets/verify`
+  have no documented response shape; the app reads them defensively. Confirm against server.js.

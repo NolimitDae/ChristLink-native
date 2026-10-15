@@ -14,7 +14,7 @@ module.exports = [
       'app.config.js',
       'babel.config.js',
       'metro.config.js',
-      'tailwind.config.js',
+      
       'jest.config.js',
       'eslint.config.js',
     ],
