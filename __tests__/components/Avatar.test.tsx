@@ -2,32 +2,24 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import { Avatar } from '../../components/Avatar';
 
-jest.mock('../../lib/constants', () => ({
-  COLORS: {
-    dark: { bg: '#000', text: '#fff', gold: '#C9A84C', surface: '#111', muted: '#666', border: 'rgba(255,255,255,0.1)' },
-  },
-  AVATAR_COLORS: ['#C9A84C', '#4EC98C', '#E05050'],
-}));
-
 describe('Avatar', () => {
-  it('renders without crashing', () => {
-    const { toJSON } = render(<Avatar name="John Doe" />);
-    expect(toJSON()).toBeTruthy();
-  });
-
-  it('shows initials when no URI provided', () => {
+  it('shows initials when there is no photo', () => {
     const { getByText } = render(<Avatar name="Alice Smith" />);
-    expect(getByText('A')).toBeTruthy();
+    expect(getByText('AS')).toBeTruthy();
   });
 
-  it('shows fallback ? for missing name', () => {
-    const { getByText } = render(<Avatar />);
-    expect(getByText('?')).toBeTruthy();
+  it('shows a single initial for one name and ? when missing', () => {
+    expect(render(<Avatar name="Bob" />).getByText('B')).toBeTruthy();
+    expect(render(<Avatar />).getByText('?')).toBeTruthy();
   });
 
-  it('respects custom size', () => {
-    const { toJSON } = render(<Avatar name="Bob" size={60} />);
-    const json = toJSON();
-    expect(json).toBeTruthy();
+  it('renders the web app gradient colors without crashing', () => {
+    const { getByLabelText } = render(<Avatar name="Dee" color="linear-gradient(135deg,#059669,#064E3B)" />);
+    expect(getByLabelText("Dee's photo")).toBeTruthy();
+  });
+
+  it('adds a ring when requested', () => {
+    const { toJSON } = render(<Avatar name="Ring" ringColor="#C9A84C" size={60} />);
+    expect(JSON.stringify(toJSON())).toContain('#C9A84C');
   });
 });

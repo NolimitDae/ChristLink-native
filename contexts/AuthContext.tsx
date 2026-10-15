@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import * as Sentry from '@sentry/react-native';
 import { supabase } from '../lib/supabase';
 import { getProfile } from '../lib/api';
+import { storage } from '../lib/storage';
+import { logger } from '../lib/logger';
 import type { Profile } from '../lib/types';
 
 interface AuthContextValue {
@@ -9,79 +12,74 @@ interface AuthContextValue {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  isAdmin: boolean;
+  isVerifiedHost: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextValue>({
-  session: null,
-  user: null,
-  profile: null,
-  loading: true,
-  signOut: async () => {},
-  refreshProfile: async () => {},
-});
+const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = useCallback(async (accessToken: string) => {
     try {
-      const p = await getProfile(accessToken);
-      setProfile(p);
-    } catch {
-      // Profile may not exist yet for new users — that's OK
-      setProfile(null);
+      setProfile(await getProfile(accessToken));
+    } catch (err) {
+      logger.warn('Profile not loaded', { error: String(err) });
     }
   }, []);
 
   useEffect(() => {
-    // Get the initial session
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.access_token) {
-        fetchProfile(s.access_token).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session: s } }) => {
+        setSession(s);
+        if (s?.access_token) return fetchProfile(s.access_token);
+        return undefined;
+      })
+      .finally(() => setLoading(false));
 
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.access_token) {
-        fetchProfile(s.access_token);
-      } else {
-        setProfile(null);
-      }
+      Sentry.setUser(s?.user ? { id: s.user.id } : null);
+      if (event === 'SIGNED_IN' && s?.access_token) fetchProfile(s.access_token);
+      if (event === 'SIGNED_OUT') setProfile(null);
     });
-
     return () => subscription.unsubscribe();
   }, [fetchProfile]);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
+    await storage.clearUserData();
     setSession(null);
-    setUser(null);
     setProfile(null);
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (session?.access_token) {
-      await fetchProfile(session.access_token);
-    }
+    if (session?.access_token) await fetchProfile(session.access_token);
   }, [session, fetchProfile]);
 
-  return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signOut, refreshProfile }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      session,
+      user: session?.user ?? null,
+      profile,
+      loading,
+      isAdmin: profile?.role === 'admin',
+      isVerifiedHost: !!profile?.identity_verified || profile?.role === 'verified' || profile?.role === 'admin',
+      signOut,
+      refreshProfile,
+    }),
+    [session, profile, loading, signOut, refreshProfile],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

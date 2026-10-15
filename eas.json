@@ -8,7 +8,8 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_BASE": "https://christlink1-production.up.railway.app"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
@@ -17,7 +18,8 @@
       },
       "ios": {
         "simulator": false
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
@@ -26,7 +28,8 @@
       },
       "ios": {
         "buildConfiguration": "Release"
-      }
+      },
+      "channel": "production"
     }
   },
   "submit": {
@@ -38,7 +41,8 @@
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "production"
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

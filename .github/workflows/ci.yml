@@ -29,6 +29,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Bundle check (every screen compiles for iOS and Android)
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+          EXPO_PUBLIC_STRIPE_PK: pk_test_ci
+          EXPO_PUBLIC_API_BASE: https://example.invalid
+        run: npx expo export --platform ios --platform android --output-dir dist --no-minify
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -46,11 +54,6 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Run tests
-        env:
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          EXPO_PUBLIC_STRIPE_PK: ${{ secrets.EXPO_PUBLIC_STRIPE_PK }}
-          EXPO_PUBLIC_API_BASE: ${{ secrets.EXPO_PUBLIC_API_BASE }}
         run: npm run test:ci
 
       - name: Upload coverage
@@ -80,7 +83,10 @@ jobs:
         run: npm install -g eas-cli
 
       - name: Validate eas.json
-        run: eas config --non-interactive || true
+        run: node -e "JSON.parse(require('fs').readFileSync('eas.json','utf8'))"
+
+      - name: Validate SQL migrations parse
+        run: pip install "pglast==8.*" && python -c "import pglast,glob; [pglast.parser.parse_sql(open(f).read()) for f in glob.glob('supabase/**/*.sql', recursive=True)]; print('SQL ok')"
 
   build-preview:
     name: EAS Preview Build

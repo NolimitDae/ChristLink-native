@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "ChristLink",
+    "name": "Christ Link Social",
     "slug": "christlink",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "christlink",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0A0A0F"
+      "backgroundColor": "#0E0C0A"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -20,27 +20,67 @@
       "bundleIdentifier": "com.christlink.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "ChristLink uses your camera to capture event and profile photos.",
-        "NSPhotoLibraryUsageDescription": "ChristLink accesses your photo library to set event covers and profile pictures.",
-        "NSLocationWhenInUseUsageDescription": "ChristLink uses your location to find faith events near you.",
-        "NSUserNotificationUsageDescription": "ChristLink sends notifications for events you're attending and community updates."
+        "NSCameraUsageDescription": "Christ Link Social uses the camera to scan tickets and volunteer passes at check-in, and to take event or profile photos.",
+        "NSPhotoLibraryUsageDescription": "Christ Link Social uses your photo library so you can choose a profile picture, banner or event cover.",
+        "NSLocationWhenInUseUsageDescription": "Christ Link Social uses your location to show events and churches near you. It is never shared with other people.",
+        "NSUserNotificationUsageDescription": "Christ Link Social sends ticket confirmations, event reminders and prayer updates.",
+        "NSPhotoLibraryAddUsageDescription": "Christ Link Social saves share cards to your photo library when you ask it to.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:christlinksocial.com",
+        "applinks:www.christlinksocial.com"
+      ],
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0A0A0F"
+        "backgroundColor": "#0E0C0A"
       },
       "package": "com.christlink.app",
       "versionCode": 1,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
         "CAMERA",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "christlinksocial.com",
+              "pathPrefix": "/event"
+            },
+            {
+              "scheme": "https",
+              "host": "christlinksocial.com",
+              "pathPrefix": "/church"
+            },
+            {
+              "scheme": "https",
+              "host": "www.christlinksocial.com",
+              "pathPrefix": "/event"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ]
     },
     "web": {
@@ -51,18 +91,6 @@
       "expo-router",
       "expo-secure-store",
       [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow ChristLink to use your location to find events near you."
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "The app accesses your photos to let you set a profile picture and event cover."
-        }
-      ],
-      [
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
@@ -70,11 +98,36 @@
           "sounds": []
         }
       ],
-      "@sentry/react-native/expo"
+      "@sentry/react-native/expo",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Christ Link Social uses your location to show events and churches near you."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Christ Link Social uses your photos so you can choose a profile picture, banner or event cover.",
+          "cameraPermission": "Christ Link Social uses the camera to take event or profile photos."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Christ Link Social uses the camera to scan tickets and volunteer passes at check-in.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.christlinksocial.app",
+          "enableGooglePay": true
+        }
+      ],
+      "expo-font"
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
