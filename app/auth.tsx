@@ -1,469 +1,261 @@
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Image,
-  Dimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useRef, useState } from 'react';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { GoldButton } from '../components/GoldButton';
+import { useAppData } from '../contexts/AppDataContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
+import { FeatureError, acceptTerms } from '../lib/features';
+import { haptic } from '../lib/haptics';
+import { logger } from '../lib/logger';
 import { supabase } from '../lib/supabase';
-import { COLORS } from '../lib/constants';
+import { emailSchema, fullNameSchema } from '../lib/validation';
+import { AppText, Button, Field, IconButton, PinCross } from '../components/ui';
+import { OTP_LENGTH, OtpBoxes, type OtpBoxesHandle } from '../components/onboarding/OtpBoxes';
+import { applyPendingHomeChurch } from '../components/onboarding/pendingChurch';
 
-const C = COLORS.dark;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-type AuthStep = 'email' | 'otp' | 'name';
+type Step = 'email' | 'otp';
+const RESEND_SECONDS = 30;
+const EMPTY_OTP = Array.from({ length: OTP_LENGTH }, () => '');
 
 export default function AuthScreen() {
-  const insets = useSafeAreaInsets();
+  const t = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { showToast } = useToast();
+  const { refreshSettings } = useAppData();
+  const otpRef = useRef<OtpBoxesHandle>(null);
 
-  const [step, setStep] = useState<AuthStep>('email');
+  const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [loading, setLoading] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [name, setName] = useState('');
+  const [agreed, setAgreed] = useState(false);
+  const [otp, setOtp] = useState<string[]>(EMPTY_OTP);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
-  const otpRefs = useRef<(TextInput | null)[]>([]);
+  const parsedEmail = emailSchema.safeParse(email);
+  const emailValid = parsedEmail.success;
+  const normalizedEmail = parsedEmail.success ? parsedEmail.data : email.trim().toLowerCase();
 
-  const handleSendOtp = async () => {
-    const trimmedEmail = email.trim().toLowerCase();
-    if (!trimmedEmail || !trimmedEmail.includes('@')) {
-      showToast('Please enter a valid email address', 'error');
-      return;
-    }
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = setTimeout(() => setCooldown(c => c - 1), 1000);
+    return () => clearTimeout(id);
+  }, [cooldown]);
 
-    setLoading(true);
+  useEffect(() => {
+    if (step === 'otp') setTimeout(() => otpRef.current?.focus(), 350);
+  }, [step]);
+
+  const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)'));
+
+  const sendCode = async () => {
+    if (!emailValid || !agreed) return;
+    const nameParsed = fullNameSchema.safeParse(name);
+    const fullName = nameParsed.success ? nameParsed.data : undefined;
+    setSending(true);
     try {
       const { error } = await supabase.auth.signInWithOtp({
-        email: trimmedEmail,
-        options: {
-          shouldCreateUser: true,
-          data: fullName.trim() ? { full_name: fullName.trim() } : undefined,
-        },
+        email: normalizedEmail,
+        options: { shouldCreateUser: true, data: fullName ? { full_name: fullName } : undefined },
       });
       if (error) {
         showToast(error.message, 'error');
         return;
       }
+      setOtp(EMPTY_OTP);
+      setOtpError(null);
       setStep('otp');
+      setCooldown(RESEND_SECONDS);
       showToast('Check your email for a 6-digit code', 'success');
     } catch {
-      showToast('Failed to send code. Please try again.', 'error');
+      showToast('Could not send the code. Please try again.', 'error');
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
-  const handleOtpChange = (value: string, index: number) => {
-    // Only allow digits
-    const digit = value.replace(/[^0-9]/g, '').slice(-1);
-    const newOtp = [...otp];
-    newOtp[index] = digit;
-    setOtp(newOtp);
-
-    // Auto-advance to next input
-    if (digit && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
-
-    // Auto-submit when all 6 digits filled
-    if (digit && index === 5) {
-      const code = newOtp.join('');
-      if (code.length === 6) {
-        handleVerifyOtp(code);
-      }
-    }
-  };
-
-  const handleOtpKeyPress = (key: string, index: number) => {
-    if (key === 'Backspace' && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleVerifyOtp = async (code?: string) => {
-    const codeToVerify = code ?? otp.join('');
-    if (codeToVerify.length < 6) {
-      showToast('Please enter the 6-digit code', 'error');
-      return;
-    }
-
-    setLoading(true);
+  const afterSignIn = async () => {
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: email.trim().toLowerCase(),
-        token: codeToVerify,
-        type: 'email',
-      });
+      await acceptTerms();
+    } catch (err) {
+      if (!(err instanceof FeatureError && err.notSetUp)) logger.warn('Terms acceptance not recorded', { error: String(err) });
+    }
+    if (await applyPendingHomeChurch()) await refreshSettings();
+  };
+
+  const verify = async (code: string) => {
+    if (verifying) return;
+    setVerifying(true);
+    setOtpError(null);
+    try {
+      const { error } = await supabase.auth.verifyOtp({ email: normalizedEmail, token: code, type: 'email' });
       if (error) {
-        showToast('Invalid or expired code. Please try again.', 'error');
+        haptic.error();
+        setOtpError('That code is invalid or expired. Check the latest email or resend.');
+        setOtp(EMPTY_OTP);
+        setTimeout(() => otpRef.current?.focus(), 50);
         return;
       }
-      // Successfully authenticated — the auth state change will redirect
-      showToast('Welcome to ChristLink! 🙏', 'success');
-      router.replace('/(tabs)');
+      haptic.success();
+      await afterSignIn();
+      showToast('Welcome to Christ Link Social', 'success');
+      close();
     } catch {
-      showToast('Verification failed. Please try again.', 'error');
+      setOtpError('Verification failed. Please try again.');
     } finally {
-      setLoading(false);
+      setVerifying(false);
     }
   };
 
-  const handleResendCode = async () => {
-    setOtp(['', '', '', '', '', '']);
-    setLoading(true);
+  const onOtpChange = (digits: string[]) => {
+    setOtp(digits);
+    setOtpError(null);
+    const code = digits.join('');
+    if (code.length === OTP_LENGTH && /^\d+$/.test(code)) verify(code);
+  };
+
+  const resend = async () => {
+    if (cooldown > 0) return;
+    setSending(true);
     try {
-      await supabase.auth.signInWithOtp({
-        email: email.trim().toLowerCase(),
-        options: { shouldCreateUser: true },
-      });
-      showToast('New code sent!', 'success');
-    } catch {
-      showToast('Failed to resend code', 'error');
+      const { error } = await supabase.auth.signInWithOtp({ email: normalizedEmail, options: { shouldCreateUser: true } });
+      if (error) throw error;
+      setOtp(EMPTY_OTP);
+      setCooldown(RESEND_SECONDS);
+      showToast('New code sent', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not resend code', 'error');
     } finally {
-      setLoading(false);
+      setSending(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: t.c.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        {step === 'otp' ? (
+          <IconButton icon="chevron-back" label="Change email" onPress={() => setStep('email')} />
+        ) : (
+          <IconButton icon="close" label="Close" onPress={close} />
+        )}
+      </View>
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 },
-        ]}
+        contentContainerStyle={[styles.content, { paddingHorizontal: t.space.lg, paddingBottom: insets.bottom + t.space.xl }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo / Header */}
-        <View style={styles.logoSection}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoEmoji}>✝</Text>
-          </View>
-          <Text style={styles.appName}>ChristLink</Text>
-          <Text style={styles.tagline}>Connect. Worship. Grow.</Text>
+        <View style={styles.brand}>
+          <PinCross size={48} />
+          <AppText variant="title1" align="center" style={{ marginTop: t.space.md }}>
+            Christ Link Social
+          </AppText>
+          <AppText variant="callout" tone="muted" align="center" style={{ marginTop: 4 }}>
+            {step === 'email' ? 'Sign in or create an account. No password needed.' : `Enter the 6-digit code we sent to ${normalizedEmail}`}
+          </AppText>
         </View>
 
-        {/* Email Step */}
-        {step === 'email' && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sign in or Sign up</Text>
-            <Text style={styles.cardSubtitle}>
-              Enter your email and we'll send you a verification code. No password needed.
-            </Text>
-
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Your Name (optional)</Text>
-              <TextInput
-                style={styles.input}
-                value={fullName}
-                onChangeText={setFullName}
-                placeholder="e.g. John Smith"
-                placeholderTextColor={C.muted}
-                autoCorrect={false}
-                textContentType="name"
-                returnKeyType="next"
-              />
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Email Address *</Text>
-              <View style={styles.inputWithIcon}>
-                <Ionicons name="mail-outline" size={18} color={C.muted} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.inputInner}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  placeholderTextColor={C.muted}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="emailAddress"
-                  returnKeyType="done"
-                  onSubmitEditing={handleSendOtp}
-                />
-              </View>
-            </View>
-
-            <GoldButton
-              title="Send Verification Code"
-              onPress={handleSendOtp}
-              loading={loading}
-              size="lg"
-              style={styles.ctaBtn}
+        {step === 'email' ? (
+          <View style={{ gap: t.space.md }}>
+            <Field
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
+              error={email.length > 3 && !emailValid && email.includes('@') && email.includes('.') ? 'Please enter a valid email address' : null}
+            />
+            <Field
+              label="Your name (optional)"
+              value={name}
+              onChangeText={setName}
+              placeholder="For new accounts"
+              autoComplete="name"
+              textContentType="name"
+              maxLength={80}
+              returnKeyType="done"
+              onSubmitEditing={sendCode}
             />
 
-            <Text style={styles.disclaimer}>
-              By continuing you agree to our Terms of Service and Privacy Policy.
-            </Text>
-          </View>
-        )}
-
-        {/* OTP Step */}
-        {step === 'otp' && (
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => setStep('email')}>
-              <Ionicons name="chevron-back" size={20} color={C.gold} />
-              <Text style={styles.backBtnText}>Back</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.cardTitle}>Check Your Email</Text>
-            <Text style={styles.cardSubtitle}>
-              We sent a 6-digit code to{'\n'}
-              <Text style={styles.emailHighlight}>{email}</Text>
-            </Text>
-
-            {/* OTP Input */}
-            <View style={styles.otpRow}>
-              {otp.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={ref => (otpRefs.current[index] = ref)}
-                  style={[styles.otpInput, digit && styles.otpInputFilled]}
-                  value={digit}
-                  onChangeText={value => handleOtpChange(value, index)}
-                  onKeyPress={({ nativeEvent }) => handleOtpKeyPress(nativeEvent.key, index)}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  textAlign="center"
-                  selectTextOnFocus
-                />
-              ))}
+            <View style={styles.agreeRow}>
+              <Pressable
+                onPress={() => {
+                  haptic.tap();
+                  setAgreed(a => !a);
+                }}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: agreed }}
+                accessibilityLabel="I agree to the Terms of Service and Privacy Policy"
+                hitSlop={10}
+                style={[
+                  styles.checkbox,
+                  { borderColor: agreed ? t.c.gold : t.c.borderStrong, backgroundColor: agreed ? t.c.gold : 'transparent', borderRadius: t.radius.xs },
+                ]}
+              >
+                {agreed ? <Ionicons name="checkmark" size={16} color={t.c.onGold} /> : null}
+              </Pressable>
+              <AppText variant="callout" tone="muted" style={{ flex: 1 }}>
+                I agree to the{' '}
+                <AppText variant="callout" tone="gold" onPress={() => router.push('/legal/terms')} accessibilityRole="link">
+                  Terms of Service
+                </AppText>{' '}
+                and{' '}
+                <AppText variant="callout" tone="gold" onPress={() => router.push('/legal/privacy')} accessibilityRole="link">
+                  Privacy Policy
+                </AppText>
+              </AppText>
             </View>
 
-            <GoldButton
-              title="Verify Code"
-              onPress={() => handleVerifyOtp()}
-              loading={loading}
-              disabled={otp.join('').length < 6}
+            <Button
+              title="Send code"
+              icon="mail-outline"
               size="lg"
-              style={styles.ctaBtn}
+              onPress={sendCode}
+              loading={sending}
+              disabled={!emailValid || !agreed}
+              fullWidth
+              accessibilityHint={!agreed ? 'Agree to the terms first' : undefined}
             />
-
-            <TouchableOpacity style={styles.resendBtn} onPress={handleResendCode} disabled={loading}>
-              <Text style={styles.resendText}>Didn't get a code? </Text>
-              <Text style={styles.resendLink}>Resend</Text>
-            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ gap: t.space.md }}>
+            <OtpBoxes ref={otpRef} value={otp} onChange={onOtpChange} disabled={verifying} error={!!otpError} />
+            {otpError ? (
+              <AppText variant="callout" tone="danger" align="center" accessibilityLiveRegion="polite">
+                {otpError}
+              </AppText>
+            ) : null}
+            <Button title="Verify" size="lg" onPress={() => verify(otp.join(''))} loading={verifying} disabled={otp.join('').length !== OTP_LENGTH} fullWidth />
+            <Button
+              title={cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
+              variant="ghost"
+              onPress={resend}
+              disabled={cooldown > 0 || sending}
+              fullWidth
+            />
+            <AppText variant="caption" tone="faint" align="center">
+              Can&apos;t find it? Check your spam or promotions folder.
+            </AppText>
           </View>
         )}
-
-        {/* Features list */}
-        <View style={styles.featureList}>
-          {[
-            { icon: 'calendar-outline', text: 'Discover faith events near you' },
-            { icon: 'people-outline', text: 'Connect with your faith community' },
-            { icon: 'mic-outline', text: 'Host your own worship events' },
-            { icon: 'heart-outline', text: 'Share prayers and testimonies' },
-          ].map(feature => (
-            <View key={feature.text} style={styles.featureItem}>
-              <View style={styles.featureIcon}>
-                <Ionicons name={feature.icon as React.ComponentProps<typeof Ionicons>['name']} size={18} color={C.gold} />
-              </View>
-              <Text style={styles.featureText}>{feature.text}</Text>
-            </View>
-          ))}
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
-  content: {
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(201,168,76,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(201,168,76,0.4)',
-    marginBottom: 12,
-  },
-  logoEmoji: {
-    fontSize: 40,
-    color: C.gold,
-  },
-  appName: {
-    color: C.gold,
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -1,
-  },
-  tagline: {
-    color: C.muted,
-    fontSize: 15,
-    marginTop: 4,
-    letterSpacing: 0.5,
-  },
-  card: {
-    backgroundColor: C.surface,
-    borderRadius: 20,
-    padding: 20,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: C.border,
-    marginBottom: 24,
-  },
-  cardTitle: {
-    color: C.text,
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  cardSubtitle: {
-    color: C.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  field: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    color: C.text,
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: C.surface2,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    color: C.text,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.surface2,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    borderWidth: 1,
-    borderColor: C.border,
-    gap: 8,
-  },
-  inputIcon: {},
-  inputInner: {
-    flex: 1,
-    color: C.text,
-    fontSize: 16,
-  },
-  ctaBtn: {
-    width: '100%',
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  disclaimer: {
-    color: C.muted,
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 16,
-  },
-  backBtnText: {
-    color: C.gold,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emailHighlight: {
-    color: C.gold,
-    fontWeight: '700',
-  },
-  otpRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    marginBottom: 24,
-  },
-  otpInput: {
-    width: 48,
-    height: 56,
-    borderRadius: 12,
-    backgroundColor: C.surface2,
-    borderWidth: 1.5,
-    borderColor: C.border,
-    color: C.text,
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  otpInputFilled: {
-    borderColor: C.gold,
-    backgroundColor: 'rgba(201,168,76,0.08)',
-  },
-  resendBtn: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  resendText: {
-    color: C.muted,
-    fontSize: 14,
-  },
-  resendLink: {
-    color: C.gold,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  featureList: {
-    width: '100%',
-    gap: 12,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featureIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(201,168,76,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureText: {
-    color: C.muted,
-    fontSize: 14,
-    flex: 1,
-  },
+  topBar: { paddingHorizontal: 16, flexDirection: 'row' },
+  content: { flexGrow: 1, justifyContent: 'center', gap: 32 },
+  brand: { alignItems: 'center' },
+  agreeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  checkbox: { width: 26, height: 26, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
 });

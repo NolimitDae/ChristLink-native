@@ -1,9 +1,21 @@
-export const SUPABASE_URL = 'https://iqosvigdelnmarecpkkp.supabase.co';
-export const SUPABASE_ANON =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlxb3N2aWdkZWxubWFyZWNwa2twIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzk4MzIxMDAsImV4cCI6MjA1NTQwODEwMH0.t_JxFKmpHMNEpyAh7PGJV2OEfhBVR6YL_yJXPbCNW3Q';
-export const STRIPE_PK =
-  'pk_live_51Stha81sOqETIDGD9a01hbSMl0gLoYCvFvyhOhFJTA7W4pOFizj6csfIZzWv5Uyr00x4nBaHbHh0cWmomMsgZSlH00tAt9sbhf';
-export const API_BASE = 'https://christlink1-production.up.railway.app';
+import { logger } from './logger';
+
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+export const SUPABASE_ANON = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+export const STRIPE_PK = process.env.EXPO_PUBLIC_STRIPE_PK ?? '';
+export const API_BASE = process.env.EXPO_PUBLIC_API_BASE ?? '';
+export const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
+export const STRIPE_MERCHANT_ID = process.env.EXPO_PUBLIC_STRIPE_MERCHANT_ID ?? 'merchant.com.christlinksocial.app';
+export const SITE_URL = 'https://christlinksocial.com';
+export const SUPPORT_EMAIL = 'support@christlinksocial.com';
+export const APP_NAME = 'Christ Link Social';
+
+if (__DEV__) {
+  if (!SUPABASE_URL) logger.warn('EXPO_PUBLIC_SUPABASE_URL is not set');
+  if (!SUPABASE_ANON) logger.warn('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set');
+  if (!STRIPE_PK) logger.warn('EXPO_PUBLIC_STRIPE_PK is not set');
+  if (!API_BASE) logger.warn('EXPO_PUBLIC_API_BASE is not set');
+}
 
 export const COLORS = {
   dark: {
@@ -75,3 +87,6 @@ export const AVATAR_COLORS = [
   '#E8804C',
   '#4CBFE8',
 ] as const;
+
+export const API_TIMEOUT_MS = 15000;
+export const API_MAX_RETRIES = 3;

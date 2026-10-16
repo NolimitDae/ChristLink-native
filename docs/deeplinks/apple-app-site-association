@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.christlink.app"],
+        "components": [
+          { "/": "/event/*", "comment": "Event pages open in the app" },
+          { "/": "/church/*", "comment": "Church pages open in the app" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": { "apps": ["TEAMID.com.christlink.app"] }
+}

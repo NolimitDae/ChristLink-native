@@ -1,384 +1,157 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  FlatList,
-  RefreshControl,
-  Dimensions,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
-import { EventCard } from '../../components/EventCard';
-import { LoadingSpinner } from '../../components/LoadingSpinner';
-import { getEvents } from '../../lib/api';
-import { COLORS, EVENT_TYPES } from '../../lib/constants';
-import type { Event as EventModel } from '../../lib/types';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useFriendsGoing } from '../../hooks/useFriendsGoing';
+import { useShareCard } from '../../components/ShareCard';
+import { EmptyState, SectionHeader } from '../../components/ui';
+import { HomeHeader } from '../../components/home/HomeHeader';
+import { VerseCard } from '../../components/home/VerseCard';
+import { WeekStrip } from '../../components/home/WeekStrip';
+import { TonightCarousel } from '../../components/home/TonightCarousel';
+import { HomeChurchCard } from '../../components/home/HomeChurchCard';
+import { PrayerRow } from '../../components/home/PrayerRow';
+import { FriendsWeek } from '../../components/home/FriendsWeek';
+import { CategoryRail } from '../../components/home/CategoryRail';
+import { EventsSkeleton, WeekStripSkeleton } from '../../components/home/HomeSkeleton';
+import { useHomeData } from '../../components/home/useHomeData';
+import { getVerseOfTheDay } from '../../lib/features';
+import { EVENT_TYPES } from '../../lib/constants';
+import { isTonight } from '../../lib/format';
+import type { Verse } from '../../lib/verses';
+import type { Event } from '../../lib/types';
 
-const C = COLORS.dark;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const HOUR = 3_600_000;
+const MAX_CATEGORY_RAILS = 6;
 
-type CategoryType = (typeof EVENT_TYPES)[number];
+function startMs(e: Event): number {
+  return e.start_date ? new Date(e.start_date).getTime() : Number.MAX_SAFE_INTEGER;
+}
 
 export default function HomeScreen() {
+  const t = useTheme();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
-  const [events, setEvents] = useState<EventModel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [nearMeLoading, setNearMeLoading] = useState(false);
-  const [locationEvents, setLocationEvents] = useState<EventModel[] | null>(null);
+  const { session } = useAuth();
+  const share = useShareCard();
+  const { events, error, plans, plansLoaded, churchEventIds, homeChurchId, refreshing, refreshKey, refresh, retry } = useHomeData();
+  const [verse, setVerse] = useState<Verse | null>(null);
 
-  const fetchEvents = useCallback(async (category?: CategoryType) => {
-    try {
-      const cat = category ?? selectedCategory;
-      const res = await getEvents({
-        type: cat === 'All' ? undefined : cat,
-        limit: 50,
-      });
-      setEvents(res.events);
-    } catch (err) {
-      console.error('Failed to fetch events', err);
-    }
-  }, [selectedCategory]);
+  const eventsById = useMemo(() => new Map((events ?? []).map(e => [e.id, e])), [events]);
+
+  const verseTheme = useMemo(() => {
+    const now = Date.now() - 2 * HOUR;
+    const next = [...plans].filter(p => new Date(p.start).getTime() >= now).sort((a, b) => a.start.localeCompare(b.start))[0];
+    return (next && eventsById.get(next.eventId)?.event_type) || null;
+  }, [plans, eventsById]);
+
+  const verseReady = plansLoaded && (events !== null || error !== null);
 
   useEffect(() => {
-    setLoading(true);
-    fetchEvents().finally(() => setLoading(false));
-  }, []);
+    if (!verseReady) return;
+    let cancelled = false;
+    getVerseOfTheDay(verseTheme).then(v => {
+      if (!cancelled) setVerse(v);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [verseReady, verseTheme]);
 
-  const handleCategoryChange = (category: CategoryType) => {
-    setSelectedCategory(category);
-    setLocationEvents(null);
-    setLoading(true);
-    getEvents({ type: category === 'All' ? undefined : category, limit: 50 })
-      .then(res => setEvents(res.events))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
+  const sections = useMemo(() => {
+    const now = Date.now();
+    const churchSet = new Set(churchEventIds);
+    const upcoming = (events ?? []).filter(e => !e.start_date || startMs(e) > now - 2 * HOUR);
+    const rank = (list: Event[]) =>
+      [...list].sort((a, b) => Number(churchSet.has(b.id)) - Number(churchSet.has(a.id)) || startMs(a) - startMs(b));
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    setLocationEvents(null);
-    await fetchEvents(selectedCategory);
-    setRefreshing(false);
-  };
+    const tonight = upcoming.filter(e => isTonight(e.start_date));
+    const soon = tonight.length > 0 ? tonight : upcoming.filter(e => e.start_date && startMs(e) >= now && startMs(e) <= now + 24 * HOUR);
 
-  const handleNearMe = async () => {
-    setNearMeLoading(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Location Access', 'Please enable location access to find events near you.');
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const res = await getEvents({
-        lat: loc.coords.latitude,
-        lng: loc.coords.longitude,
-        radius: 50,
-        limit: 50,
-      });
-      setLocationEvents(res.events);
-    } catch (err) {
-      Alert.alert('Error', 'Could not get your location. Please try again.');
-    } finally {
-      setNearMeLoading(false);
-    }
-  };
+    const categories = EVENT_TYPES.filter(type => type !== 'All')
+      .map(type => ({ type, events: rank(upcoming.filter(e => (e.event_type ?? '').toLowerCase() === type.toLowerCase())) }))
+      .filter(s => s.events.length > 0)
+      .sort((a, b) => b.events.length - a.events.length)
+      .slice(0, MAX_CATEGORY_RAILS);
+    if (categories.length === 0 && upcoming.length > 0) categories.push({ type: 'All', events: rank(upcoming) });
 
-  const displayedEvents = locationEvents ?? events;
-  const filteredEvents = search.trim()
-    ? displayedEvents.filter(e =>
-        e.name.toLowerCase().includes(search.toLowerCase()) ||
-        (e.city?.toLowerCase().includes(search.toLowerCase()) ?? false) ||
-        (e.event_type?.toLowerCase().includes(search.toLowerCase()) ?? false),
-      )
-    : displayedEvents;
+    const nextChurchEvent = upcoming.filter(e => churchSet.has(e.id) && e.start_date).sort((a, b) => startMs(a) - startMs(b))[0] ?? null;
 
-  const upcomingEvents = filteredEvents.slice(0, 10);
-  const trendingEvents = [...filteredEvents]
-    .sort((a, b) => (b.going_count ?? 0) - (a.going_count ?? 0))
-    .slice(0, 10);
+    return { upcoming, soon: rank(soon), tonightIsReal: tonight.length > 0, categories, nextChurchEvent };
+  }, [events, churchEventIds]);
+
+  const friends = useFriendsGoing(useMemo(() => sections.upcoming.map(e => e.id), [sections.upcoming]));
+
+  const loading = events === null && !error;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.logo}>ChristLink</Text>
-        <Text style={styles.tagline}>Faith Events Near You</Text>
-      </View>
-
+    <View style={{ flex: 1, backgroundColor: t.c.bg }}>
       <ScrollView
+        contentContainerStyle={{ paddingTop: insets.top + t.space.sm, paddingBottom: 140, gap: t.space.xl }}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={C.gold}
-          />
-        }
-        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
-        {/* Search Bar */}
-        <View style={styles.searchRow}>
-          <View style={styles.searchInput}>
-            <Ionicons name="search-outline" size={18} color={C.muted} />
-            <TextInput
-              style={styles.searchText}
-              placeholder="Search events, cities, types..."
-              placeholderTextColor={C.muted}
-              value={search}
-              onChangeText={setSearch}
-              returnKeyType="search"
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Ionicons name="close-circle" size={18} color={C.muted} />
-              </TouchableOpacity>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.nearMeBtn, nearMeLoading && styles.nearMeBtnDisabled]}
-            onPress={handleNearMe}
-            disabled={nearMeLoading}
-          >
-            <Ionicons
-              name="location"
-              size={16}
-              color={locationEvents ? C.gold : C.muted}
-            />
-          </TouchableOpacity>
+        <HomeHeader />
+
+        <View style={{ paddingHorizontal: t.space.md }}>
+          <VerseCard
+            verse={verse}
+            theme={verseTheme}
+            onShare={v => share.open({ kind: 'verse', reference: v.reference, text: v.text })}
+          />
         </View>
 
-        {locationEvents ? (
-          <TouchableOpacity onPress={() => setLocationEvents(null)} style={styles.nearMeBanner}>
-            <Ionicons name="location" size={14} color={C.gold} />
-            <Text style={styles.nearMeBannerText}>
-              Showing {locationEvents.length} events near you
-            </Text>
-            <Text style={styles.nearMeBannerClear}>Clear</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        {/* Category Pills */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.categories}
-          contentContainerStyle={styles.categoriesContent}
-        >
-          {EVENT_TYPES.map(cat => (
-            <TouchableOpacity
-              key={cat}
-              style={[styles.pill, selectedCategory === cat && styles.pillActive]}
-              onPress={() => handleCategoryChange(cat)}
-            >
-              <Text style={[styles.pillText, selectedCategory === cat && styles.pillTextActive]}>
-                {cat}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <View>
+          <SectionHeader title="Your week" />
+          {session && !plansLoaded ? <WeekStripSkeleton /> : <WeekStrip plans={plans} signedIn={!!session} />}
+        </View>
 
         {loading ? (
-          <LoadingSpinner message="Loading events..." />
-        ) : (
-          <>
-            {/* Upcoming Events */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Upcoming Events</Text>
-              {upcomingEvents.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>🙏</Text>
-                  <Text style={styles.emptyText}>No events found</Text>
-                  <Text style={styles.emptySubtext}>Try a different category or location</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={upcomingEvents}
-                  keyExtractor={item => item.id}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-                  renderItem={({ item }) => <EventCard event={item} variant="horizontal" />}
-                  contentContainerStyle={styles.horizontalList}
-                  scrollEnabled
-                />
-              )}
-            </View>
+          <EventsSkeleton />
+        ) : events === null ? (
+          <EmptyState art="offline" title="We couldn’t load events" body={error ?? undefined} actionLabel="Try again" onAction={retry} compact />
+        ) : sections.soon.length > 0 ? (
+          <TonightCarousel
+            title={sections.tonightIsReal ? 'Happening tonight' : 'In the next 24 hours'}
+            eyebrow={sections.tonightIsReal ? 'Tonight' : 'Soon'}
+            events={sections.soon}
+            friends={friends}
+          />
+        ) : null}
 
-            {/* Trending This Week */}
-            {trendingEvents.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Trending This Week</Text>
-                <FlatList
-                  data={trendingEvents}
-                  keyExtractor={item => item.id}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
-                  renderItem={({ item }) => <EventCard event={item} variant="horizontal" />}
-                  contentContainerStyle={styles.horizontalList}
-                  scrollEnabled
-                />
-              </View>
-            )}
-          </>
+        <View style={{ paddingHorizontal: t.space.md }}>
+          <HomeChurchCard churchId={homeChurchId} nextEvent={sections.nextChurchEvent} refreshKey={refreshKey} />
+        </View>
+
+        <PrayerRow refreshKey={refreshKey} />
+
+        <FriendsWeek refreshKey={refreshKey} />
+
+        {events !== null && sections.upcoming.length === 0 ? (
+          <EmptyState
+            art="calendar"
+            title="No upcoming events yet"
+            body="New gatherings appear here as hosts publish them. Have something in mind?"
+            actionLabel="Host an event"
+            onAction={() => router.push('/(tabs)/host')}
+          />
+        ) : (
+          sections.categories.map(s => (
+            <CategoryRail
+              key={s.type}
+              title={s.type === 'All' ? 'Coming up' : s.type}
+              events={s.events}
+              friends={friends}
+              onSeeAll={() =>
+                router.push(s.type === 'All' ? '/explore?tab=events' : `/explore?tab=events&type=${encodeURIComponent(s.type)}`)
+              }
+            />
+          ))
         )}
-        {/* Bottom padding */}
-        <View style={{ height: 32 }} />
       </ScrollView>
+      {share.sheet}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    paddingTop: 8,
-  },
-  logo: {
-    color: C.gold,
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    color: C.muted,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 12,
-  },
-  searchInput: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.surface,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  searchText: {
-    flex: 1,
-    color: C.text,
-    fontSize: 15,
-  },
-  nearMeBtn: {
-    width: 44,
-    height: 44,
-    backgroundColor: C.surface,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  nearMeBtnDisabled: {
-    opacity: 0.5,
-  },
-  nearMeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    backgroundColor: C.goldDim ?? 'rgba(201,168,76,0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  nearMeBannerText: {
-    flex: 1,
-    color: C.gold,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  nearMeBannerClear: {
-    color: C.gold,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  categories: {
-    marginBottom: 16,
-  },
-  categoriesContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  pill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: C.surface,
-    borderWidth: 1,
-    borderColor: C.border,
-    marginRight: 8,
-  },
-  pillActive: {
-    backgroundColor: C.goldDim ?? 'rgba(201,168,76,0.15)',
-    borderColor: C.gold,
-  },
-  pillText: {
-    color: C.muted,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  pillTextActive: {
-    color: C.gold,
-    fontWeight: '700',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    color: C.text,
-    fontSize: 18,
-    fontWeight: '700',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  horizontalList: {
-    paddingHorizontal: 16,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    gap: 8,
-  },
-  emptyEmoji: {
-    fontSize: 40,
-  },
-  emptyText: {
-    color: C.text,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  emptySubtext: {
-    color: C.muted,
-    fontSize: 14,
-  },
-});
