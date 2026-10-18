@@ -11,6 +11,7 @@ module.exports = [
       '.expo/**',
       'coverage/**',
       'supabase/**',
+      'backend/**',
       'app.config.js',
       'babel.config.js',
       'metro.config.js',

@@ -23,6 +23,7 @@
     "node_modules",
     "supabase",
     "dist",
-    "coverage"
+    "coverage",
+    "backend"
   ]
 }
