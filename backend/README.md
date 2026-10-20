@@ -26,6 +26,17 @@ Both services (`ChristLink-API`, `ChristLink-Worker`) build the same Dockerfile 
 server that only answers `GET /health` and `/api/health`, so the shared healthcheck passes. `preDeployCommand`
 (`prisma migrate deploy`) runs for both; Prisma's advisory lock makes that safe.
 
+Railway no longer reads `railway.toml` for newly created services, so set these in each service's settings
+(they are set on staging): builder **Dockerfile** (`Dockerfile`, root directory `/backend`), start command
+`node dist/src/main`, healthcheck `/api/health`, pre-deploy `npx prisma migrate deploy` (API). Reference
+`DATABASE_URL=${{Postgres.DATABASE_URL}}` and `REDIS_URL=${{Redis.REDIS_URL}}` directly on each service — a
+shared variable that itself references another service resolves to empty.
+
+| Environment | Railway project | Branch | URL |
+|---|---|---|---|
+| staging | ChristLink Staging | `claude/railway-launch` | https://christlink-api-staging.up.railway.app |
+| production | ChristLink | `master` | https://christlink-api-production.up.railway.app |
+
 ## Database
 - Tables and columns keep the production Supabase names (snake_case). `auth.users` became `public.users`.
 - `prisma/schema.prisma` is pulled from the database. To change the schema: write a new
