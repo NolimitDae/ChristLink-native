@@ -14,6 +14,7 @@ if (__DEV__) {
   if (!SUPABASE_URL) logger.warn('EXPO_PUBLIC_SUPABASE_URL is not set');
   if (!SUPABASE_ANON) logger.warn('EXPO_PUBLIC_SUPABASE_ANON_KEY is not set');
   if (!STRIPE_PK) logger.warn('EXPO_PUBLIC_STRIPE_PK is not set');
+  if (STRIPE_PK.startsWith('pk_live_')) logger.warn('LIVE Stripe key in a development build: test payments will charge real cards. Use pk_test_.');
   if (!API_BASE) logger.warn('EXPO_PUBLIC_API_BASE is not set');
 }
 
