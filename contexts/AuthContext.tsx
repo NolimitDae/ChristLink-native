@@ -1,69 +1,114 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import { AppState } from 'react-native';
 import * as Sentry from '@sentry/react-native';
-import { supabase } from '../lib/supabase';
-import { getProfile } from '../lib/api';
+import { getProfile, requestSignInCode, revokeRefreshToken, verifySignInCode } from '../lib/api';
+import { deletePushToken } from '../lib/features';
+import { currentPushToken } from '../lib/notifications';
+import { getSession, loadSession, onSessionChange, refreshSession, sessionFromTokens, setSession, type StoredSession } from '../lib/session';
 import { storage } from '../lib/storage';
 import { logger } from '../lib/logger';
 import type { Profile } from '../lib/types';
 
+export interface AuthUser {
+  id: string;
+  email: string;
+}
+
+/** Same field names screens used with the old session object. */
+export interface AuthSession {
+  access_token: string;
+  user: AuthUser;
+}
+
 interface AuthContextValue {
-  session: Session | null;
-  user: User | null;
+  session: AuthSession | null;
+  user: AuthUser | null;
   profile: Profile | null;
   loading: boolean;
   isAdmin: boolean;
   isVerifiedHost: boolean;
+  /** Emails a 6-digit code; a name creates the account with it. Throws ApiError with a readable message. */
+  signIn: (email: string, fullName?: string) => Promise<void>;
+  /** Exchanges the code for tokens and signs in. Throws ApiError when the code is wrong or expired. */
+  verifyOtp: (email: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const toAuthSession = (s: StoredSession | null): AuthSession | null => (s ? { access_token: s.accessToken, user: s.user } : null);
+
+// Refresh on foreground only when the token is close to expiring, so app switching doesn't rotate tokens constantly.
+const FOREGROUND_REFRESH_MS = 5 * 60_000;
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setAuthSession] = useState<AuthSession | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (accessToken: string) => {
+  const fetchProfile = useCallback(async () => {
+    if (!getSession()) return;
     try {
-      setProfile(await getProfile(accessToken));
+      setProfile(await getProfile(getSession()?.accessToken ?? ''));
     } catch (err) {
       logger.warn('Profile not loaded', { error: String(err) });
     }
   }, []);
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data: { session: s } }) => {
-        setSession(s);
-        if (s?.access_token) return fetchProfile(s.access_token);
-        return undefined;
+    const unsubscribe = onSessionChange(s => {
+      setAuthSession(prev => (prev?.access_token === s?.accessToken ? prev : toAuthSession(s)));
+      Sentry.setUser(s ? { id: s.user.id } : null);
+      if (!s) setProfile(null);
+    });
+    loadSession()
+      .then(s => {
+        setAuthSession(toAuthSession(s));
+        Sentry.setUser(s ? { id: s.user.id } : null);
+        return s ? fetchProfile() : undefined;
       })
       .finally(() => setLoading(false));
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, s) => {
-      setSession(s);
-      Sentry.setUser(s?.user ? { id: s.user.id } : null);
-      if (event === 'SIGNED_IN' && s?.access_token) fetchProfile(s.access_token);
-      if (event === 'SIGNED_OUT') setProfile(null);
+    const sub = AppState.addEventListener('change', state => {
+      const s = getSession();
+      if (state === 'active' && s && s.expiresAt - Date.now() < FOREGROUND_REFRESH_MS) refreshSession();
     });
-    return () => subscription.unsubscribe();
+    return () => {
+      unsubscribe();
+      sub.remove();
+    };
+  }, [fetchProfile]);
+
+  const signIn = useCallback(async (email: string, fullName?: string) => {
+    await requestSignInCode(email, fullName);
+  }, []);
+
+  const verifyOtp = useCallback(async (email: string, code: string) => {
+    const res = await verifySignInCode(email, code);
+    await setSession(sessionFromTokens(res, { id: res.user.id, email: res.user.email }));
+    if (res.user.profile) setProfile(res.user.profile);
+    else await fetchProfile();
   }, [fetchProfile]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-    await storage.clearUserData();
-    setSession(null);
+    if (getSession()) {
+      // Detach this phone's push token first (needs auth), then revoke the refresh token. Neither may block sign-out.
+      try {
+        const pushToken = await currentPushToken();
+        if (pushToken) await deletePushToken(pushToken);
+      } catch (err) {
+        logger.warn('Push token not removed', { error: String(err) });
+      }
+      // Read after the call above: it may have rotated the refresh token.
+      const refreshToken = getSession()?.refreshToken;
+      if (refreshToken) await revokeRefreshToken(refreshToken).catch(err => logger.warn('Sign-out not sent', { error: String(err) }));
+    }
+    await setSession(null);
+    await storage.clearUserData().catch(err => logger.warn('Local data not cleared', { error: String(err) }));
+    setAuthSession(null);
     setProfile(null);
   }, []);
-
-  const refreshProfile = useCallback(async () => {
-    if (session?.access_token) await fetchProfile(session.access_token);
-  }, [session, fetchProfile]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -73,10 +118,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       isAdmin: profile?.role === 'admin',
       isVerifiedHost: !!profile?.identity_verified || profile?.role === 'verified' || profile?.role === 'admin',
+      signIn,
+      verifyOtp,
       signOut,
-      refreshProfile,
+      refreshProfile: fetchProfile,
     }),
-    [session, profile, loading, signOut, refreshProfile],
+    [session, profile, loading, signIn, verifyOtp, signOut, fetchProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,11 +1,11 @@
 /**
- * Features backed directly by Supabase tables and RPCs from supabase/migrations.
- * Every call goes through the signed-in user's JWT, so row-level security applies.
- * Until the migration is applied, calls fail with a "not set up" FeatureError and
- * screens show a friendly empty state instead of crashing.
+ * Native features (churches, prayers, verses, serve, reports, blocks, settings, push tokens) on the Railway API.
+ * Every call sends the signed-in user's token through apiFetch. Until a route is deployed, calls fail with a
+ * "not set up" FeatureError and screens show a friendly empty state instead of crashing.
  */
-import { supabase } from './supabase';
+import { ApiError, apiFetch, type FetchOptions } from './api';
 import { logger } from './logger';
+import { getSession } from './session';
 import { bundledVerseOfTheDay, type Verse } from './verses';
 import type {
   Church,
@@ -33,53 +33,35 @@ export class FeatureError extends Error {
   }
 }
 
-interface PgError {
-  code?: string;
-  message: string;
-  details?: string | null;
-  hint?: string | null;
+/** Route not deployed: 501, or Express/Nest's "Cannot GET /api/..." 404 (a real "not found" 404 has its own message). */
+function isMissing(err: ApiError): boolean {
+  return err.status === 501 || (err.status === 404 && /Cannot (GET|POST|PATCH|PUT|DELETE) \//.test(err.message));
 }
 
-function isMissing(err: PgError): boolean {
-  return (
-    err.code === '42P01' ||
-    err.code === '42883' ||
-    err.code === 'PGRST202' ||
-    err.code === 'PGRST205' ||
-    /does not exist|Could not find the (function|table)/i.test(err.message)
-  );
-}
-
-function fail(scope: string, err: PgError): never {
-  if (isMissing(err)) {
-    logger.warn(`${scope}: feature tables not deployed yet`, { code: err.code });
-    throw new FeatureError('This feature is being set up. Please check back soon.', true);
+async function call<T>(scope: string, path: string, init: FetchOptions = {}): Promise<T> {
+  try {
+    return await apiFetch<T>(path, init);
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    if (isMissing(err)) {
+      logger.warn(`${scope}: route not deployed yet`, { status: err.status });
+      throw new FeatureError('This feature is being set up. Please check back soon.', true);
+    }
+    if (err.status === 401) throw new FeatureError('Please sign in first.');
+    logger.error(`${scope} failed`, { status: err.status, message: err.message });
+    throw new FeatureError(err.message);
   }
-  logger.error(`${scope} failed`, { code: err.code, message: err.message });
-  throw new FeatureError(err.message.replace(/^.*?ERROR:\s*/, ''));
 }
 
-async function rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.rpc(fn, args);
-  if (error) fail(fn, error);
-  return data as T;
-}
-
-async function uid(): Promise<string> {
-  const { data } = await supabase.auth.getSession();
-  const id = data.session?.user.id;
-  if (!id) throw new FeatureError('Please sign in first.');
-  return id;
-}
+const body = (b: unknown, method = 'POST'): FetchOptions => ({ method, body: JSON.stringify(b) });
+const id = encodeURIComponent;
 
 // ── Verse of the day ─────────────────────────────────────────
 export async function getVerseOfTheDay(theme?: string | null): Promise<Verse> {
   try {
-    const rows = await rpc<{ reference: string; text: string; translation: string }[]>('verse_of_the_day', {
-      p_theme: theme ? theme.toLowerCase() : null,
-    });
-    const row = rows?.[0];
-    if (row) return { ...row, themes: theme ? [theme] : [] };
+    const qs = theme ? `?theme=${id(theme.toLowerCase())}` : '';
+    const row = await call<{ reference: string; text: string; translation: string } | null>('getVerseOfTheDay', `/api/verses/today${qs}`);
+    if (row?.reference) return { ...row, themes: theme ? [theme] : [] };
   } catch {
     // fall through to bundled verse
   }
@@ -96,36 +78,23 @@ export interface AdminVerse {
 }
 
 export async function listVerses(): Promise<AdminVerse[]> {
-  const { data, error } = await supabase.from('verses').select('*').order('id');
-  if (error) fail('listVerses', error);
-  return (data ?? []) as AdminVerse[];
+  return (await call<AdminVerse[] | null>('listVerses', '/api/admin/verses')) ?? [];
 }
 
 export async function saveVerse(v: Partial<AdminVerse> & { reference: string; text: string }): Promise<void> {
   const row = { reference: v.reference, text: v.text, translation: v.translation ?? 'WEB', themes: v.themes ?? [], active: v.active ?? true };
-  const { error } = v.id
-    ? await supabase.from('verses').update(row).eq('id', v.id)
-    : await supabase.from('verses').insert(row);
-  if (error) fail('saveVerse', error);
+  await (v.id
+    ? call('saveVerse', `/api/admin/verses/${v.id}`, body(row, 'PATCH'))
+    : call('saveVerse', '/api/admin/verses', body(row)));
 }
 
 // ── Settings, consent, privacy ───────────────────────────────
 export async function getSettings(): Promise<UserSettings | null> {
-  const id = await uid();
-  const { data, error } = await supabase.from('user_settings').select('*').eq('user_id', id).maybeSingle();
-  if (error) fail('getSettings', error);
-  return (data as UserSettings | null) ?? null;
+  return (await call<UserSettings | null>('getSettings', '/api/settings')) ?? null;
 }
 
-export async function updateSettings(patch: Partial<Omit<UserSettings, 'user_id'>>): Promise<UserSettings> {
-  const id = await uid();
-  const { data, error } = await supabase
-    .from('user_settings')
-    .upsert({ user_id: id, ...patch }, { onConflict: 'user_id' })
-    .select('*')
-    .single();
-  if (error) fail('updateSettings', error);
-  return data as UserSettings;
+export function updateSettings(patch: Partial<Omit<UserSettings, 'user_id'>>): Promise<UserSettings> {
+  return call<UserSettings>('updateSettings', '/api/settings', body(patch, 'PATCH'));
 }
 
 export function acceptTerms(): Promise<UserSettings> {
@@ -137,24 +106,23 @@ export function confirmHostAdult(): Promise<UserSettings> {
 }
 
 export async function savePushToken(token: string, platform: 'ios' | 'android'): Promise<void> {
-  const id = await uid();
-  const { error } = await supabase
-    .from('push_tokens')
-    .upsert({ token, user_id: id, platform, updated_at: new Date().toISOString() }, { onConflict: 'token' });
-  if (error) fail('savePushToken', error);
+  await call('savePushToken', '/api/push-tokens', body({ token, platform }));
+}
+
+/** Detaches this device's push token from the account at sign-out, so the next user doesn't get these pushes. */
+export async function deletePushToken(token: string): Promise<void> {
+  await call('deletePushToken', `/api/push-tokens/${id(token)}`, { method: 'DELETE' });
 }
 
 export async function deleteMyAccount(): Promise<void> {
-  await rpc<void>('delete_my_account');
+  await call('deleteMyAccount', '/api/account', { method: 'DELETE' });
 }
 
 // ── Friends ──────────────────────────────────────────────────
 export async function getFriendsGoing(eventIds: string[]): Promise<Record<string, FriendsGoing>> {
-  if (eventIds.length === 0) return {};
-  const { data: s } = await supabase.auth.getSession();
-  if (!s.session) return {};
+  if (eventIds.length === 0 || !getSession()) return {};
   try {
-    const rows = await rpc<FriendsGoing[]>('friends_going', { p_event_ids: eventIds });
+    const rows = await call<FriendsGoing[] | null>('getFriendsGoing', '/api/friends/going', body({ event_ids: eventIds }));
     return Object.fromEntries((rows ?? []).map(r => [r.event_id, r]));
   } catch {
     return {};
@@ -162,42 +130,39 @@ export async function getFriendsGoing(eventIds: string[]): Promise<Record<string
 }
 
 export async function getFriendsThisWeek(): Promise<FriendActivity[]> {
-  return (await rpc<FriendActivity[]>('friends_this_week')) ?? [];
+  return (await call<FriendActivity[] | null>('getFriendsThisWeek', '/api/friends/this-week')) ?? [];
 }
 
 export async function getMyFriends(): Promise<PersonSummary[]> {
-  return (await rpc<PersonSummary[]>('my_friends')) ?? [];
+  return (await call<PersonSummary[] | null>('getMyFriends', '/api/friends')) ?? [];
 }
 
 // ── Prayer Wall ──────────────────────────────────────────────
 export async function getPrayerWall(filter: PrayerFilter = 'all', before?: string): Promise<Prayer[]> {
-  return (await rpc<Prayer[]>('get_prayer_wall', { p_filter: filter, p_limit: 30, p_before: before ?? null })) ?? [];
+  const qs = new URLSearchParams({ filter, limit: '30' });
+  if (before) qs.set('before', before);
+  return (await call<Prayer[] | null>('getPrayerWall', `/api/prayers?${qs.toString()}`)) ?? [];
 }
 
-export async function createPrayer(body: string, isAnonymous: boolean, churchId?: string | null): Promise<void> {
-  const id = await uid();
-  const { error } = await supabase
-    .from('prayers')
-    .insert({ author_id: id, body: body.trim(), is_anonymous: isAnonymous, church_id: churchId ?? null });
-  if (error) fail('createPrayer', error);
+export async function createPrayer(text: string, isAnonymous: boolean, churchId?: string | null): Promise<void> {
+  await call('createPrayer', '/api/prayers', body({ body: text.trim(), is_anonymous: isAnonymous, church_id: churchId ?? null }));
 }
 
-export function prayFor(prayerId: string): Promise<number> {
-  return rpc<number>('pray_for', { p_prayer_id: prayerId });
+export async function prayFor(prayerId: string): Promise<number> {
+  return (await call<{ count: number }>('prayFor', `/api/prayers/${id(prayerId)}/pray`, { method: 'POST' })).count;
 }
 
-export function markPrayerAnswered(prayerId: string, testimony: string): Promise<string> {
-  return rpc<string>('mark_prayer_answered', { p_prayer_id: prayerId, p_testimony: testimony });
+export async function markPrayerAnswered(prayerId: string, testimony: string): Promise<string> {
+  return (await call<{ post_id: string }>('markPrayerAnswered', `/api/prayers/${id(prayerId)}/answer`, body({ testimony }))).post_id;
 }
 
 export async function deletePrayer(prayerId: string): Promise<void> {
-  const { error } = await supabase.from('prayers').delete().eq('id', prayerId);
-  if (error) fail('deletePrayer', error);
+  await call('deletePrayer', `/api/prayers/${id(prayerId)}`, { method: 'DELETE' });
 }
 
 export async function setPostType(postId: string, type: Exclude<PostType, 'answered'>): Promise<void> {
   try {
-    await rpc<void>('set_post_type', { p_post_id: postId, p_type: type });
+    await call('setPostType', `/api/community-posts/${id(postId)}/type`, body({ type }, 'PATCH'));
   } catch (err) {
     logger.warn('setPostType skipped', { error: String(err) });
   }
@@ -205,74 +170,54 @@ export async function setPostType(postId: string, type: Exclude<PostType, 'answe
 
 // ── Reports and blocks ───────────────────────────────────────
 export async function reportContent(targetType: ReportTarget, targetId: string, reason: ReportReason, details?: string): Promise<void> {
-  const id = await uid();
-  const { error } = await supabase
-    .from('reports')
-    .insert({ reporter_id: id, target_type: targetType, target_id: targetId, reason, details: details?.trim() || null });
-  if (error && error.code !== '23505') fail('reportContent', error);
+  await call('reportContent', '/api/reports', body({ target_type: targetType, target_id: targetId, reason, details: details?.trim() || null }));
 }
 
 export async function blockUser(userId: string): Promise<void> {
-  const id = await uid();
-  const { error } = await supabase.from('blocks').insert({ blocker_id: id, blocked_id: userId });
-  if (error && error.code !== '23505') fail('blockUser', error);
+  await call('blockUser', '/api/blocks', body({ user_id: userId }));
 }
 
 export async function unblockUser(userId: string): Promise<void> {
-  const id = await uid();
-  const { error } = await supabase.from('blocks').delete().eq('blocker_id', id).eq('blocked_id', userId);
-  if (error) fail('unblockUser', error);
+  await call('unblockUser', `/api/blocks/${id(userId)}`, { method: 'DELETE' });
 }
 
 export async function getBlockedIds(): Promise<string[]> {
-  const { data: s } = await supabase.auth.getSession();
-  if (!s.session) return [];
-  const { data, error } = await supabase.from('blocks').select('blocked_id');
-  if (error) return [];
-  return (data ?? []).map((r: { blocked_id: string }) => r.blocked_id);
+  if (!getSession()) return [];
+  try {
+    return (await call<string[] | null>('getBlockedIds', '/api/blocks')) ?? [];
+  } catch {
+    return [];
+  }
 }
 
 export async function getReportQueue(): Promise<ReportQueueItem[]> {
-  return (await rpc<ReportQueueItem[]>('admin_report_queue')) ?? [];
+  return (await call<ReportQueueItem[] | null>('getReportQueue', '/api/admin/reports')) ?? [];
 }
 
-export function resolveReport(reportId: string, action: 'dismiss' | 'remove'): Promise<void> {
-  return rpc<void>('resolve_report', { p_report_id: reportId, p_action: action });
+export async function resolveReport(reportId: string, action: 'dismiss' | 'remove'): Promise<void> {
+  await call('resolveReport', `/api/admin/reports/${id(reportId)}/resolve`, body({ action }));
 }
 
 // ── Churches ─────────────────────────────────────────────────
 export async function searchChurches(query: string, limit = 20): Promise<Church[]> {
-  let q = supabase.from('churches').select('*').order('verified', { ascending: false }).order('name').limit(limit);
-  const term = query.trim();
-  if (term) q = q.or(`name.ilike.%${term.replace(/[%,()]/g, '')}%,city.ilike.%${term.replace(/[%,()]/g, '')}%`);
-  const { data, error } = await q;
-  if (error) fail('searchChurches', error);
-  return (data ?? []) as Church[];
+  const qs = new URLSearchParams({ q: query.trim(), limit: String(limit) });
+  return (await call<Church[] | null>('searchChurches', `/api/churches?${qs.toString()}`)) ?? [];
 }
 
-export async function getChurch(id: string): Promise<Church | null> {
-  const { data, error } = await supabase.from('churches').select('*').eq('id', id).maybeSingle();
-  if (error) fail('getChurch', error);
-  return data as Church | null;
+export async function getChurch(churchId: string): Promise<Church | null> {
+  return (await call<Church | null>('getChurch', `/api/churches/${id(churchId)}`)) ?? null;
 }
 
-export async function createChurch(input: Partial<Church> & { name: string }): Promise<Church> {
-  const { data, error } = await supabase.from('churches').insert(input).select('*').single();
-  if (error) fail('createChurch', error);
-  return data as Church;
+export function createChurch(input: Partial<Church> & { name: string }): Promise<Church> {
+  return call<Church>('createChurch', '/api/churches', body(input));
 }
 
-export async function updateChurch(id: string, patch: Partial<Church>): Promise<void> {
-  const { error } = await supabase.from('churches').update(patch).eq('id', id);
-  if (error) fail('updateChurch', error);
+export async function updateChurch(churchId: string, patch: Partial<Church>): Promise<void> {
+  await call('updateChurch', `/api/churches/${id(churchId)}`, body(patch, 'PATCH'));
 }
 
 export async function claimChurch(churchId: string, roleAtChurch: string, note: string): Promise<void> {
-  const id = await uid();
-  const { error } = await supabase
-    .from('church_claims')
-    .insert({ church_id: churchId, user_id: id, role_at_church: roleAtChurch, note });
-  if (error && error.code !== '23505') fail('claimChurch', error);
+  await call('claimChurch', `/api/churches/${id(churchId)}/claim`, body({ role_at_church: roleAtChurch, note }));
 }
 
 export interface ChurchClaim {
@@ -287,97 +232,63 @@ export interface ChurchClaim {
 }
 
 export async function listPendingClaims(): Promise<ChurchClaim[]> {
-  const { data, error } = await supabase
-    .from('church_claims')
-    .select('*, churches(name)')
-    .eq('status', 'pending')
-    .order('created_at');
-  if (error) fail('listPendingClaims', error);
-  return (data ?? []) as ChurchClaim[];
+  return (await call<ChurchClaim[] | null>('listPendingClaims', '/api/admin/church-claims')) ?? [];
 }
 
-export function decideChurchClaim(claimId: string, approve: boolean): Promise<void> {
-  return rpc<void>('decide_church_claim', { p_claim_id: claimId, p_approve: approve });
+export async function decideChurchClaim(claimId: string, approve: boolean): Promise<void> {
+  await call('decideChurchClaim', `/api/admin/church-claims/${id(claimId)}/decide`, body({ approve }));
 }
 
 export async function getChurchRecurring(churchId: string): Promise<ChurchRecurringEvent[]> {
-  const { data, error } = await supabase
-    .from('church_recurring_events')
-    .select('*')
-    .eq('church_id', churchId)
-    .order('is_service', { ascending: false })
-    .order('weekday');
-  if (error) fail('getChurchRecurring', error);
-  return (data ?? []) as ChurchRecurringEvent[];
+  return (await call<ChurchRecurringEvent[] | null>('getChurchRecurring', `/api/churches/${id(churchId)}/recurring`)) ?? [];
 }
 
 export async function saveRecurring(input: Partial<ChurchRecurringEvent> & { church_id: string; name: string }): Promise<void> {
-  const { id, ...row } = input;
-  const { error } = id
-    ? await supabase.from('church_recurring_events').update(row).eq('id', id)
-    : await supabase.from('church_recurring_events').insert(row);
-  if (error) fail('saveRecurring', error);
+  const { id: rowId, ...row } = input;
+  await (rowId
+    ? call('saveRecurring', `/api/church-recurring/${id(rowId)}`, body(row, 'PATCH'))
+    : call('saveRecurring', `/api/churches/${id(input.church_id)}/recurring`, body(row)));
 }
 
-export async function deleteRecurring(id: string): Promise<void> {
-  const { error } = await supabase.from('church_recurring_events').delete().eq('id', id);
-  if (error) fail('deleteRecurring', error);
+export async function deleteRecurring(rowId: string): Promise<void> {
+  await call('deleteRecurring', `/api/church-recurring/${id(rowId)}`, { method: 'DELETE' });
 }
 
 export async function getChurchEventIds(churchId: string): Promise<string[]> {
-  const { data, error } = await supabase.from('church_events').select('event_id').eq('church_id', churchId);
-  if (error) fail('getChurchEventIds', error);
-  return (data ?? []).map((r: { event_id: string }) => r.event_id);
+  return (await call<string[] | null>('getChurchEventIds', `/api/churches/${id(churchId)}/events`)) ?? [];
 }
 
 export async function linkEventToChurch(churchId: string, eventId: string): Promise<void> {
-  const { error } = await supabase.from('church_events').insert({ church_id: churchId, event_id: eventId });
-  if (error && error.code !== '23505') fail('linkEventToChurch', error);
+  await call('linkEventToChurch', `/api/churches/${id(churchId)}/events`, body({ event_id: eventId }));
 }
 
 export async function isFollowingChurch(churchId: string): Promise<boolean> {
-  const id = await uid();
-  const { data } = await supabase.from('church_follows').select('church_id').eq('church_id', churchId).eq('user_id', id).maybeSingle();
-  return !!data;
+  return !!(await call<{ following?: boolean } | null>('isFollowingChurch', `/api/churches/${id(churchId)}/follow`))?.following;
 }
 
 export async function setFollowChurch(churchId: string, follow: boolean): Promise<void> {
-  const id = await uid();
-  const { error } = follow
-    ? await supabase.from('church_follows').insert({ church_id: churchId, user_id: id })
-    : await supabase.from('church_follows').delete().eq('church_id', churchId).eq('user_id', id);
-  if (error && error.code !== '23505') fail('setFollowChurch', error);
+  await call('setFollowChurch', `/api/churches/${id(churchId)}/follow`, { method: follow ? 'POST' : 'DELETE' });
 }
 
 export async function getMyManagedChurches(): Promise<Church[]> {
-  const id = await uid();
-  const { data, error } = await supabase.from('churches').select('*').eq('claimed_by', id).order('name');
-  if (error) fail('getMyManagedChurches', error);
-  return (data ?? []) as Church[];
+  return (await call<Church[] | null>('getMyManagedChurches', '/api/my-churches')) ?? [];
 }
 
 // ── Serve ────────────────────────────────────────────────────
 export async function getOpenShifts(opts: { churchId?: string | null; eventId?: string | null } = {}): Promise<ServeShift[]> {
-  return (await rpc<ServeShift[]>('open_serve_shifts', {
-    p_church_id: opts.churchId ?? null,
-    p_event_id: opts.eventId ?? null,
-  })) ?? [];
+  const qs = new URLSearchParams();
+  if (opts.churchId) qs.set('church_id', opts.churchId);
+  if (opts.eventId) qs.set('event_id', opts.eventId);
+  const q = qs.toString() ? `?${qs.toString()}` : '';
+  return (await call<ServeShift[] | null>('getOpenShifts', `/api/serve/shifts${q}`)) ?? [];
 }
 
-export async function signUpForShift(shiftId: string): Promise<{ id: string; code: string }> {
-  const id = await uid();
-  const { data, error } = await supabase
-    .from('serve_signups')
-    .upsert({ shift_id: shiftId, user_id: id, status: 'signed_up' }, { onConflict: 'shift_id,user_id' })
-    .select('id, code')
-    .single();
-  if (error) fail('signUpForShift', error);
-  return data as { id: string; code: string };
+export function signUpForShift(shiftId: string): Promise<{ id: string; code: string }> {
+  return call('signUpForShift', `/api/serve/shifts/${id(shiftId)}/signup`, { method: 'POST' });
 }
 
 export async function cancelSignup(signupId: string): Promise<void> {
-  const { error } = await supabase.from('serve_signups').update({ status: 'cancelled' }).eq('id', signupId);
-  if (error) fail('cancelSignup', error);
+  await call('cancelSignup', `/api/serve/signups/${id(signupId)}/cancel`, { method: 'POST' });
 }
 
 export interface ServeRoleInput {
@@ -390,20 +301,7 @@ export interface ServeRoleInput {
 }
 
 export async function createServeRole(input: ServeRoleInput): Promise<string> {
-  const id = await uid();
-  const { shifts, ...role } = input;
-  const { data, error } = await supabase
-    .from('serve_roles')
-    .insert({ ...role, created_by: id })
-    .select('id')
-    .single();
-  if (error) fail('createServeRole', error);
-  const roleId = (data as { id: string }).id;
-  if (shifts.length > 0) {
-    const { error: shiftErr } = await supabase.from('serve_shifts').insert(shifts.map(s => ({ ...s, role_id: roleId })));
-    if (shiftErr) fail('createServeShifts', shiftErr);
-  }
-  return roleId;
+  return (await call<{ id: string }>('createServeRole', '/api/serve/roles', body(input))).id;
 }
 
 export interface ManagedShift {
@@ -417,42 +315,28 @@ export interface ManagedShift {
 }
 
 export async function getMyManagedShifts(): Promise<ManagedShift[]> {
-  const id = await uid();
-  const { data, error } = await supabase
-    .from('serve_shifts')
-    .select('*, serve_roles!inner(name, event_id, church_id, created_by)')
-    .eq('serve_roles.created_by', id)
-    .order('starts_at');
-  if (error) fail('getMyManagedShifts', error);
-  return (data ?? []) as ManagedShift[];
+  return (await call<ManagedShift[] | null>('getMyManagedShifts', '/api/serve/my-shifts')) ?? [];
 }
 
 export async function getShiftRoster(shiftId: string): Promise<ServeRosterEntry[]> {
-  const { data, error } = await supabase
-    .from('serve_signups')
-    .select('*')
-    .eq('shift_id', shiftId)
-    .neq('status', 'cancelled')
-    .order('created_at');
-  if (error) fail('getShiftRoster', error);
-  return (data ?? []) as ServeRosterEntry[];
+  return (await call<ServeRosterEntry[] | null>('getShiftRoster', `/api/serve/shifts/${id(shiftId)}/roster`)) ?? [];
 }
 
 export function serveCheckIn(code: string): Promise<{ valid: boolean; message?: string; error?: string }> {
-  return rpc('serve_check_in', { p_code: code });
+  return call('serveCheckIn', '/api/serve/check-in', body({ code }));
 }
 
-export function completeShift(shiftId: string): Promise<number> {
-  return rpc<number>('complete_serve_shift', { p_shift_id: shiftId });
+export async function completeShift(shiftId: string): Promise<number> {
+  return (await call<{ count: number }>('completeShift', `/api/serve/shifts/${id(shiftId)}/complete`, { method: 'POST' })).count;
 }
 
-export function messageVolunteers(shiftId: string, message: string): Promise<number> {
-  return rpc<number>('message_volunteers', { p_shift_id: shiftId, p_message: message });
+export async function messageVolunteers(shiftId: string, message: string): Promise<number> {
+  return (await call<{ count: number }>('messageVolunteers', `/api/serve/shifts/${id(shiftId)}/message`, body({ message }))).count;
 }
 
 export async function getHoursServed(): Promise<number> {
   try {
-    return Number(await rpc<number>('my_hours_served')) || 0;
+    return Number((await call<{ hours: number }>('getHoursServed', '/api/serve/hours')).hours) || 0;
   } catch {
     return 0;
   }

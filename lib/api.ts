@@ -1,5 +1,6 @@
 import { API_BASE, API_TIMEOUT_MS, API_MAX_RETRIES } from './constants';
 import { logger } from './logger';
+import { getAccessToken, refreshSession } from './session';
 import type {
   AppNotification,
   CommunityPost,
@@ -59,7 +60,7 @@ function createCombinedSignal(a: AbortSignal, b: AbortSignal): AbortSignal {
   return controller.signal;
 }
 
-interface FetchOptions extends RequestInit {
+export interface FetchOptions extends RequestInit {
   /** Non-idempotent requests (payments, posts) must not be retried automatically. */
   retry?: boolean;
 }
@@ -73,14 +74,17 @@ export async function apiFetch<T>(
   const { retry, ...init } = options;
   const method = (init.method ?? 'GET').toUpperCase();
   const canRetry = retry ?? (method === 'GET' || method === 'HEAD');
-  const headers: Record<string, string> = {
+  let headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init.body ? { 'Content-Type': 'application/json' } : {}),
     ...(init.headers as Record<string, string>),
   };
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  // The stored session's token wins: it is refreshed here, while screens may hold an older copy.
+  const token = (await getAccessToken()) ?? accessToken;
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   let attempt = 0;
+  let reauthed = false;
   for (;;) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
@@ -100,6 +104,15 @@ export async function apiFetch<T>(
       }
 
       if (!response.ok) {
+        // A 401 means the request was rejected before running, so one retry is safe even for payments.
+        if (response.status === 401 && token && !reauthed) {
+          reauthed = true;
+          const fresh = await refreshSession();
+          if (fresh) {
+            headers = { ...headers, Authorization: `Bearer ${fresh.accessToken}` };
+            continue;
+          }
+        }
         const body = (data ?? {}) as Record<string, unknown>;
         const message = typeof body.error === 'string' ? body.error : `Request failed (${response.status})`;
         const retryable = isRetryable(response.status);
@@ -132,6 +145,27 @@ export async function apiFetch<T>(
 
 function json(body: unknown, method = 'POST'): FetchOptions {
   return { method, body: JSON.stringify(body) };
+}
+
+// ── Auth (email one-time code) ───────────────────────────────
+export interface VerifyOtpResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: { id: string; email: string; profile?: Profile | null };
+}
+
+/** Sends a 6-digit code. A name is stored for the new profile. */
+export function requestSignInCode(email: string, fullName?: string): Promise<{ success: boolean; message?: string }> {
+  return fullName ? apiFetch('/api/auth/signup', json({ email, fullName })) : apiFetch('/api/auth/signin', json({ email }));
+}
+
+export function verifySignInCode(email: string, token: string): Promise<VerifyOtpResponse> {
+  return apiFetch('/api/auth/verify-otp', json({ email, token }));
+}
+
+export function revokeRefreshToken(refreshToken: string): Promise<unknown> {
+  return apiFetch('/api/auth/signout', json({ refreshToken }));
 }
 
 // ── Normalizers: the API returns some web-specific field names ────────────
@@ -328,8 +362,9 @@ export function hostRefundTicket(ticketId: string, accessToken: string): Promise
   return apiFetch(`/api/tickets/${ticketId}/refund`, { method: 'POST' }, accessToken);
 }
 
-export function walletPassUrl(ticketId: string): string {
-  return `${API_BASE}/api/tickets/${ticketId}/wallet`;
+/** A short-lived signed .pkpass URL that Safari / Wallet can open without a bearer header. */
+export function getWalletLink(ticketId: string, accessToken: string): Promise<{ url: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/wallet-link`, {}, accessToken);
 }
 
 export function validateListingPromo(

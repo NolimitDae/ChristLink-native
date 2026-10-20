@@ -38,8 +38,24 @@ async function ensureAndroidChannel(): Promise<void> {
   });
 }
 
+function easProjectId(): string | null {
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+  return projectId && UUID.test(projectId) ? projectId : null;
+}
+
+/** This device's Expo push token without prompting; null without permission, project id or network. */
+export async function currentPushToken(): Promise<string | null> {
+  try {
+    const projectId = easProjectId();
+    if (!projectId || (await notificationPermissionStatus()) !== 'granted') return null;
+    return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Registers the device for remote push and stores the Expo push token in Supabase (push_tokens).
+ * Registers the device for remote push and stores the Expo push token on the API (push_tokens).
  * Only asks for permission when `prompt` is true, so the system dialog appears after we explain why.
  */
 export async function registerForPushNotifications(prompt = false): Promise<string | null> {
@@ -48,8 +64,8 @@ export async function registerForPushNotifications(prompt = false): Promise<stri
     if (!granted) return null;
     await ensureAndroidChannel();
 
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
-    if (!projectId || !UUID.test(projectId)) {
+    const projectId = easProjectId();
+    if (!projectId) {
       logger.info('Remote push disabled: set extra.eas.projectId in app.json (run `eas init`).');
       return null;
     }

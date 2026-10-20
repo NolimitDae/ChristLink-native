@@ -31,8 +31,6 @@ jobs:
 
       - name: Bundle check (every screen compiles for iOS and Android)
         env:
-          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
           EXPO_PUBLIC_STRIPE_PK: pk_test_ci
           EXPO_PUBLIC_API_BASE: https://example.invalid
         run: npx expo export --platform ios --platform android --output-dir dist --no-minify
@@ -112,8 +110,6 @@ jobs:
       - name: Build preview (Android APK + iOS)
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_PUBLIC_STRIPE_PK: ${{ secrets.EXPO_PUBLIC_STRIPE_PK }}
           EXPO_PUBLIC_API_BASE: ${{ secrets.EXPO_PUBLIC_API_BASE }}
           EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}

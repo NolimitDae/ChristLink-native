@@ -4,12 +4,13 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppData } from '../contexts/AppDataContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useToast } from '../contexts/ToastContext';
+import { ApiError } from '../lib/api';
 import { FeatureError, acceptTerms } from '../lib/features';
 import { haptic } from '../lib/haptics';
 import { logger } from '../lib/logger';
-import { supabase } from '../lib/supabase';
 import { emailSchema, fullNameSchema } from '../lib/validation';
 import { AppText, Button, Field, IconButton, PinCross } from '../components/ui';
 import { OTP_LENGTH, OtpBoxes, type OtpBoxesHandle } from '../components/onboarding/OtpBoxes';
@@ -25,6 +26,7 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { showToast } = useToast();
   const { refreshSettings } = useAppData();
+  const { signIn, verifyOtp } = useAuth();
   const otpRef = useRef<OtpBoxesHandle>(null);
 
   const [step, setStep] = useState<Step>('email');
@@ -53,27 +55,21 @@ export default function AuthScreen() {
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)'));
 
+  const nameParsed = fullNameSchema.safeParse(name);
+  const fullName = nameParsed.success ? nameParsed.data : undefined;
+
   const sendCode = async () => {
     if (!emailValid || !agreed) return;
-    const nameParsed = fullNameSchema.safeParse(name);
-    const fullName = nameParsed.success ? nameParsed.data : undefined;
     setSending(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: normalizedEmail,
-        options: { shouldCreateUser: true, data: fullName ? { full_name: fullName } : undefined },
-      });
-      if (error) {
-        showToast(error.message, 'error');
-        return;
-      }
+      await signIn(normalizedEmail, fullName);
       setOtp(EMPTY_OTP);
       setOtpError(null);
       setStep('otp');
       setCooldown(RESEND_SECONDS);
       showToast('Check your email for a 6-digit code', 'success');
-    } catch {
-      showToast('Could not send the code. Please try again.', 'error');
+    } catch (err) {
+      showToast(err instanceof ApiError && err.status ? err.message : 'Could not send the code. Please try again.', 'error');
     } finally {
       setSending(false);
     }
@@ -93,8 +89,10 @@ export default function AuthScreen() {
     setVerifying(true);
     setOtpError(null);
     try {
-      const { error } = await supabase.auth.verifyOtp({ email: normalizedEmail, token: code, type: 'email' });
-      if (error) {
+      try {
+        await verifyOtp(normalizedEmail, code);
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 429)) throw err;
         haptic.error();
         setOtpError('That code is invalid or expired. Check the latest email or resend.');
         setOtp(EMPTY_OTP);
@@ -105,8 +103,8 @@ export default function AuthScreen() {
       await afterSignIn();
       showToast('Welcome to Christ Link Social', 'success');
       close();
-    } catch {
-      setOtpError('Verification failed. Please try again.');
+    } catch (err) {
+      setOtpError(err instanceof ApiError && err.status === 429 ? err.message : 'Verification failed. Please try again.');
     } finally {
       setVerifying(false);
     }
@@ -123,8 +121,8 @@ export default function AuthScreen() {
     if (cooldown > 0) return;
     setSending(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email: normalizedEmail, options: { shouldCreateUser: true } });
-      if (error) throw error;
+      // The server keeps the name with the latest code, so resend it too.
+      await signIn(normalizedEmail, fullName);
       setOtp(EMPTY_OTP);
       setCooldown(RESEND_SECONDS);
       showToast('New code sent', 'success');
