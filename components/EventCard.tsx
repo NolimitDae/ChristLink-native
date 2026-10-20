@@ -39,9 +39,9 @@ function SaveHeart({ eventId, onImage }: { eventId: string; onImage?: boolean })
       accessibilityRole="button"
       accessibilityLabel={saved ? 'Remove from saved' : 'Save event'}
       accessibilityState={{ selected: saved }}
-      style={[styles.heart, onImage ? { backgroundColor: 'rgba(14,12,10,0.55)' } : { backgroundColor: t.c.surface2 }]}
+      style={[styles.heart, onImage ? { backgroundColor: t.c.scrim } : { backgroundColor: t.c.surface2 }]}
     >
-      <Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? t.c.gold : onImage ? '#F6EFE3' : t.c.textMuted} />
+      <Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? t.c.gold : onImage ? t.c.onImage : t.c.textMuted} />
     </Pressable>
   );
 }
@@ -102,14 +102,14 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
       <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={a11y} style={({ pressed }) => [{ width, opacity: pressed ? 0.9 : 1 }]}>
         <View style={[{ borderRadius: t.radius.lg }, shadow(2, t.c.shadow)]}>
           <Cover event={event} height={Math.round(width * 0.62)} radius={t.radius.lg} />
-          <LinearGradient colors={['transparent', 'rgba(14,12,10,0.85)']} style={[StyleSheet.absoluteFill, { borderRadius: t.radius.lg }]} />
+          <LinearGradient colors={['transparent', t.c.scrimStrong]} style={[StyleSheet.absoluteFill, { borderRadius: t.radius.lg }]} />
           <View style={styles.overlayTop}>
             <DateBlock iso={event.start_date} size="sm" glass />
             <SaveHeart eventId={event.id} onImage />
           </View>
           <View style={styles.overlayBottom}>
             <TimingBadge start={event.start_date} end={event.end_date} />
-            <AppText variant="title3" color="#F6EFE3" numberOfLines={2} style={{ marginTop: 6 }}>
+            <AppText variant="title3" color={t.c.onImage} numberOfLines={2} style={{ marginTop: 6 }}>
               {event.name}
             </AppText>
           </View>

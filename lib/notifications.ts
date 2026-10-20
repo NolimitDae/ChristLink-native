@@ -7,7 +7,8 @@ import { storage } from './storage';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -119,14 +120,18 @@ export function addNotificationReceivedListener(
   return Notifications.addNotificationReceivedListener(handler);
 }
 
-export function addNotificationResponseListener(
-  handler: (response: Notifications.NotificationResponse) => void,
-): Notifications.Subscription {
-  return Notifications.addNotificationResponseReceivedListener(handler);
-}
+/** Latest notification tap, including the one that cold-started the app (a listener misses that one). */
+export const useLastNotificationResponse = Notifications.useLastNotificationResponse;
 
-export function removeSubscription(subscription: Notifications.Subscription): void {
-  Notifications.removeNotificationSubscription(subscription);
+/** Admin tool: send a test push straight to this device through Expo's push service. */
+export async function sendTestPush(expoToken: string): Promise<{ ok: boolean; status: number; body: string }> {
+  const res = await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ to: expoToken, title: 'Test from Christ Link Social', body: 'Push is working ✓', data: {} }),
+  });
+  const body = await res.text();
+  return { ok: res.ok && !/"status"\s*:\s*"error"/.test(body), status: res.status, body };
 }
 
 export async function setBadgeCount(count: number): Promise<void> {

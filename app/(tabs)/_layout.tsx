@@ -8,8 +8,7 @@ export default function TabsLayout() {
   return (
     <Tabs
       tabBar={props => <TabBar {...props} />}
-      sceneContainerStyle={{ backgroundColor: t.c.bg }}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: t.c.bg } }}
     >
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="explore" options={{ title: 'Explore' }} />

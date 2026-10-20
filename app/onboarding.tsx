@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent, type ScrollViewInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -26,7 +26,7 @@ export default function OnboardingScreen() {
   const { width } = useWindowDimensions();
   const { session } = useAuth();
   const { settings, setSettings } = useAppData();
-  const pager = useRef<ScrollView>(null);
+  const pager = useRef<ScrollViewInstance>(null);
   const [index, setIndex] = useState(0);
   const [churchId, setChurchId] = useState<string | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(false);

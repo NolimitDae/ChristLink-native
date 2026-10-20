@@ -21,8 +21,8 @@ interface IconButtonProps {
 export function IconButton({ icon, label, onPress, size = 40, tone = 'default', color, badge, style, disabled }: IconButtonProps) {
   const t = useTheme();
   const bg =
-    tone === 'gold' ? t.c.gold : tone === 'glass' ? 'rgba(14,12,10,0.55)' : tone === 'plain' ? 'transparent' : t.c.surface2;
-  const fg = color ?? (tone === 'gold' ? t.c.onGold : tone === 'glass' ? '#F6EFE3' : t.c.text);
+    tone === 'gold' ? t.c.gold : tone === 'glass' ? t.c.scrim : tone === 'plain' ? 'transparent' : t.c.surface2;
+  const fg = color ?? (tone === 'gold' ? t.c.onGold : tone === 'glass' ? t.c.onImage : t.c.text);
   return (
     <Pressable
       onPress={() => {

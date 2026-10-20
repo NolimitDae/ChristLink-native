@@ -120,7 +120,7 @@ export function MapTab({ bottomInset }: { bottomInset: number }) {
         onRegionChangeComplete={setRegion}
         showsUserLocation={hasLocation}
         showsMyLocationButton={false}
-        showsPointsOfInterest={false}
+        showsPointsOfInterests={false}
         toolbarEnabled={false}
         onPress={e => {
           if (e.nativeEvent.action !== 'marker-press') setSelected(null);

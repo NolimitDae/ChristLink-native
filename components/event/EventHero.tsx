@@ -24,7 +24,7 @@ export function EventHero({ event, height, scrollY }: EventHeroProps) {
 
   return (
     <View style={{ height }} accessible accessibilityRole="image" accessibilityLabel={`Cover photo for ${event.name}`}>
-      <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateY }, { scale }] }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, !t.reduceMotion && { transform: [{ translateY }, { scale }] }]}>
         {event.cover_url ? (
           <Image source={{ uri: event.cover_url }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
         ) : (
@@ -34,7 +34,7 @@ export function EventHero({ event, height, scrollY }: EventHeroProps) {
             </View>
           </LinearGradient>
         )}
-        <LinearGradient colors={['rgba(14,12,10,0.55)', 'transparent']} style={styles.topShade} pointerEvents="none" />
+        <LinearGradient colors={[t.c.scrim, 'transparent']} style={styles.topShade} pointerEvents="none" />
       </Animated.View>
       <LinearGradient colors={['transparent', t.c.bg]} style={styles.bottomFade} pointerEvents="none" />
     </View>

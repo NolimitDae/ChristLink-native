@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +16,7 @@ import {
   publishEvent,
   scheduleEvent,
   updateEvent,
+  updateTicketType,
   validateListingPromo,
 } from '../../lib/api';
 import { confirmHostAdult } from '../../lib/features';
@@ -74,9 +75,10 @@ export default function CreateEventScreen() {
   const [cardComplete, setCardComplete] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
   const [burst, setBurst] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const createdId = useRef<string | null>(null);
-  const ticketsCreated = useRef(false);
+  // Draft tier key → server tier, so a retry after a partial failure or declined fee never duplicates tiers.
+  const createdTiers = useRef(new Map<string, { id: string; sent: string }>());
   const feePaid = useRef(false);
 
   useEffect(() => {
@@ -193,15 +195,20 @@ export default function CreateEventScreen() {
       id = ev.id;
       createdId.current = id;
     }
-    if (!existing && draft.is_paid && !ticketsCreated.current) {
-      for (const tk of draft.tickets) {
+    if (!existing && draft.is_paid) {
+      for (const [sort_order, tk] of draft.tickets.entries()) {
         const qty = parseInt(tk.quantity, 10);
-        await createTicketType(
-          { event_id: id, name: tk.name.trim(), price_cents: ticketCents(tk) ?? 0, quantity: Number.isFinite(qty) && qty > 0 ? qty : undefined },
-          token,
-        );
+        const tier = { name: tk.name.trim(), price_cents: ticketCents(tk) ?? 0, quantity: Number.isFinite(qty) && qty > 0 ? qty : undefined };
+        const sent = JSON.stringify(tier);
+        const created = createdTiers.current.get(tk.key);
+        if (!created) {
+          const tt = await createTicketType({ event_id: id, ...tier }, token);
+          createdTiers.current.set(tk.key, { id: tt.id, sent });
+        } else if (created.sent !== sent) {
+          await updateTicketType(created.id, { ...tier, quantity: tier.quantity ?? null, sort_order }, token);
+          createdTiers.current.set(tk.key, { id: created.id, sent });
+        }
       }
-      ticketsCreated.current = true;
     }
     return id;
   };

@@ -37,7 +37,7 @@ function useFullBrightness() {
     useCallback(() => {
       let active = true;
       let previous: number | null = null;
-      (async () => {
+      const raised = (async () => {
         try {
           const current = await Brightness.getBrightnessAsync();
           if (!active) return;
@@ -49,7 +49,10 @@ function useFullBrightness() {
       })();
       return () => {
         active = false;
-        if (previous !== null) Brightness.setBrightnessAsync(previous).catch(() => undefined);
+        // Restore only after the raise settles, or a late setBrightnessAsync(1) would win.
+        raised.then(() => {
+          if (previous !== null) Brightness.setBrightnessAsync(previous).catch(() => undefined);
+        });
       };
     }, []),
   );

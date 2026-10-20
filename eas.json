@@ -1,33 +1,46 @@
 {
   "cli": {
-    "version": ">= 10.0.0"
+    "version": ">= 16.0.0"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_BASE": "https://christlink1-production.up.railway.app"
+        "EXPO_PUBLIC_API_BASE": "https://christlink-api-staging.up.railway.app"
       },
-      "channel": "development"
+      "channel": "development",
+      "ios": {
+        "image": "default"
+      },
+      "android": {
+        "image": "default"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "image": "default"
       },
       "ios": {
-        "simulator": false
+        "simulator": false,
+        "image": "default"
       },
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_BASE": "https://christlink-api-staging.up.railway.app"
+      }
     },
     "production": {
       "autoIncrement": true,
       "android": {
-        "buildType": "aab"
+        "buildType": "aab",
+        "image": "default"
       },
       "ios": {
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "image": "default"
       },
       "channel": "production"
     }

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import type { ThemePreference } from './theme';
 import type { RSVP, Ticket } from './types';
 import { logger } from './logger';
@@ -57,6 +58,10 @@ export const storage = {
   setReminderMap: (m: Record<string, string[]>) => writeJson(KEYS.reminders, m),
 
   async clearUserData(): Promise<void> {
+    // The map only holds IDs; the scheduled event/serve reminders themselves must be cancelled too.
+    await Notifications.cancelAllScheduledNotificationsAsync().catch(err =>
+      logger.warn('cancel reminders failed', { error: String(err) }),
+    );
     await AsyncStorage.multiRemove([KEYS.saved, KEYS.tickets, KEYS.rsvps, KEYS.hiddenPosts, KEYS.reminders]);
   },
 };

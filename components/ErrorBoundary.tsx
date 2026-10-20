@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Sentry from '@sentry/react-native';
 import { COLORS } from '../lib/constants';
 import { logger } from '../lib/logger';
 
@@ -33,6 +34,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
       stack: error.stack,
       componentStack: info.componentStack ?? undefined,
     });
+    Sentry.captureException(error, { extra: { componentStack: info.componentStack } });
     this.props.onError?.(error, info);
   }
 

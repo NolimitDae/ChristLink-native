@@ -67,6 +67,7 @@ const cases: Case[] = [
   ['uploadBanner', () => api.uploadBanner('data:', T), 'POST', '/api/upload-banner', { dataUrl: 'data:' }],
   ['uploadEventImage', () => api.uploadEventImage('data:', 'cover', T), 'POST', '/api/upload-event-image', { dataUrl: 'data:', type: 'cover' }],
   ['createTicketType', () => api.createTicketType({ event_id: 'e1', name: 'GA', price_cents: 1500 }, T), 'POST', '/api/ticket-types'],
+  ['updateTicketType', () => api.updateTicketType('tt1', { name: 'VIP', price_cents: 2500, quantity: 50, sort_order: 1 }, T), 'PATCH', '/api/ticket-types/tt1', { name: 'VIP', price_cents: 2500, quantity: 50, sort_order: 1 }],
   ['adminListVerifications', () => api.adminListVerifications(T), 'GET', '/api/admin/verifications?status=pending'],
   ['adminDecideVerification', () => api.adminDecideVerification('v1', false, T, 'blurry'), 'POST', '/api/admin/verifications/v1/reject', { reason: 'blurry' }],
   ['adminVerificationDocUrl', () => api.adminVerificationDocUrl('v1', T), 'GET', '/api/admin/verifications/v1/id-doc'],

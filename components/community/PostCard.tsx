@@ -185,7 +185,7 @@ const useStyles = makeStyles(t => ({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  popWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  popWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   popBadge: {
     width: 76,
     height: 76,

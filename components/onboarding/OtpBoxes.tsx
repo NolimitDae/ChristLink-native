@@ -1,5 +1,5 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { Platform, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, View, type TextInputInstance } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export const OTP_LENGTH = 6;
@@ -12,7 +12,7 @@ export interface OtpBoxesHandle {
 export const OtpBoxes = forwardRef<OtpBoxesHandle, { value: string[]; onChange: (digits: string[]) => void; disabled?: boolean; error?: boolean }>(
   function OtpBoxes({ value, onChange, disabled, error }, ref) {
     const t = useTheme();
-    const refs = useRef<(TextInput | null)[]>([]);
+    const refs = useRef<(TextInputInstance | null)[]>([]);
 
     useImperativeHandle(ref, () => ({
       focus: () => {

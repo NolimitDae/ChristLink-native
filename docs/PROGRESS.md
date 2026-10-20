@@ -42,3 +42,68 @@
 6. Community: post with a type label, double-tap to Amen, report a post, block a user.
 7. After applying the migration: Prayer Wall (pray, mark answered → testimony in feed), church page + Home Church,
    Serve sign-up + volunteer QR, Settings → notifications toggles, Delete account on a test account.
+
+## 2026-10-20 — Expo SDK 51 → 58 upgrade and audit fixes
+
+Upgraded one SDK at a time (`npx expo install expo@^N --fix`, `npx expo install --fix`, `expo-doctor`), with
+typecheck, lint, tests and iOS + Android `expo export` green after every step. Final: expo 58.0.16, React Native
+0.88.0, React 19.3.0, expo-router 58.0.24, TypeScript 6.0, Jest 30, Reanimated 4.7.1 + react-native-worklets 0.13,
+Sentry 8.28, Stripe RN 0.81, react-native-maps 1.29.11, gesture-handler 3.3, screens 4.30, safe-area-context 5.10,
+svg 15.16. New Architecture and Hermes V1 are the default (no config needed). `expo-doctor`: 20/20 checks pass.
+
+**Breaking changes fixed, per SDK**
+- 52 (RN 0.76, React Navigation 7): `sceneContainerStyle` on Tabs → `screenOptions.sceneStyle`. `splash` in
+  app.json (deprecated) → `expo-splash-screen` config plugin. Intermediate expo-router 4/5 builds needed the
+  transitive `query-string`; no longer needed from SDK 55, so nothing was added.
+- 53 (React 19, RN 0.79): TS 5.8 narrows `filter(type => type !== 'All')`, so the Home category rails needed an
+  explicit `EventType` type; RN fetch `AbortSignal` type cast in `lib/api.ts`; notification handler
+  `shouldShowAlert` → `shouldShowBanner` + `shouldShowList`. `expo export` now refuses an output dir outside the
+  project. Added the `expo-web-browser` config plugin that the install step asked for.
+- 54 (RN 0.81, Reanimated 4): installed `react-native-worklets` (babel-preset-expo adds its plugin, so
+  babel.config.js is unchanged); `Notifications.removeNotificationSubscription` removed → `subscription.remove()`.
+- 55 (RN 0.83, New Architecture only): react-native-maps prop `showsPointsOfInterest` → `showsPointsOfInterests`;
+  `useColorScheme()` can return `'unspecified'` (`resolveScheme` accepts any string).
+- 56 (RN 0.85, expo-router drops React Navigation): ran the expo-router codemod (TabBar types now from
+  `expo-router/js-tabs`); `StyleSheet.absoluteFillObject` removed → `absoluteFill`; jest-expo needs
+  `@react-native/jest-preset`. Passed straight through 56 (Hermes V1 memory regression) to 57.0.9+.
+- 57 (RN 0.86): no code changes.
+- 58 (RN 0.88 strict TS API): refs use `ViewInstance` / `ScrollViewInstance` / `TextInputInstance`;
+  `StyleSheet.NamedStyles` removed (`makeStyles` constraint now derives from `StyleSheet.create`); custom tab bar
+  props are `emitter` + `navigateToTab` (no `navigation`); `react-test-renderer@19.3.0` added for Testing Library.
+- Tooling: `.npmrc` with `legacy-peer-deps=true` (eslint 10 vs eslint-plugin-react peer conflict made plain
+  `npm ci`, and so EAS builds, fail); CI on Node 22; eas.json pins iOS `macos-tahoe-26.5-xcode-26.6` and Android
+  `ubuntu-26.04-jdk-17-ndk-r27b-sdk-58` on every profile. Removed unused `@testing-library/jest-native`.
+
+**Audit fixes**
+- ErrorBoundary sends errors to Sentry (`captureException` with the component stack).
+- Sign-out cancels all scheduled local reminders, not just the stored ID map.
+- Event create: ticket tiers are tracked per draft tier (key → server id), so retrying publish never duplicates
+  tiers, and edits after a declined listing fee are sent with the new `updateTicketType`
+  (`PATCH /api/ticket-types/:id`, new backend only; contract test row added).
+- Saved events and hidden posts reset and reload on user change; the Tickets tab clears another user's tickets.
+- Push taps that cold-start the app are routed (`useLastNotificationResponse`, once navigation is mounted).
+- A deep link or push tap on first launch is remembered through onboarding and opened afterwards.
+- Admin test push moved out of the screen into `sendTestPush` in `lib/notifications.ts`.
+- Segmented control: 44pt segments, labels shrink/wrap, the bar grows instead of clipping at large text.
+- Ticket screen brightness restore waits for the raise to finish (no stuck full brightness).
+- On-image theme tokens (`onImage`, `onImageMuted`, `onImageGold`, `onImageHairline`, `onImageBorder`, `scrim`,
+  `scrimStrong`, `stage`, `onStatus`) replace hardcoded colors in scan, gallery, RSVP celebration, DateBlock,
+  Badge, IconButton and EventCard. EventHero parallax is off with Reduce Motion.
+- Android App Links now cover `www.christlinksocial.com/church`.
+
+**Not finished**
+- Everything native needs a new development build (`eas build --profile development`) and a phone test: SDK 58
+  Expo Go only runs SDK 58. Not run on a device in this session.
+- Ticket tiers deleted from the draft after a partial failure are not deleted on the server.
+- The tier update only works once the new backend ships `PATCH /api/ticket-types/:id`; on the old API an
+  edited tier after a failed publish gets a 404 (unchanged tiers are skipped, so plain retries still work).
+- ProfileHero still has hardcoded on-image colors (outside this audit's list).
+
+**Test on your phone (dev build)**
+1. Sign in, background the app, send a push from Admin → Tools, force-quit, tap the push → it opens the right screen.
+2. Fresh install, open an `https://christlinksocial.com/event/<id>` link → finish onboarding → the event opens.
+3. Paid event create with a card that declines → edit a tier price → publish again → one set of tiers, new price.
+4. Sign out / sign in as another user: Saved, hidden posts and Tickets show only that user's data; reminders gone.
+5. Ticket QR: open and swipe away fast → brightness returns to normal. Reduce Motion on → event cover doesn't
+   parallax. Largest text size → segmented controls readable. Android release build: Stripe, Sentry and maps
+   still work with R8 minify (on by default in SDK 58).

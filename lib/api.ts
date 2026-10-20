@@ -87,7 +87,7 @@ export async function apiFetch<T>(
     const combined = signal ? createCombinedSignal(signal, controller.signal) : controller.signal;
 
     try {
-      const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: combined });
+      const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: combined as RequestInit['signal'] });
       clearTimeout(timeoutId);
       const text = await response.text();
       let data: unknown = null;
@@ -499,6 +499,22 @@ export function createTicketType(
   accessToken: string,
 ): Promise<TicketType> {
   return apiFetch('/api/ticket-types', json(payload), accessToken);
+}
+
+/** New backend only (PATCH /api/ticket-types/:id); the old Railway API has no update route. */
+export function updateTicketType(
+  id: string,
+  payload: {
+    name?: string;
+    price_cents?: number;
+    quantity?: number | null;
+    sales_start?: string | null;
+    sales_end?: string | null;
+    sort_order?: number;
+  },
+  accessToken: string,
+): Promise<TicketType> {
+  return apiFetch(`/api/ticket-types/${id}`, json(payload, 'PATCH'), accessToken);
 }
 
 // ── Admin (role checked on the server) ───────────────────────

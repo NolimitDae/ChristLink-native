@@ -7,11 +7,6 @@
     "scheme": "christlink",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0E0C0A"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -74,6 +69,11 @@
               "scheme": "https",
               "host": "www.christlinksocial.com",
               "pathPrefix": "/event"
+            },
+            {
+              "scheme": "https",
+              "host": "www.christlinksocial.com",
+              "pathPrefix": "/church"
             }
           ],
           "category": [
@@ -126,7 +126,17 @@
           "enableGooglePay": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0E0C0A",
+          "imageWidth": 200
+        }
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

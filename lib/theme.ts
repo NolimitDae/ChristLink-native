@@ -32,7 +32,32 @@ export interface Palette {
   shadow: string;
   skeleton: string;
   skeletonHighlight: string;
+  /** Over photos, video and the camera: identical in both themes because the backdrop is always dark. */
+  onImage: string;
+  onImageMuted: string;
+  onImageGold: string;
+  onImageHairline: string;
+  onImageBorder: string;
+  /** Dark glass behind chips/buttons on images; `scrimStrong` for panels and gradient ends. */
+  scrim: string;
+  scrimStrong: string;
+  /** Black stage behind the camera and the fullscreen photo viewer. */
+  stage: string;
+  /** Text/icons on live, success and danger fills. */
+  onStatus: string;
 }
+
+const onImage = {
+  onImage: '#F6EFE3',
+  onImageMuted: 'rgba(246,239,227,0.6)',
+  onImageGold: '#D9BC6A',
+  onImageHairline: 'rgba(201,168,76,0.5)',
+  onImageBorder: 'rgba(246,239,227,0.12)',
+  scrim: 'rgba(14,12,10,0.6)',
+  scrimStrong: 'rgba(14,12,10,0.85)',
+  stage: '#000000',
+  onStatus: '#FFFFFF',
+} as const;
 
 export const palettes: Record<Scheme, Palette> = {
   dark: {
@@ -62,6 +87,7 @@ export const palettes: Record<Scheme, Palette> = {
     shadow: '#000000',
     skeleton: '#221D18',
     skeletonHighlight: '#2C261F',
+    ...onImage,
   },
   light: {
     bg: '#F7F2E8',
@@ -90,6 +116,7 @@ export const palettes: Record<Scheme, Palette> = {
     shadow: '#5A4A2A',
     skeleton: '#EDE5D6',
     skeletonHighlight: '#F6F0E4',
+    ...onImage,
   },
 };
 
@@ -186,7 +213,7 @@ export function buildTheme(scheme: Scheme, reduceMotion: boolean): Theme {
   return { scheme, c: palettes[scheme], type, space, radius, motion, fonts, reduceMotion };
 }
 
-export function resolveScheme(preference: ThemePreference, system: Scheme | null | undefined): Scheme {
+export function resolveScheme(preference: ThemePreference, system: string | null | undefined): Scheme {
   if (preference === 'system') return system === 'light' ? 'light' : 'dark';
   return preference;
 }
