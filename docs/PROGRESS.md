@@ -107,3 +107,32 @@ svg 15.16. New Architecture and Hermes V1 are the default (no config needed). `e
 5. Ticket QR: open and swipe away fast → brightness returns to normal. Reduce Motion on → event cover doesn't
    parallax. Largest text size → segmented controls readable. Android release build: Stripe, Sentry and maps
    still work with R8 minify (on by default in SDK 58).
+
+## 2026-10-20 — Railway backend replaces server.js + Supabase; app ready for phone testing
+
+**Changed** (branch `claude/railway-launch`, deployed to Railway project "ChristLink Staging")
+- Plan: docs/LAUNCH.pdf added; docs/BACKEND.md is the backend architecture + API contract; CLAUDE.md updated (A.1);
+  dev builds warn on a `pk_live_` Stripe key.
+- `backend/` NestJS API at parity with server.js's 100 routes plus every former Supabase feature (churches,
+  prayers, verses, serve, reports, blocks, settings, push tokens, account deletion): email-code auth with rotating
+  refresh tokens (Resend), Cloudflare R2 uploads, Stripe payments/Connect/webhook, BullMQ worker (pushes, emails,
+  scheduled publish, daily prayer summary). Same table/column names as production, so data copies straight across.
+  Fixes from plan step B.1 are in the new backend: signed Apple Wallet link, hidden RSVPs honored, `price=0` fees,
+  ticket-type update route, push notifications for purchases/refunds/forum/verification. Also fixed server.js bugs:
+  check-in without a host check, double refunds, draft events visible to anyone, last-spot RSVP race, reply counts.
+- Tests: backend 43 unit + 110 contract + e2e suites (local Postgres/Redis via docker compose); app 220 tests.
+  `backend/test/contract.e2e-spec.ts` fails if any route the app calls is missing.
+- App: Expo SDK 51 → 58 (section above), audit fixes, Supabase removed — sign-in and all features use the API
+  (`lib/session.ts`), sign-out removes the phone's push token, Apple Wallet button on iOS tickets.
+- Data copy tools: `backend/scripts/import-supabase.mjs` (production dump → Railway) and `copy-storage.mjs`
+  (Supabase Storage images → R2, rewrites URLs). Tested on a synthetic dump, not on real data yet.
+- Staging verified live: health, every route group, sign-up → code → profile, settings, anonymous prayer,
+  community post, admin guard (403), refresh rotation + reuse rejected, account deletion; worker runs jobs.
+
+**Not finished / needs you** — see the checklist in the session summary (Railway secrets, Stripe test webhook,
+R2 bucket, `.env.local` test key, production dump, Expo Go test, `eas init` + dev build). Production (project
+"ChristLink") is untouched: merging this branch to `master` deploys the new backend there, so set production
+variables first and don't merge until phone testing passes. The website still runs on server.js + Supabase.
+
+**Test on your phone**: docs/PROGRESS.md test flows 1–6 above, now against staging; plus Prayer Wall, churches,
+Serve, Settings → notifications and Delete account (on a test account).
