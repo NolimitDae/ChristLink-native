@@ -71,8 +71,8 @@ svg 15.16. New Architecture and Hermes V1 are the default (no config needed). `e
   `StyleSheet.NamedStyles` removed (`makeStyles` constraint now derives from `StyleSheet.create`); custom tab bar
   props are `emitter` + `navigateToTab` (no `navigation`); `react-test-renderer@19.3.0` added for Testing Library.
 - Tooling: `.npmrc` with `legacy-peer-deps=true` (eslint 10 vs eslint-plugin-react peer conflict made plain
-  `npm ci`, and so EAS builds, fail); CI on Node 22; eas.json pins iOS `macos-tahoe-26.5-xcode-26.6` and Android
-  `ubuntu-26.04-jdk-17-ndk-r27b-sdk-58` on every profile. Removed unused `@testing-library/jest-native`.
+  `npm ci`, and so EAS builds, fail); CI on Node 22; eas.json uses each platform's `default` image for SDK 58 (Xcode 27.1,
+  which satisfies Apple's "Xcode 26 or later" rule). Removed unused `@testing-library/jest-native`.
 
 **Audit fixes**
 - ErrorBoundary sends errors to Sentry (`captureException` with the component stack).

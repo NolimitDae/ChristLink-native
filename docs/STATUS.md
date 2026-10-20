@@ -1,5 +1,10 @@
 # Feature status — native app (2026-10-15)
 
+> **Update 2026-10-20:** the app no longer uses Supabase or server.js. Every "migration" / RPC / Edge Function /
+> `/api/...` backend entry below is now served by the NestJS backend in `backend/` (contract: docs/BACKEND.md),
+> deployed to Railway staging. The "Needs backend" rows for the wallet link, hidden RSVPs, server pushes and the
+> `price=0` fee bug are done there. Still open: universal links on the website, demo reviewer account, live keys.
+
 Done = built and wired to a real backend route or table. Partial = works with a stated gap. Needs backend = app
 side is done; the server / database step is listed. "Migration" = `supabase/migrations/20261015000000_native_features.sql`
 must be applied (development project first).
