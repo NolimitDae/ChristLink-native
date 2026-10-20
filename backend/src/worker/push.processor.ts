@@ -19,6 +19,7 @@ export const CATEGORY: Record<string, string> = {
   serve_message: 'serve',
   serve_reminder: 'serve',
   forum_reply: 'forum',
+  community_reply: 'forum',
   refund_request: 'host',
   refund_approved: 'refunds',
   refund_denied: 'refunds',

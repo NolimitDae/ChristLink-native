@@ -1,5 +1,8 @@
 import { ModuleRef } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsService } from '../modules/notifications/notifications.service';
+import { queuePrayerSummaries } from '../modules/prayers/prayers.service';
+import { publishDueEvents } from '../modules/events/event-helpers';
 
 export interface RepeatableJob {
   /** Unique; also the BullMQ job scheduler id. */
@@ -20,5 +23,17 @@ export const REPEATABLE_JOBS: RepeatableJob[] = [
     name: 'rate-limit-cleanup',
     pattern: '15 * * * *',
     run: (prisma) => prisma.$executeRaw`select public.clean_old_rate_limits()`,
+  },
+  {
+    // "N people prayed for you today" (was pg_cron queue_prayer_summaries at 20:00 UTC)
+    name: 'prayer-daily-summary',
+    pattern: '0 20 * * *',
+    run: (prisma, ref) => queuePrayerSummaries(prisma, ref.get(NotificationsService, { strict: false })),
+  },
+  {
+    // Drafts whose publish_at has passed go live (was server.js's 60 s setInterval)
+    name: 'publish-scheduled-events',
+    pattern: '* * * * *',
+    run: (prisma, ref) => publishDueEvents(prisma, ref.get(NotificationsService, { strict: false })),
   },
 ];

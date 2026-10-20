@@ -9,6 +9,20 @@ import { HealthController } from './health/health.controller';
 import { JwtAuthGuard } from './common/jwt-auth.guard';
 import { HttpExceptionFilter } from './common/http-exception.filter';
 import { AuthModule } from './modules/auth/auth.module';
+import { ProfilesModule } from './modules/profiles/profiles.module';
+import { CommunityModule } from './modules/community/community.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { EventsModule } from './modules/events/events.module';
+import { ForumModule } from './modules/forum/forum.module';
+import { RsvpModule } from './modules/rsvp/rsvp.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { VersesModule } from './modules/verses/verses.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { FriendsModule } from './modules/friends/friends.module';
+import { PrayersModule } from './modules/prayers/prayers.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { ChurchesModule } from './modules/churches/churches.module';
+import { ServeModule } from './modules/serve/serve.module';
 
 @Module({
   imports: [
@@ -27,6 +41,20 @@ import { AuthModule } from './modules/auth/auth.module';
     }),
     // Feature modules (src/modules/<name>/<name>.module.ts) go here
     AuthModule,
+    ProfilesModule,
+    CommunityModule,
+    AdminModule,
+    EventsModule,
+    ForumModule,
+    RsvpModule,
+    PaymentsModule,
+    VersesModule,
+    SettingsModule,
+    FriendsModule,
+    PrayersModule,
+    ReportsModule,
+    ChurchesModule,
+    ServeModule,
   ],
   controllers: [HealthController],
   providers: [
