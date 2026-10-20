@@ -1,30 +1,22 @@
-import { ValidationPipe } from '@nestjs/common';
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
-import helmet from 'helmet';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { configureApi } from './bootstrap';
 import appConfig from './config/app.config';
+import { startWorker } from './worker';
 
+// Both Railway services run `node dist/src/main`; the worker service sets ROLE=worker.
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
-  app.setGlobalPrefix('api');
+  const { role, port } = appConfig().app;
+  if (role === 'worker') return startWorker(port);
 
-  // The website's address, plus any extra ones in CORS_ORIGINS (comma-separated).
-  // The native app sends no Origin header, so CORS doesn't affect it.
-  const origins = [appConfig().app.client_app_url, ...(process.env.CORS_ORIGINS ?? '').split(',')]
-    .map((o) => o?.trim().replace(/\/+$/, ''))
-    .filter(Boolean);
-  app.enableCors({ origin: origins, credentials: true, maxAge: 86400 });
-
-  app.use(helmet());
-  app.useGlobalPipes(
-    new ValidationPipe({
-      transform: true,
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transformOptions: { enableImplicitConversion: true },
-    }),
-  );
-
-  await app.listen(process.env.PORT ?? 4000, '0.0.0.0');
+  // A short or literal placeholder secret would let anyone forge sign-in tokens
+  const secret = appConfig().auth.jwt_secret ?? '';
+  if (secret.length < 32 || secret.includes('${{')) throw new Error('JWT_SECRET must be a random string of at least 32 characters');
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  configureApi(app);
+  app.enableShutdownHooks();
+  await app.listen(port, '0.0.0.0');
 }
 bootstrap();
