@@ -71,7 +71,7 @@ svg 15.16. New Architecture and Hermes V1 are the default (no config needed). `e
   `StyleSheet.NamedStyles` removed (`makeStyles` constraint now derives from `StyleSheet.create`); custom tab bar
   props are `emitter` + `navigateToTab` (no `navigation`); `react-test-renderer@19.3.0` added for Testing Library.
 - Tooling: `.npmrc` with `legacy-peer-deps=true` (eslint 10 vs eslint-plugin-react peer conflict made plain
-  `npm ci`, and so EAS builds, fail); CI on Node 22; eas.json uses each platform's `default` image for SDK 58 (Xcode 27.1,
+  `npm ci`, and so EAS builds, fail); CI on Node 22; eas.json uses the `latest` build image (JDK 17+, Xcode 27,
   which satisfies Apple's "Xcode 26 or later" rule). Removed unused `@testing-library/jest-native`.
 
 **Audit fixes**

@@ -12,10 +12,10 @@
       },
       "channel": "development",
       "ios": {
-        "image": "default"
+        "image": "latest"
       },
       "android": {
-        "image": "default"
+        "image": "latest"
       },
       "node": "22.14.0"
     },
@@ -23,11 +23,11 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "image": "default"
+        "image": "latest"
       },
       "ios": {
         "simulator": false,
-        "image": "default"
+        "image": "latest"
       },
       "channel": "preview",
       "env": {
@@ -40,11 +40,11 @@
       "autoIncrement": true,
       "android": {
         "buildType": "app-bundle",
-        "image": "default"
+        "image": "latest"
       },
       "ios": {
         "buildConfiguration": "Release",
-        "image": "default"
+        "image": "latest"
       },
       "channel": "production",
       "node": "22.14.0"
