@@ -140,7 +140,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "0ee3e3c5-4a23-466c-a469-755422e98dd6"
+        "projectId": "d64de815-22a9-48e7-8e89-f1da181fab6a"
       },
       "androidMapsKey": false,
       "router": {
@@ -149,12 +149,12 @@
         }
       }
     },
-    "owner": "nolimittech",
+    "owner": "nolimittechs-organization",
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/0ee3e3c5-4a23-466c-a469-755422e98dd6"
+      "url": "https://u.expo.dev/d64de815-22a9-48e7-8e89-f1da181fab6a"
     }
   }
 }
