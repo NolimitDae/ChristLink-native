@@ -149,6 +149,12 @@
         }
       }
     },
-    "owner": "nolimittech"
+    "owner": "nolimittech",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/0ee3e3c5-4a23-466c-a469-755422e98dd6"
+    }
   }
 }
