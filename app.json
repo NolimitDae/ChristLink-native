@@ -140,8 +140,15 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+        "projectId": "0ee3e3c5-4a23-466c-a469-755422e98dd6"
+      },
+      "androidMapsKey": false,
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
       }
-    }
+    },
+    "owner": "nolimittech"
   }
 }
