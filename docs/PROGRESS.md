@@ -1,5 +1,41 @@
 # Progress log
 
+## 2026-10-23 — EAS build readiness check (no app code changed)
+
+**Changed**
+- Nothing in the app. Ran the full build-readiness check and logged the result here.
+
+**What passed**
+- `npm ci`, typecheck, lint, 154/154 unit tests, `expo-doctor` (17/17), `expo install --check` (all SDK 51 versions).
+- `expo export` bundles iOS + Android; `expo prebuild` generates both native projects with every config plugin.
+- Icons are the right sizes; the iOS App Store icon comes out of prebuild without transparency.
+
+**Blockers before `eas build` works**
+1. `eas.json` production profile: `"buildType": "aab"` is rejected by EAS CLI (`eas build` refuses to start for
+   any profile). Must be `"app-bundle"`.
+2. `app.json` `extra.eas.projectId` is still `REPLACE_WITH_EAS_PROJECT_ID`. Run `eas init` and paste the real id
+   (the config is dynamic via `app.config.js`, so EAS may ask you to add it by hand).
+3. Env vars: `.env.local` is git-ignored, so EAS cloud builds never see it, and the preview/production profiles
+   set no `EXPO_PUBLIC_*` values. Without `EXPO_PUBLIC_SUPABASE_URL` the app crashes on launch
+   (`createClient` throws "supabaseUrl is required"). Add them as EAS environment variables
+   (`eas env:create`) for preview and production. GitHub secrets in the CI job are not forwarded to the build worker.
+4. Sentry source-map upload runs in the native build and fails without `SENTRY_ORG`, `SENTRY_PROJECT` and
+   `SENTRY_AUTH_TOKEN`. On iOS a failed upload also skips the JS bundle step. Either set those three as EAS secrets
+   or set `SENTRY_DISABLE_AUTO_UPLOAD=true` in each build profile's `env`.
+
+**Not blocking, but fix soon**
+- First iOS build must be run interactively (`eas build -p ios`) so EAS can create certificates, the Apple Pay
+  merchant id `merchant.com.christlinksocial.app` and the Associated Domains capability. The CI job uses
+  `--non-interactive` and also needs an `EXPO_TOKEN` secret.
+- `GOOGLE_MAPS_API_KEY` is empty, so Android maps render blank.
+- `eas.json` has no `cli.appVersionSource` (EAS warns; set `"remote"` to pair with `autoIncrement`).
+- `eas.json` submit block still has `REPLACE_WITH_*` Apple ids (only needed for `eas submit`).
+- Android `userInterfaceStyle: automatic` needs `expo-system-ui` installed to take effect.
+
+**Test**
+- After the four blockers: `eas build --profile preview --platform android` first (no Apple credentials needed),
+  install the APK, and confirm sign-in and the events feed load.
+
 ## 2026-10-15 — Build plan Phases 0–5 for the native app
 
 **Changed**
