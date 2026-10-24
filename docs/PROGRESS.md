@@ -1,5 +1,26 @@
 # Progress log
 
+## 2026-10-24 (evening) — "Logins are not working": investigation only, no code changed
+
+**Found**
+- No sign-in request from any app reached any backend in the last 48 hours: Supabase auth (ChristLink project),
+  ChristLink1 on Railway, ChristLink-API production, or the staging API. A test request from the session showed up in
+  the Supabase logs within seconds, so the logs are reliable.
+- Supabase has never issued an email sign-in code on the ChristLink project (only 4 password-reset tokens, August).
+  All 74 existing users sign in with a password on the web; the last sign-in was 2026-09-20.
+- The endpoint itself works: the app's key is valid, email sign-in and sign-up are on.
+- The auth Site URL is still `https://christlink.netlify.app`.
+
+**Will break code sign-in once requests arrive (Supabase dashboard, not code)**
+1. Auth → Email Templates → Magic Link must contain `{{ .Token }}`. By default it only sends a link, and the app
+   asks for a 6-digit code.
+2. Auth → SMTP: without a custom SMTP server, Supabase only emails members of the Supabase team, a few per hour.
+3. Auth → URL Configuration: Site URL should be `https://christlinksocial.com`, plus `christlink://` as a redirect URL.
+
+**Need from you**
+- Which app and phone you tested (Android APK from the expo.dev link, or something on iPhone) and the exact message.
+  There is no iPhone build of this branch yet, and current Expo Go cannot open an SDK 51 project.
+
 ## 2026-10-24 (later) — EAS Update + Vendly-style build setup
 
 **Changed**
