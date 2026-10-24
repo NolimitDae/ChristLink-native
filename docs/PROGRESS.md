@@ -1,5 +1,35 @@
 # Progress log
 
+## 2026-10-24 — Fix EAS build blockers; first Android preview build succeeds
+
+**Changed**
+- `eas.json`: production Android `buildType` `aab` → `app-bundle` (EAS refused the whole file before).
+  Profiles share a `base`: `EXPO_PUBLIC_API_BASE` pinned to the ChristLink1 API and `SENTRY_DISABLE_AUTO_UPLOAD=true`.
+  Each profile names its EAS environment. `cli.appVersionSource: remote` so `autoIncrement` persists.
+- `app.json`: linked the existing EAS project `@nolimittechs-organization/christlink` and set `owner`.
+- `app.config.js`: an EAS build now fails early if the Supabase URL, anon key or API host is missing.
+- `.npmrc` with `legacy-peer-deps=true`: EAS runs plain `npm install`, which failed on the eslint peer range.
+- Installed `expo-system-ui` so Android follows the light/dark setting.
+- EAS environment variables (development, preview, production): `EXPO_PUBLIC_SUPABASE_URL` and
+  `EXPO_PUBLIC_SUPABASE_ANON_KEY` for the **ChristLink** Supabase project (the live one; ChristLink Dev is empty).
+  The existing `EXPO_PUBLIC_API_BASE` staging values were left alone; this branch overrides them in `eas.json`.
+- Android preview build finished (build a7fca629 on expo.dev). The APK contains the live Supabase URL and the
+  ChristLink1 API host.
+
+**Watch out**
+- Branch `claude/railway-launch` is a separate rewrite (SDK 58, no Supabase, staging NestJS API) that uses the same
+  EAS project and the same shared environment variables. Decide which branch is the future before merging;
+  their `eas.json` files will conflict.
+
+**Not finished / needs you**
+- `EXPO_PUBLIC_STRIPE_PK` (a `pk_test_` key) is not set, so paid checkout is off in builds. Free RSVPs still work.
+- Supabase migration `20261015000000_native_features.sql` is not applied to any project yet.
+- iOS: no build yet. The first one must be run interactively to sign in to Apple and create certificates.
+- Google Maps Android key, Sentry org/project/auth token, `eas submit` Apple ids, `EXPO_TOKEN` GitHub secret.
+
+**Test**
+- Install the preview APK on an Android phone and run the 2026-10-15 checklist below (skip paid checkout).
+
 ## 2026-10-23 — EAS build readiness check (no app code changed)
 
 **Changed**
