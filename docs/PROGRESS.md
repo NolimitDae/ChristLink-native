@@ -1,5 +1,27 @@
 # Progress log
 
+## 2026-10-24 (later) — EAS Update + Vendly-style build setup
+
+**Changed**
+- Added `expo-updates` and `expo-dev-client`; `app.json` has `runtimeVersion: { policy: appVersion }` and the
+  `u.expo.dev` update URL. Prebuild writes both into the iOS and Android projects.
+- `eas.json` copies the Vendly layout: Node 20.18.0, Android image `latest`, iOS image `sdk-51`, `appVersionSource:
+  local`, preview reads the **development** EAS environment, channels development / preview / production.
+  Kept for this app: Sentry upload off, preview Android as an installable APK, production as an AAB.
+- The API host moved out of `eas.json`; it must now come from EAS environment variables.
+- New docs/BUILDS.md (profiles, env variables, commands). CLAUDE.md Deploys section points to it.
+- typecheck, lint, 154 tests, expo-doctor 17/17, iOS + Android bundle and prebuild all pass.
+
+**Not finished / needs you**
+- Set `EXPO_PUBLIC_API_BASE` in the development and production EAS environments (commands in docs/BUILDS.md and
+  the session summary). The current value is one variable shared by preview and development that points at the
+  staging NestJS API used by `claude/railway-launch`. Until it is split, a preview build from this branch would
+  talk to the wrong API. I was not allowed to change the shared value from the cloud session.
+- No build has been run with the new eas.json yet. Run the Android preview build first.
+- Both branches use the same EAS project, channel names and app version 1.0.0. Once both have builds, an update
+  published from one branch could reach the other's builds and crash them. Give one branch a different `version` or
+  channel before that happens.
+
 ## 2026-10-24 — Fix EAS build blockers; first Android preview build succeeds
 
 **Changed**

@@ -24,6 +24,10 @@ The web app and API live in `NolimitDae/ChristLink1` (server.js on Railway, publ
 ## Deploys
 - Railway deploys the API from ChristLink1 `main` automatically — untested merges go live.
 - This app ships through EAS: `eas build --profile preview` (internal testers), `--profile production` + `eas submit`.
+- Preview builds read the **development** EAS environment; production builds read **production**. Public config
+  (`EXPO_PUBLIC_*`) lives in EAS environment variables, not in `eas.json` or the repo. Setup and commands: docs/BUILDS.md.
+- JS-only fixes go over the air: `eas update --channel preview --environment development --message "..."`.
+  A new native module or a new `version` in app.json needs a new build (runtime version = app version).
 - Database changes: add a new file in `supabase/migrations/`, apply to a **development** project first,
   then production. Never edit an applied migration.
 
@@ -64,7 +68,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - `GET /api/price-breakdown?price=0` returns negative host earnings (server bug, documented).
 
 ## Docs
-docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
+docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/BUILDS.md · docs/SECURITY.md ·
 docs/REVIEW.md (developer review packet) · docs/STORE.md (listings + launch checklist) · docs/deeplinks/
 
 ## End of every session
