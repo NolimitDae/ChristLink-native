@@ -2,6 +2,7 @@
   "expo": {
     "name": "Christ Link Social",
     "slug": "christlink",
+    "owner": "nolimittechs-organization",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "christlink",
@@ -130,7 +131,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+        "projectId": "d64de815-22a9-48e7-8e89-f1da181fab6a"
       }
     }
   }
