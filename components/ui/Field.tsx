@@ -9,12 +9,14 @@ interface FieldProps extends TextInputProps {
   error?: string | null;
   containerStyle?: StyleProp<ViewStyle>;
   left?: React.ReactNode;
+  /** Trailing accessory inside the box, e.g. a show/hide password button. */
+  right?: React.ReactNode;
   /** Override the default box height (e.g. a one-line chat composer that grows when multiline). */
   minHeight?: number;
 }
 
 export const Field = forwardRef<TextInput, FieldProps>(function Field(
-  { label, hint, error, containerStyle, left, style, multiline, onFocus, onBlur, minHeight, ...rest },
+  { label, hint, error, containerStyle, left, right, style, multiline, onFocus, onBlur, minHeight, ...rest },
   ref,
 ) {
   const t = useTheme();
@@ -67,6 +69,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
           ]}
           {...rest}
         />
+        {right}
       </View>
       {error ? (
         <AppText variant="caption" tone="danger" accessibilityLiveRegion="polite">

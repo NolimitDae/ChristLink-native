@@ -13,6 +13,13 @@ export const fullNameSchema = z
   .trim()
   .optional();
 
+export const PASSWORD_MIN = 8;
+
+export const newPasswordSchema = z
+  .string()
+  .min(PASSWORD_MIN, `Password must be at least ${PASSWORD_MIN} characters`)
+  .max(72, 'Password must be 72 characters or less');
+
 export const otpSchema = z
   .string()
   .length(6, 'Code must be exactly 6 digits')

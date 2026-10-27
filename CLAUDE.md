@@ -8,7 +8,9 @@ The web app and API live in `NolimitDae/ChristLink1` (server.js on Railway, publ
 - Data: Railway REST API (`lib/api.ts`) for events, tickets, payments, community, profiles, admin.
   Supabase directly (`lib/features.ts`, user JWT + RLS) for churches, prayers, verses, serve, reports,
   blocks, settings, push tokens. Schema: `supabase/migrations/`.
-- Auth: Supabase email one-time code. Session in Keychain/Keystore (`lib/supabase.ts` chunked SecureStore).
+- Auth: Supabase email + password (same accounts as the website), with an email one-time code as the alternative
+  (code needs the Magic Link template to include `{{ .Token }}` and custom SMTP). Session in Keychain/Keystore
+  (`lib/supabase.ts` chunked SecureStore). Error wording lives in `lib/authMessages.ts`.
 - Payments: Stripe PaymentSheet (Apple Pay / Google Pay) + Stripe Connect Express. See docs/PAYMENTS.md.
 - Push: Expo push tokens → `push_tokens`; `supabase/functions/push-dispatch` sends on `notifications` insert.
   Event/serve reminders are local scheduled notifications (`lib/notifications.ts`).
