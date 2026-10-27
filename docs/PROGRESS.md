@@ -1,5 +1,32 @@
 # Progress log
 
+## 2026-10-27 — Password sign-in, API host fixed, new Android build
+
+**Decided (owner):** this branch is the app; `claude/railway-launch` is not.
+
+**Changed**
+- EAS: `EXPO_PUBLIC_API_BASE` is now the ChristLink1 API in development, preview and production (was staging).
+- Sign-in screen: Sign in / Create account with email + password (same accounts as the website; works with no
+  email setup), forgot password, show/hide password, plain error messages (`lib/authMessages.ts`, 14 new tests).
+  The email code stays as "Email me a sign-in code instead".
+- README, CLAUDE.md and STORE.md (App Review demo account) describe password sign-in.
+- Android preview build 3f910532 finished: ChristLink1 API, live Supabase, update channel `preview`.
+- Checked the native-features migration against the live schema: no name clashes, all referenced columns and
+  constraint names exist. Not applied (see below).
+
+**Not finished / needs you**
+- Apply `supabase/migrations/20261015000000_native_features.sql`: Supabase → ChristLink → SQL Editor → paste the
+  whole file → Run. It is one transaction. Not applied from the session because the tool needs the 54 KB file
+  retyped by hand, which risks a silent copy error in the live database.
+- Supabase Auth settings for email codes and password reset: Magic Link template with `{{ .Token }}`,
+  custom SMTP, Site URL `https://christlinksocial.com` + redirect `christlink://`.
+- `EXPO_PUBLIC_STRIPE_PK` (pk_test) in the development EAS environment, then a rebuild or update.
+- iPhone: Apple Developer account, `eas device:create`, first `eas build --profile preview --platform ios`.
+
+**Test**
+- Install the new APK. Sign in with an existing website account. Create a new account. Wrong password shows
+  "Wrong email or password". Browse events, RSVP to a free event, open the ticket QR.
+
 ## 2026-10-24 (evening) — "Logins are not working": investigation only, no code changed
 
 **Found**
