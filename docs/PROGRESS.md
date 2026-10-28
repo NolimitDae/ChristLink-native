@@ -311,6 +311,7 @@ migration applied earlier today stays (harmless while the website still runs on 
   issuer-only `play-services-tapandpay`; the plugin excludes it and adds R8 `-dontwarn` rules for Stripe's
   compile-only push-provisioning classes (the app never adds cards to Google Wallet).
 - docs/BUILDS.md rewritten for Railway; CLAUDE.md deploy notes.
+- Android preview build 153ecab1 finished (SDK 58): API = Railway staging, no Supabase, update channel `preview`.
 - Staging checked live with a throwaway account: sign-in code → verify → profile, settings, verses, events, prayers,
   tickets all 200; account deleted afterwards. **Staging has no Resend key**: codes are only written to the
   server log, so nobody can sign in until `RESEND_API_KEY` is set.
@@ -323,3 +324,7 @@ migration applied earlier today stays (harmless while the website still runs on 
 - Production: the `ChristLink-API` service deploys `backend/` from `master`; set its variables before any merge.
 - Two databases until the website moves off server.js + Supabase: users and RSVPs made in the app won't show on the
   website and the other way round.
+
+**Test** (Android APK from build 153ecab1, after `RESEND_API_KEY` is set on staging)
+- Sign in with an email code, browse events, RSVP to a free event, open the ticket QR, post on the Prayer Wall,
+  change a setting, sign out and back in.
