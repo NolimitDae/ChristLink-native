@@ -1,5 +1,25 @@
 # Progress log
 
+## 2026-10-28 — Supabase migration applied; owner switching to the Railway backend
+
+**Changed**
+- Applied `20261015000000_native_features.sql` to the live Supabase project (ChristLink). It was sent in four
+  hash-checked pieces and run in one transaction only after the full text matched the file. Verified: 15 tables
+  with RLS, 28 functions, 6 triggers, 31 verses, tickets FK now `on delete set null`. Scratch schema removed.
+
+**Direction change (owner, mid-session):** Supabase is no longer used; the app moves to the Railway backend.
+- This branch is built on Supabase (auth, churches, prayers, serve, settings). Its `backend/` is only a stub.
+- `claude/railway-launch` already has the full NestJS + Prisma backend (auth with email codes via Resend, events,
+  tickets, payments, community, prayers, churches, serve, reports, settings, admin), an app with Supabase removed
+  (Expo SDK 58), and `backend/scripts/import-supabase.mjs` to copy the live data.
+- Railway: staging API is live with an empty database; production `ChristLink-API` only answers `/api/health`.
+- The Supabase migration applied today is additive. One live effect: website RSVPs now create "friend is going"
+  notifications for mutual followers. It can be reverted if wanted.
+
+**Needs the owner**
+- Confirm moving to `claude/railway-launch` as the app, then: deploy the production API, import the Supabase data,
+  set `RESEND_API_KEY` on Railway, point the EAS API variable at the Railway API, build and test.
+
 ## 2026-10-27 — Password sign-in, API host fixed, new Android build
 
 **Decided (owner):** this branch is the app; `claude/railway-launch` is not.
