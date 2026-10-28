@@ -294,3 +294,32 @@ Serve, Settings → notifications and Delete account (on a test account).
 **Needs the owner**
 - Confirm moving to `claude/railway-launch` as the app, then: deploy the production API, import the Supabase data,
   set `RESEND_API_KEY` on Railway, point the EAS API variable at the Railway API, build and test.
+
+## 2026-10-28 (later) — App moved to the Railway backend; Android build fixes
+
+**Decided (owner):** Supabase is retired. The app uses the Railway backend from `claude/railway-launch`; the Supabase
+migration applied earlier today stays (harmless while the website still runs on Supabase).
+
+**Changed** (branch `claude/blissful-mccarthy-qc0y20`)
+- Merged `claude/railway-launch` and took its tree as-is (Expo SDK 58, Supabase removed, NestJS backend).
+- Expo SDK 58 patch updates (`expo install --fix`); expo-doctor 20/20; added `expo-dev-client`.
+- eas.json: public config from EAS environments; Sentry upload off in every profile (production had it on).
+  EAS variables: development + preview → `https://christlink-api-staging.up.railway.app`, production →
+  `https://christlink-api-production.up.railway.app`; the Supabase variables were deleted.
+- app.config.js stops an EAS build that has no `EXPO_PUBLIC_API_BASE`.
+- `plugins/withStripeTapAndPayExclude.js`: Android release builds failed because Stripe RN pulls Google's
+  issuer-only `play-services-tapandpay`; the plugin excludes it and adds R8 `-dontwarn` rules for Stripe's
+  compile-only push-provisioning classes (the app never adds cards to Google Wallet).
+- docs/BUILDS.md rewritten for Railway; CLAUDE.md deploy notes.
+- Staging checked live with a throwaway account: sign-in code → verify → profile, settings, verses, events, prayers,
+  tickets all 200; account deleted afterwards. **Staging has no Resend key**: codes are only written to the
+  server log, so nobody can sign in until `RESEND_API_KEY` is set.
+
+**Not finished / needs the owner**
+- Railway staging variables: `RESEND_API_KEY` (+ verified sending domain), Stripe test secret + webhook secret,
+  R2 bucket keys (uploads).
+- `EXPO_PUBLIC_STRIPE_PK` (pk_test) in the development EAS environment.
+- Copy real data: `backend/scripts/import-supabase.mjs` needs the Supabase database connection string.
+- Production: the `ChristLink-API` service deploys `backend/` from `master`; set its variables before any merge.
+- Two databases until the website moves off server.js + Supabase: users and RSVPs made in the app won't show on the
+  website and the other way round.
