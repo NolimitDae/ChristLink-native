@@ -32,6 +32,10 @@ and its **backend** (`backend/`, NestJS on Railway). The website still lives in 
 - Railway production (project "ChristLink") deploys `backend/` from this repo's `master`, and the old API from
   ChristLink1 `main`, automatically — untested merges go live. Staging follows `claude/railway-launch`.
 - This app ships through EAS: `eas build --profile preview` (internal testers), `--profile production` + `eas submit`.
+- Preview builds read the **development** EAS environment (API = staging); production builds read **production**.
+  Public config (`EXPO_PUBLIC_*`) lives in EAS environment variables, not in `eas.json` or the repo: docs/BUILDS.md.
+- JS-only fixes go over the air: `eas update --channel preview --environment development --message "..."`.
+  A new native module or a new `version` in app.json needs a new build (runtime version = app version).
 - Database changes: add a new Prisma migration in `backend/prisma/migrations/` (`prisma migrate deploy` runs before
   each deploy; staging first). Never edit an applied migration. `supabase/` is the frozen old schema.
 
@@ -74,7 +78,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - The old server.js still returns negative host earnings for `price=0`; the new backend fixes it.
 
 ## Docs
-docs/LAUNCH.pdf (plan) · docs/BACKEND.md · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
+docs/LAUNCH.pdf (plan) · docs/BACKEND.md · docs/BUILDS.md (EAS builds + updates) · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
 docs/REVIEW.md (developer review packet) · docs/STORE.md (listings + launch checklist) · docs/deeplinks/
 
 ## End of every session

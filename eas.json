@@ -1,67 +1,48 @@
 {
   "cli": {
-    "version": ">= 16.0.0"
+    "version": ">= 18.0.0",
+    "appVersionSource": "local"
   },
   "build": {
+    "base": {
+      "node": "22.14.0",
+      "env": {
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "android": {
+        "image": "latest"
+      },
+      "ios": {
+        "image": "latest"
+      }
+    },
     "development": {
+      "extends": "base",
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_API_BASE": "https://christlink-api-staging.up.railway.app",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
-      },
-      "channel": "development",
-      "ios": {
-        "image": "latest"
-      },
-      "android": {
-        "image": "latest"
-      },
-      "node": "22.14.0"
+      "environment": "development",
+      "channel": "development"
     },
     "preview": {
+      "extends": "base",
       "distribution": "internal",
+      "environment": "development",
       "android": {
-        "buildType": "apk",
-        "image": "latest"
+        "buildType": "apk"
       },
-      "ios": {
-        "simulator": false,
-        "image": "latest"
-      },
-      "channel": "preview",
-      "env": {
-        "EXPO_PUBLIC_API_BASE": "https://christlink-api-staging.up.railway.app",
-        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
-      },
-      "node": "22.14.0"
+      "channel": "preview"
     },
     "production": {
+      "extends": "base",
       "autoIncrement": true,
+      "environment": "production",
       "android": {
-        "buildType": "app-bundle",
-        "image": "latest"
+        "buildType": "app-bundle"
       },
-      "ios": {
-        "buildConfiguration": "Release",
-        "image": "latest"
-      },
-      "channel": "production",
-      "node": "22.14.0"
+      "channel": "production"
     }
   },
   "submit": {
-    "production": {
-      "ios": {
-        "appleId": "REPLACE_WITH_APPLE_ID",
-        "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID",
-        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
-      },
-      "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
-        "track": "internal",
-        "releaseStatus": "draft"
-      }
-    }
+    "production": {}
   }
 }

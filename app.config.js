@@ -1,4 +1,11 @@
 // Extends app.json with values that must not live in source control.
+
+// EAS cloud builds never see .env.local; public config comes from EAS environment variables (docs/BUILDS.md).
+// Fail early instead of shipping an app that cannot reach its API.
+if (process.env.EAS_BUILD === 'true' && !process.env.EXPO_PUBLIC_API_BASE) {
+  throw new Error('Missing EXPO_PUBLIC_API_BASE. Add it with `eas env:create` for this build\'s environment.');
+}
+
 module.exports = ({ config }) => ({
   ...config,
   // Tells the app whether this build has a Google Maps key (never the key itself)
