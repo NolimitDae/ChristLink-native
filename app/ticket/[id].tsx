@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,7 +8,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { getMyTickets, requestRefund } from '../../lib/api';
+import { getMyTickets, getWalletLink, requestRefund } from '../../lib/api';
 import { storage } from '../../lib/storage';
 import { logger } from '../../lib/logger';
 import { buildTicketQr, ticketShortCode } from '../../lib/qr';
@@ -37,7 +37,7 @@ function useFullBrightness() {
     useCallback(() => {
       let active = true;
       let previous: number | null = null;
-      (async () => {
+      const raised = (async () => {
         try {
           const current = await Brightness.getBrightnessAsync();
           if (!active) return;
@@ -49,7 +49,10 @@ function useFullBrightness() {
       })();
       return () => {
         active = false;
-        if (previous !== null) Brightness.setBrightnessAsync(previous).catch(() => undefined);
+        // Restore only after the raise settles, or a late setBrightnessAsync(1) would win.
+        raised.then(() => {
+          if (previous !== null) Brightness.setBrightnessAsync(previous).catch(() => undefined);
+        });
       };
     }, []),
   );
@@ -101,6 +104,21 @@ export default function TicketScreen() {
   }, [id, token]);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/tickets'));
+
+  const [walletBusy, setWalletBusy] = useState(false);
+  const addToWallet = async () => {
+    if (!ticket || !token || walletBusy) return;
+    setWalletBusy(true);
+    try {
+      // Signed short-lived URL: Safari hands the .pkpass to Wallet without needing our bearer token.
+      const { url } = await getWalletLink(ticket.id, token);
+      await Linking.openURL(url);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not open Apple Wallet', 'error');
+    } finally {
+      setWalletBusy(false);
+    }
+  };
 
   const submitRefund = async () => {
     if (!ticket || !token || refundBusy) return;
@@ -238,6 +256,9 @@ export default function TicketScreen() {
         </View>
 
         <View style={s.actions}>
+          {Platform.OS === 'ios' && token && ticket.status === 'confirmed' ? (
+            <Button title="Add to Apple Wallet" icon="wallet-outline" variant="secondary" onPress={addToWallet} loading={walletBusy} fullWidth />
+          ) : null}
           <Button title="View event" icon="calendar-outline" variant="secondary" onPress={() => router.push(`/event/${ticket.event_id}`)} fullWidth />
           {canRefund && token ? (
             <Button title="Request refund" icon="return-down-back-outline" variant="ghost" onPress={() => setRefundOpen(true)} fullWidth />

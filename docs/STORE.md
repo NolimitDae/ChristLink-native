@@ -34,9 +34,10 @@ moderated; no mature themes). Answer "Yes" to user-generated content with report
 Use the demo account below with seeded data; take them in dark mode except #4 (light) to show both.
 
 ## Demo account for reviewers
-Create `review@christlinksocial.com` with a password in the app (Sign in → Create account), mark the profile
+Create `review@christlinksocial.com` in Supabase Auth, set a fixed OTP via Supabase Auth → "Test OTP"
+(phone/email test credentials) or temporarily allow password sign-in for this one account, mark the profile
 `identity_verified = true` and give it one hosted free event, one paid test event and one RSVP. Put the
-email and password in App Review notes.
+sign-in steps in App Review notes.
 
 ## App Store privacy labels ("Data linked to you")
 | Data type | Collected | Purpose | Linked | Tracking |

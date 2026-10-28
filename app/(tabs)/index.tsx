@@ -18,7 +18,7 @@ import { CategoryRail } from '../../components/home/CategoryRail';
 import { EventsSkeleton, WeekStripSkeleton } from '../../components/home/HomeSkeleton';
 import { useHomeData } from '../../components/home/useHomeData';
 import { getVerseOfTheDay } from '../../lib/features';
-import { EVENT_TYPES } from '../../lib/constants';
+import { EVENT_TYPES, type EventType } from '../../lib/constants';
 import { isTonight } from '../../lib/format';
 import type { Verse } from '../../lib/verses';
 import type { Event } from '../../lib/types';
@@ -70,7 +70,7 @@ export default function HomeScreen() {
     const tonight = upcoming.filter(e => isTonight(e.start_date));
     const soon = tonight.length > 0 ? tonight : upcoming.filter(e => e.start_date && startMs(e) >= now && startMs(e) <= now + 24 * HOUR);
 
-    const categories = EVENT_TYPES.filter(type => type !== 'All')
+    const categories: { type: EventType; events: Event[] }[] = EVENT_TYPES.filter(type => type !== 'All')
       .map(type => ({ type, events: rank(upcoming.filter(e => (e.event_type ?? '').toLowerCase() === type.toLowerCase())) }))
       .filter(s => s.events.length > 0)
       .sort((a, b) => b.events.length - a.events.length)

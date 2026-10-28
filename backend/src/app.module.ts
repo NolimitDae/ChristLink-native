@@ -1,31 +1,66 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
-import { RedisModule } from '@nestjs-modules/ioredis';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import appConfig from './config/app.config';
-import { AppController } from './app.controller';
-import { PrismaModule } from './prisma/prisma.module';
+import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
+import { REDIS } from './redis';
+import Redis from 'ioredis';
+import { CoreModule } from './core.module';
+import { HealthController } from './health/health.controller';
+import { JwtAuthGuard } from './common/jwt-auth.guard';
+import { HttpExceptionFilter } from './common/http-exception.filter';
+import { AuthModule } from './modules/auth/auth.module';
+import { ProfilesModule } from './modules/profiles/profiles.module';
+import { CommunityModule } from './modules/community/community.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { EventsModule } from './modules/events/events.module';
+import { ForumModule } from './modules/forum/forum.module';
+import { RsvpModule } from './modules/rsvp/rsvp.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { VersesModule } from './modules/verses/verses.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { FriendsModule } from './modules/friends/friends.module';
+import { PrayersModule } from './modules/prayers/prayers.module';
+import { ReportsModule } from './modules/reports/reports.module';
+import { ChurchesModule } from './modules/churches/churches.module';
+import { ServeModule } from './modules/serve/serve.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [appConfig] }),
-    RedisModule.forRoot({
-      type: 'single',
-      options: {
-        ...appConfig().redis,
-        connectTimeout: 5000,
-        maxRetriesPerRequest: 3,
-      },
+    CoreModule,
+    // Counts live in Redis so every API instance shares them. Keyed by req.ip (real client IP: trust proxy = 1).
+    ThrottlerModule.forRootAsync({
+      inject: [REDIS],
+      useFactory: (redis: Redis) => ({
+        throttlers: [
+          { name: 'short', ttl: 1000, limit: 10 },
+          { name: 'medium', ttl: 10_000, limit: 50 },
+          { name: 'long', ttl: 60_000, limit: 200 },
+        ],
+        storage: new ThrottlerStorageRedisService(redis),
+      }),
     }),
-    ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 10 },
-      { name: 'medium', ttl: 10000, limit: 50 },
-      { name: 'long', ttl: 60000, limit: 200 },
-    ]),
-    PrismaModule,
+    // Feature modules (src/modules/<name>/<name>.module.ts) go here
+    AuthModule,
+    ProfilesModule,
+    CommunityModule,
+    AdminModule,
+    EventsModule,
+    ForumModule,
+    RsvpModule,
+    PaymentsModule,
+    VersesModule,
+    SettingsModule,
+    FriendsModule,
+    PrayersModule,
+    ReportsModule,
+    ChurchesModule,
+    ServeModule,
   ],
-  controllers: [AppController],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  controllers: [HealthController],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+  ],
 })
 export class AppModule {}

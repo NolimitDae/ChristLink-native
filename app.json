@@ -2,17 +2,11 @@
   "expo": {
     "name": "Christ Link Social",
     "slug": "christlink",
-    "owner": "nolimittechs-organization",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "christlink",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0E0C0A"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -75,6 +69,11 @@
               "scheme": "https",
               "host": "www.christlinksocial.com",
               "pathPrefix": "/event"
+            },
+            {
+              "scheme": "https",
+              "host": "www.christlinksocial.com",
+              "pathPrefix": "/church"
             }
           ],
           "category": [
@@ -127,13 +126,30 @@
           "enableGooglePay": true
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0E0C0A",
+          "imageWidth": 200
+        }
+      ],
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {
         "projectId": "d64de815-22a9-48e7-8e89-f1da181fab6a"
+      },
+      "androidMapsKey": false,
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
       }
     },
+    "owner": "nolimittechs-organization",
     "runtimeVersion": {
       "policy": "appVersion"
     },

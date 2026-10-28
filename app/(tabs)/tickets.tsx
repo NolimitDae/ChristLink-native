@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +33,16 @@ export default function TicketsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [fromCache, setFromCache] = useState(false);
   const hasData = useRef(false);
+  const userId = session?.user.id;
+
+  // Never show the previous user's tickets after a sign-out or account switch.
+  useEffect(() => {
+    hasData.current = false;
+    setTickets([]);
+    setRsvps([]);
+    setFromCache(false);
+    setLoading(true);
+  }, [userId]);
 
   const load = useCallback(async () => {
     if (!token) {

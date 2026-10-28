@@ -46,7 +46,14 @@ export function Segmented<T extends string>({ options, value, onChange, style }:
             }}
             style={styles.seg}
           >
-            <AppText variant="caption" tone={selected ? 'default' : 'muted'} style={{ fontSize: 13 }}>
+            <AppText
+              variant="caption"
+              tone={selected ? 'default' : 'muted'}
+              style={{ fontSize: 13, textAlign: 'center' }}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {o.label}
             </AppText>
           </Pressable>
@@ -57,7 +64,8 @@ export function Segmented<T extends string>({ options, value, onChange, style }:
 }
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', padding: 4, borderWidth: 1, height: 42 },
+  // 44pt segments; the bar grows (instead of clipping) when large Dynamic Type wraps a label.
+  wrap: { flexDirection: 'row', padding: 4, borderWidth: 1, minHeight: 54 },
   thumb: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 999, borderWidth: 1 },
-  seg: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  seg: { flex: 1, minHeight: 44, paddingHorizontal: 6, alignItems: 'center', justifyContent: 'center' },
 });

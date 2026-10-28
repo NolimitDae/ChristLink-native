@@ -11,6 +11,7 @@ jest.mock('../../lib/logger', () => ({
 jest.mock('../../lib/constants', () => ({ API_BASE: 'https://api.test', API_TIMEOUT_MS: 5000, API_MAX_RETRIES: 0 }));
 
 import * as api from '../../lib/api';
+import * as f from '../../lib/features';
 
 const T = 'tok';
 
@@ -67,10 +68,67 @@ const cases: Case[] = [
   ['uploadBanner', () => api.uploadBanner('data:', T), 'POST', '/api/upload-banner', { dataUrl: 'data:' }],
   ['uploadEventImage', () => api.uploadEventImage('data:', 'cover', T), 'POST', '/api/upload-event-image', { dataUrl: 'data:', type: 'cover' }],
   ['createTicketType', () => api.createTicketType({ event_id: 'e1', name: 'GA', price_cents: 1500 }, T), 'POST', '/api/ticket-types'],
+  ['updateTicketType', () => api.updateTicketType('tt1', { name: 'VIP', price_cents: 2500, quantity: 50, sort_order: 1 }, T), 'PATCH', '/api/ticket-types/tt1', { name: 'VIP', price_cents: 2500, quantity: 50, sort_order: 1 }],
   ['adminListVerifications', () => api.adminListVerifications(T), 'GET', '/api/admin/verifications?status=pending'],
   ['adminDecideVerification', () => api.adminDecideVerification('v1', false, T, 'blurry'), 'POST', '/api/admin/verifications/v1/reject', { reason: 'blurry' }],
   ['adminVerificationDocUrl', () => api.adminVerificationDocUrl('v1', T), 'GET', '/api/admin/verifications/v1/id-doc'],
   ['adminDeletePost', () => api.adminDeletePost('p1', T), 'DELETE', '/api/admin/posts/p1'],
+  ['getWalletLink', () => api.getWalletLink('t1', T), 'GET', '/api/tickets/t1/wallet-link'],
+  // Auth (email one-time code)
+  ['requestSignInCode', () => api.requestSignInCode('a@b.co'), 'POST', '/api/auth/signin', { email: 'a@b.co' }],
+  ['requestSignInCode+name', () => api.requestSignInCode('a@b.co', 'Ann'), 'POST', '/api/auth/signup', { email: 'a@b.co', fullName: 'Ann' }],
+  ['verifySignInCode', () => api.verifySignInCode('a@b.co', '123456'), 'POST', '/api/auth/verify-otp', { email: 'a@b.co', token: '123456' }],
+  ['revokeRefreshToken', () => api.revokeRefreshToken('rt'), 'POST', '/api/auth/signout', { refreshToken: 'rt' }],
+  // Native features (lib/features.ts)
+  ['getVerseOfTheDay', () => f.getVerseOfTheDay('Hope'), 'GET', '/api/verses/today?theme=hope'],
+  ['listVerses', () => f.listVerses(), 'GET', '/api/admin/verses'],
+  ['saveVerse (new)', () => f.saveVerse({ reference: 'John 3:16', text: 'For God' }), 'POST', '/api/admin/verses', { reference: 'John 3:16', text: 'For God', translation: 'WEB', themes: [], active: true }],
+  ['saveVerse (edit)', () => f.saveVerse({ id: 7, reference: 'R', text: 'T', active: false }), 'PATCH', '/api/admin/verses/7', { reference: 'R', text: 'T', translation: 'WEB', themes: [], active: false }],
+  ['getSettings', () => f.getSettings(), 'GET', '/api/settings'],
+  ['updateSettings', () => f.updateSettings({ timezone: 'UTC' }), 'PATCH', '/api/settings', { timezone: 'UTC' }],
+  ['savePushToken', () => f.savePushToken('ExponentPushToken[x]', 'ios'), 'POST', '/api/push-tokens', { token: 'ExponentPushToken[x]', platform: 'ios' }],
+  ['deletePushToken', () => f.deletePushToken('tok1'), 'DELETE', '/api/push-tokens/tok1'],
+  ['deleteMyAccount', () => f.deleteMyAccount(), 'DELETE', '/api/account'],
+  ['getFriendsThisWeek', () => f.getFriendsThisWeek(), 'GET', '/api/friends/this-week'],
+  ['getMyFriends', () => f.getMyFriends(), 'GET', '/api/friends'],
+  ['getPrayerWall', () => f.getPrayerWall('friends', '2026-10-01T00:00:00Z'), 'GET', '/api/prayers?filter=friends&limit=30&before=2026-10-01T00%3A00%3A00Z'],
+  ['createPrayer', () => f.createPrayer(' Pray ', true, 'c1'), 'POST', '/api/prayers', { body: 'Pray', is_anonymous: true, church_id: 'c1' }],
+  ['deletePrayer', () => f.deletePrayer('p1'), 'DELETE', '/api/prayers/p1'],
+  ['prayFor', () => f.prayFor('p1'), 'POST', '/api/prayers/p1/pray'],
+  ['markPrayerAnswered', () => f.markPrayerAnswered('p1', 'He did'), 'POST', '/api/prayers/p1/answer', { testimony: 'He did' }],
+  ['setPostType', () => f.setPostType('p1', 'testimony'), 'PATCH', '/api/community-posts/p1/type', { type: 'testimony' }],
+  ['reportContent', () => f.reportContent('post', 'p1', 'spam', ' x '), 'POST', '/api/reports', { target_type: 'post', target_id: 'p1', reason: 'spam', details: 'x' }],
+  ['blockUser', () => f.blockUser('u1'), 'POST', '/api/blocks', { user_id: 'u1' }],
+  ['unblockUser', () => f.unblockUser('u1'), 'DELETE', '/api/blocks/u1'],
+  ['getReportQueue', () => f.getReportQueue(), 'GET', '/api/admin/reports'],
+  ['resolveReport', () => f.resolveReport('r1', 'remove'), 'POST', '/api/admin/reports/r1/resolve', { action: 'remove' }],
+  ['searchChurches', () => f.searchChurches(' grace ', 10), 'GET', '/api/churches?q=grace&limit=10'],
+  ['getChurch', () => f.getChurch('c1'), 'GET', '/api/churches/c1'],
+  ['createChurch', () => f.createChurch({ name: 'Grace' }), 'POST', '/api/churches', { name: 'Grace' }],
+  ['updateChurch', () => f.updateChurch('c1', { about: 'Hi' }), 'PATCH', '/api/churches/c1', { about: 'Hi' }],
+  ['claimChurch', () => f.claimChurch('c1', 'Pastor', 'note'), 'POST', '/api/churches/c1/claim', { role_at_church: 'Pastor', note: 'note' }],
+  ['listPendingClaims', () => f.listPendingClaims(), 'GET', '/api/admin/church-claims'],
+  ['decideChurchClaim', () => f.decideChurchClaim('cl1', true), 'POST', '/api/admin/church-claims/cl1/decide', { approve: true }],
+  ['getChurchRecurring', () => f.getChurchRecurring('c1'), 'GET', '/api/churches/c1/recurring'],
+  ['saveRecurring (new)', () => f.saveRecurring({ church_id: 'c1', name: 'Sunday' }), 'POST', '/api/churches/c1/recurring', { church_id: 'c1', name: 'Sunday' }],
+  ['saveRecurring (edit)', () => f.saveRecurring({ id: 'rc1', church_id: 'c1', name: 'Sunday' }), 'PATCH', '/api/church-recurring/rc1', { church_id: 'c1', name: 'Sunday' }],
+  ['deleteRecurring', () => f.deleteRecurring('rc1'), 'DELETE', '/api/church-recurring/rc1'],
+  ['getChurchEventIds', () => f.getChurchEventIds('c1'), 'GET', '/api/churches/c1/events'],
+  ['linkEventToChurch', () => f.linkEventToChurch('c1', 'e1'), 'POST', '/api/churches/c1/events', { event_id: 'e1' }],
+  ['isFollowingChurch', () => f.isFollowingChurch('c1'), 'GET', '/api/churches/c1/follow'],
+  ['setFollowChurch (follow)', () => f.setFollowChurch('c1', true), 'POST', '/api/churches/c1/follow'],
+  ['setFollowChurch (unfollow)', () => f.setFollowChurch('c1', false), 'DELETE', '/api/churches/c1/follow'],
+  ['getMyManagedChurches', () => f.getMyManagedChurches(), 'GET', '/api/my-churches'],
+  ['getOpenShifts', () => f.getOpenShifts({ churchId: 'c1' }), 'GET', '/api/serve/shifts?church_id=c1'],
+  ['signUpForShift', () => f.signUpForShift('s1'), 'POST', '/api/serve/shifts/s1/signup'],
+  ['cancelSignup', () => f.cancelSignup('su1'), 'POST', '/api/serve/signups/su1/cancel'],
+  ['createServeRole', () => f.createServeRole({ name: 'Usher', shifts: [] }), 'POST', '/api/serve/roles', { name: 'Usher', shifts: [] }],
+  ['getMyManagedShifts', () => f.getMyManagedShifts(), 'GET', '/api/serve/my-shifts'],
+  ['getShiftRoster', () => f.getShiftRoster('s1'), 'GET', '/api/serve/shifts/s1/roster'],
+  ['serveCheckIn', () => f.serveCheckIn('ABC123'), 'POST', '/api/serve/check-in', { code: 'ABC123' }],
+  ['completeShift', () => f.completeShift('s1'), 'POST', '/api/serve/shifts/s1/complete'],
+  ['messageVolunteers', () => f.messageVolunteers('s1', 'See you'), 'POST', '/api/serve/shifts/s1/message', { message: 'See you' }],
+  ['getHoursServed', () => f.getHoursServed(), 'GET', '/api/serve/hours'],
 ];
 
 describe('API route contract', () => {
@@ -124,7 +182,30 @@ describe('API route contract', () => {
     expect(sales.rsvps).toEqual([]);
   });
 
-  it('builds the wallet pass URL without credentials', () => {
-    expect(api.walletPassUrl('t1')).toBe('https://api.test/api/tickets/t1/wallet');
+  it('unwraps wrapped scalars from feature routes', async () => {
+    const reply = (body: unknown) => mockFetch.mockResolvedValueOnce({ ok: true, status: 200, text: async () => JSON.stringify(body) });
+    reply({ count: 3 });
+    await expect(f.prayFor('p1')).resolves.toBe(3);
+    reply({ post_id: 'pp1' });
+    await expect(f.markPrayerAnswered('p1', 't')).resolves.toBe('pp1');
+    reply({ hours: 4.5 });
+    await expect(f.getHoursServed()).resolves.toBe(4.5);
+    reply({ following: true });
+    await expect(f.isFollowingChurch('c1')).resolves.toBe(true);
+    reply({ id: 'role1' });
+    await expect(f.createServeRole({ name: 'Usher', shifts: [] })).resolves.toBe('role1');
+  });
+
+  it('maps a missing route to a "not set up" FeatureError', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 404, text: async () => JSON.stringify({ error: 'Cannot GET /api/prayers' }) });
+    await expect(f.getPrayerWall()).rejects.toMatchObject({ name: 'FeatureError', notSetUp: true });
+    mockFetch.mockResolvedValue({ ok: false, status: 404, text: async () => JSON.stringify({ error: 'Church not found.' }) });
+    await expect(f.updateChurch('c1', {})).rejects.toMatchObject({ notSetUp: false, message: 'Church not found.' });
+  });
+
+  it('falls back softly where screens expect it', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500, text: async () => '{}' });
+    await expect(f.getHoursServed()).resolves.toBe(0);
+    await expect(f.getVerseOfTheDay()).resolves.toHaveProperty('reference');
   });
 });

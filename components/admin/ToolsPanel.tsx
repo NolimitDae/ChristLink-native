@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
-import { registerForPushNotifications } from '../../lib/notifications';
+import { registerForPushNotifications, sendTestPush } from '../../lib/notifications';
 import { haptic } from '../../lib/haptics';
 import { AppText, Button, Card } from '../ui';
 import { errorMessage } from '../host/errors';
@@ -35,16 +35,10 @@ export function ToolsPanel() {
         });
         return;
       }
-      const res = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ to: expoToken, title: 'Test from Christ Link Social', body: 'Push is working ✓', data: {} }),
-      });
-      const body = await res.text();
-      const ok = res.ok && !/"status"\s*:\s*"error"/.test(body);
+      const { ok, status, body } = await sendTestPush(expoToken);
       if (ok) haptic.success();
       else haptic.error();
-      setResult({ ok, text: `HTTP ${res.status}\n${body.slice(0, 600)}` });
+      setResult({ ok, text: `HTTP ${status}\n${body.slice(0, 600)}` });
     } catch (err) {
       haptic.error();
       setResult({ ok: false, text: errorMessage(err, 'Request failed') });

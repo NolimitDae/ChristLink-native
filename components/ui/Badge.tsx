@@ -18,11 +18,11 @@ export function Badge({ label, tone = 'neutral', style, dot }: BadgeProps) {
   const map: Record<BadgeTone, { bg: string; fg: string; border?: string }> = {
     gold: { bg: t.c.gold, fg: t.c.onGold },
     free: { bg: t.c.successDim, fg: t.c.success, border: t.c.success },
-    live: { bg: t.c.live, fg: '#FFFFFF' },
+    live: { bg: t.c.live, fg: t.c.onStatus },
     neutral: { bg: t.c.surface2, fg: t.c.textMuted, border: t.c.border },
     success: { bg: t.c.successDim, fg: t.c.success },
     danger: { bg: t.c.dangerDim, fg: t.c.danger },
-    glass: { bg: 'rgba(14,12,10,0.6)', fg: '#F6EFE3' },
+    glass: { bg: t.c.scrim, fg: t.c.onImage },
   };
   const s = map[tone];
   return (

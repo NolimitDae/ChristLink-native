@@ -312,7 +312,7 @@ export interface IdentityStatus {
   rejection_reason?: string;
 }
 
-// ── Supabase-backed features (supabase/migrations) ──────────────────────────
+// ── Native features (churches, prayers, serve, settings, reports) ───────────
 export interface Church {
   id: string;
   name: string;

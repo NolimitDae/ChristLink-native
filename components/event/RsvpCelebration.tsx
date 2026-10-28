@@ -134,10 +134,10 @@ export function RsvpCelebration({ play, title, subtitle = 'Saved to your Tickets
         </Animated.View>
       </View>
       <Animated.View style={[styles.textWrap, { top: height / 2 + CARD_H / 2 + 36, opacity: textOpacity }]} pointerEvents="none">
-        <AppText variant="title1" align="center" color="#F6EFE3">
+        <AppText variant="title1" align="center" color={t.c.onImage}>
           {title}
         </AppText>
-        <AppText variant="callout" align="center" color="#D9BC6A" style={{ marginTop: 6 }}>
+        <AppText variant="callout" align="center" color={t.c.onImageGold} style={{ marginTop: 6 }}>
           {subtitle}
         </AppText>
       </Animated.View>

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useTheme } from '../contexts/ThemeContext';
 import { haptic } from '../lib/haptics';
 import { shadow } from '../lib/theme';
@@ -22,7 +22,7 @@ const ICONS: Record<string, { on: IconName; off: IconName; label: string }> = {
 export const TAB_BAR_HEIGHT = 64;
 
 /** Floating frosted tab bar with a raised gold Host button and a sliding active dot. */
-export function TabBar({ state, navigation }: BottomTabBarProps) {
+export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
@@ -46,9 +46,9 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
               const focused = state.index === index;
               const meta = ICONS[route.name] ?? { on: 'ellipse', off: 'ellipse-outline', label: route.name };
               const onPress = () => {
-                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
                 haptic.tap();
-                if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+                if (!focused && !event.defaultPrevented) navigateToTab(route.key);
               };
               if (route.name === 'host') {
                 return (
@@ -70,7 +70,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
                 <Pressable
                   key={route.key}
                   onPress={onPress}
-                  onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+                  onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: focused }}
                   accessibilityLabel={meta.label}

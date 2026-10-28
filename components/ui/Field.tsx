@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from 'react';
-import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle, type TextInputInstance } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppText } from './AppText';
 
@@ -9,14 +9,12 @@ interface FieldProps extends TextInputProps {
   error?: string | null;
   containerStyle?: StyleProp<ViewStyle>;
   left?: React.ReactNode;
-  /** Trailing accessory inside the box, e.g. a show/hide password button. */
-  right?: React.ReactNode;
   /** Override the default box height (e.g. a one-line chat composer that grows when multiline). */
   minHeight?: number;
 }
 
-export const Field = forwardRef<TextInput, FieldProps>(function Field(
-  { label, hint, error, containerStyle, left, right, style, multiline, onFocus, onBlur, minHeight, ...rest },
+export const Field = forwardRef<TextInputInstance, FieldProps>(function Field(
+  { label, hint, error, containerStyle, left, style, multiline, onFocus, onBlur, minHeight, ...rest },
   ref,
 ) {
   const t = useTheme();
@@ -69,7 +67,6 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
           ]}
           {...rest}
         />
-        {right}
       </View>
       {error ? (
         <AppText variant="caption" tone="danger" accessibilityLiveRegion="polite">

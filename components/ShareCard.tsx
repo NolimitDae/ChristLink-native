@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Image, Platform, Share, StyleSheet, View } from 'react-native';
+import { Image, Platform, Share, StyleSheet, View, type ViewInstance } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -81,7 +81,7 @@ export function useShareCard() {
 }
 
 export function ShareCardSheet({ content, onClose }: { content: ShareContent | null; onClose: () => void }) {
-  const ref = useRef<View>(null);
+  const ref = useRef<ViewInstance>(null);
   const [busy, setBusy] = useState(false);
 
   const share = async () => {
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   previewWrap: { alignItems: 'center', height: H * 0.72, overflow: 'hidden', marginBottom: 8 },
   previewScale: { transform: [{ scale: 0.72 }], marginTop: -(H * 0.14) },
   card: { width: W, height: H, borderRadius: 4, overflow: 'hidden', padding: 32, justifyContent: 'space-between' },
-  frame: { ...StyleSheet.absoluteFillObject, margin: 14, borderWidth: 1, borderRadius: 2 },
+  frame: { ...StyleSheet.absoluteFill, margin: 14, borderWidth: 1, borderRadius: 2 },
   top: { alignItems: 'center', gap: 10, marginTop: 18 },
   brand: { color: GOLD, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 3 },
   body: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },

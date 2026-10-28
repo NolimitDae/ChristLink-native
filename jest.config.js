@@ -9,7 +9,6 @@ module.exports = {
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
     'components/Avatar.tsx',
-    '!lib/supabase.ts',
     '!lib/features.ts',
     '!lib/notifications.ts',
     '!lib/storage.ts',
