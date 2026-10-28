@@ -136,7 +136,8 @@
           "imageWidth": 200
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withStripeTapAndPayExclude"
     ],
     "extra": {
       "eas": {
