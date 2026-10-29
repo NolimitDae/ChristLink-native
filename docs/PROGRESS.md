@@ -444,3 +444,12 @@ migration applied earlier today stays (harmless while the website still runs on 
 **Test on a phone**
 - Prayer Wall, Discover prayers and community posts show praying hands; double-tap a post shows the praying-hands burst.
 - Settings, Profile and onboarding church rows show the church glyph; custom glyphs look crisp at small sizes.
+
+## 2026-10-30 — iPhone build on hold (owner: skip Apple for now)
+
+- Checked: the Expo account has a valid Apple distribution certificate (team QKP52JF8KD, from Vendly, until
+  2027-05-10) and the owner's iPhone is registered, but no provisioning profile for `com.christlink.app` and no App
+  Store Connect API key, so iOS builds can't be created from a cloud session.
+- To resume later: run `eas build --profile preview --platform ios` once on a computer (Apple sign-in), or add an App
+  Store Connect API key (Admin) as environment variables `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_ASC_API_KEY_P8`.
+- Android preview build 153ecab1 + over-the-air updates remain the test path.
