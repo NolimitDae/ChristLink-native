@@ -453,3 +453,13 @@ migration applied earlier today stays (harmless while the website still runs on 
 - To resume later: run `eas build --profile preview --platform ios` once on a computer (Apple sign-in), or add an App
   Store Connect API key (Admin) as environment variables `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_ASC_API_KEY_P8`.
 - Android preview build 153ecab1 + over-the-air updates remain the test path.
+
+## 2026-10-30 (later) — iPhone testing through Expo Go (no Apple credentials)
+
+- Published an Expo Go update: `EXPO_GO_UPDATE=1 eas update --branch expo-go --environment development`
+  (runtime `exposdk:58.0.0`, update group 2eafab20-13ea-48f8-8628-e1651bec8e90, API = Railway staging).
+  Open on iPhone: `exp://u.expo.dev/d64de815-22a9-48e7-8e89-f1da181fab6a/group/2eafab20-13ea-48f8-8628-e1651bec8e90`
+  or the QR on the EAS dashboard update page.
+- Every native package the app imports ships in Expo Go except Sentry, which runs JS-only (no DSN set anyway).
+- Expo Go limits: no Apple Pay, no remote push; the app icon/splash are Expo Go's. Republish the same command after
+  JS changes (a new link each time; the dashboard lists them).
