@@ -124,7 +124,7 @@ export default function TicketsScreen() {
           body="Sign in to RSVP and buy tickets. They’ll be saved here, even offline."
           actionLabel="Sign in"
           onAction={() => router.push('/auth')}
-          style={{ flex: 1, paddingBottom: 140 }}
+          style={{ flex: 1, paddingBottom: 32 }}
         />
       </View>
     );
@@ -136,7 +136,7 @@ export default function TicketsScreen() {
   return (
     <View style={s.root}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} />}
         showsVerticalScrollIndicator={false}
       >

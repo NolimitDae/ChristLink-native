@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppText, Segmented } from '../../components/ui';
-import { TAB_BAR_HEIGHT } from '../../components/TabBar';
 import { EventsTab } from '../../components/explore/EventsTab';
 import { MapTab } from '../../components/explore/MapTab';
 import { ChurchesTab } from '../../components/explore/ChurchesTab';
@@ -40,14 +39,14 @@ export default function ExploreScreen() {
     router.setParams({ tab: next });
   };
 
-  const tabBarTop = Math.max(insets.bottom, 10) + TAB_BAR_HEIGHT;
-  const listBottom = tabBarTop + 48;
-  const mapPreviewBottom = tabBarTop + 12;
+  // The docked tab bar sits below this screen, so insets only need breathing room
+  const listBottom = 32;
+  const mapPreviewBottom = 12;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg, paddingTop: insets.top }}>
       <View style={{ paddingHorizontal: t.space.md, paddingTop: t.space.xs, paddingBottom: t.space.sm, gap: t.space.sm }}>
-        <AppText variant="title1">Explore</AppText>
+        <AppText variant="title1">Events</AppText>
         <Segmented options={TABS} value={tab} onChange={change} />
       </View>
       <View style={{ flex: 1 }}>

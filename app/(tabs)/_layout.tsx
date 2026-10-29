@@ -10,11 +10,13 @@ export default function TabsLayout() {
       tabBar={props => <TabBar {...props} />}
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: t.c.bg } }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Home' }} />
-      <Tabs.Screen name="explore" options={{ title: 'Explore' }} />
-      <Tabs.Screen name="host" options={{ title: 'Host' }} />
-      <Tabs.Screen name="community" options={{ title: 'Community' }} />
+      <Tabs.Screen name="index" options={{ title: 'Discover' }} />
+      <Tabs.Screen name="explore" options={{ title: 'Events' }} />
       <Tabs.Screen name="tickets" options={{ title: 'Tickets' }} />
+      <Tabs.Screen name="community" options={{ title: 'Community' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
+      {/* Not shown in TabBar (it only draws its five tabs): reached from Profile, Discover and event screens */}
+      <Tabs.Screen name="host" options={{ title: 'Host' }} />
     </Tabs>
   );
 }

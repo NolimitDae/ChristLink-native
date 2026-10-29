@@ -89,7 +89,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg }}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + t.space.sm, paddingBottom: 140, gap: t.space.xl }}
+        contentContainerStyle={{ paddingTop: insets.top + t.space.sm, paddingBottom: t.space.xl, gap: t.space.xl }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >

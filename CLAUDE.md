@@ -64,7 +64,8 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - Serif (DM Serif Display) for titles, Montserrat for text (Loew Next needs a license; swap in `lib/theme.ts`).
 - No bare spinners for loading screens — skeletons. Every empty state: line illustration + one action.
 - Respect Reduce Motion (`t.reduceMotion`) and Dynamic Type; 44pt touch targets; accessibility labels on custom controls.
-- The tab bar floats: scrollable tab screens need ≥ 120pt bottom padding.
+- The tab bar is docked (Discover, Events, Tickets, Community, Profile; Host is a hidden tab reached from Profile).
+  Screens end above it, so tab screens need no extra bottom padding.
 
 ## Store compliance (keep working)
 - In-app account deletion (Settings → Delete account → `DELETE /api/account`), keeps ticket/payment records.

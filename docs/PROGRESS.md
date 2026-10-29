@@ -356,3 +356,22 @@ migration applied earlier today stays (harmless while the website still runs on 
 - Ticket screen and Tickets tab: notches read as cutouts on both edges, in dark and light mode.
 - Tab bar: every tab and the + are easy to hit (each tab keeps a full-height touch area); content scrolls fully
   above the bar; on iPhone the blur still shows.
+
+## 2026-10-29 (evening) — Docked tab bar: Discover, Events, Tickets, Community, Profile (owner mockup)
+
+**Changed**
+- `components/TabBar.tsx`: docked full-width bar (hairline top border, `bgElevated`), five labelled tabs, gold
+  when active. Discover = the former Home screen, Events = Explore (title renamed "Events"), Tickets, Community,
+  Profile. Screens now end above the bar, so the 120–140pt bottom paddings and the Explore/Prayer Wall offsets for
+  the old floating bar were removed.
+- New `components/icons/TicketIcon.tsx`: tilted ticket with notched sides, dotted tear line and two print lines;
+  outline when inactive, filled gold with knocked-out details when active.
+- Profile is now a tab (`app/(tabs)/profile.tsx`, no back button). Host left the bar: it stays a hidden tab, opened
+  from a new "Host dashboard" / "Host an event" button on Profile (and existing links); Profile stays highlighted
+  there, and tapping Profile from Host goes back.
+- CLAUDE.md design rule updated (docked bar, no extra bottom padding).
+
+**Test on a phone**
+- All five tabs switch; labels sit on one line at the largest text size; home indicator area is not covered.
+- Profile → Host dashboard → Create an event; tapping Profile returns.
+- Lists on every tab scroll to their last item with no big empty gap at the bottom.

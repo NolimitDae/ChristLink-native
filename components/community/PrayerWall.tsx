@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
@@ -24,7 +23,6 @@ const FILTER_LABELS: Record<PrayerFilter, string> = {
 };
 const NEEDS_SIGN_IN: PrayerFilter[] = ['church', 'friends', 'mine'];
 const MAX = 1000;
-const TAB_BAR_CLEARANCE = 84;
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
@@ -34,7 +32,6 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   const t = useTheme();
   const s = useStyles();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { blockedIds, settings } = useAppData();
   const { showToast } = useToast();
@@ -280,7 +277,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         {renderBody()}
       </ScrollView>
 
-      <View style={[s.fab, { bottom: insets.bottom + TAB_BAR_CLEARANCE }]} pointerEvents="box-none">
+      <View style={[s.fab, { bottom: 16 }]} pointerEvents="box-none">
         <Button title="Share a prayer" icon="add" onPress={openCompose} style={s.fabShadow} />
       </View>
 

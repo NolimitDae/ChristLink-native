@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Screen, Segmented } from '../../components/ui';
 import { FeedView } from '../../components/community/FeedView';
@@ -16,7 +15,6 @@ const OPTIONS: { value: CommunityView; label: string }[] = [
 
 export default function CommunityScreen() {
   const t = useTheme();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ view?: string }>();
   const [view, setView] = useState<CommunityView>(params.view === 'prayer' ? 'prayer' : 'feed');
 
@@ -24,7 +22,7 @@ export default function CommunityScreen() {
     if (params.view === 'prayer' || params.view === 'feed') setView(params.view);
   }, [params.view]);
 
-  const bottomPad = Math.max(120, insets.bottom + 100);
+  const bottomPad = 24; // the docked tab bar sits below the screen, not over it
 
   return (
     <Screen title="Community">

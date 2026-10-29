@@ -1,22 +1,22 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../contexts/AppDataContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useToast } from '../contexts/ToastContext';
-import { getEvent, getMyEvents, updateProfile, uploadAvatar, uploadBanner } from '../lib/api';
-import { getChurch, getHoursServed } from '../lib/features';
-import { logger } from '../lib/logger';
-import type { Event } from '../lib/types';
-import { EventCard } from '../components/EventCard';
-import { useShareCard } from '../components/ShareCard';
-import { Button, EmptyState, EventCardSkeleton, ListGroup, ListRow, Screen, Segmented } from '../components/ui';
-import { EditProfileSheet } from '../components/profile/EditProfileSheet';
-import { ProfileHero } from '../components/profile/ProfileHero';
-import { StatsRow } from '../components/profile/StatsRow';
-import { PinnedPrayerCard, ProfileVerseCard } from '../components/profile/VerseCard';
-import { pickImageDataUrl } from '../components/profile/pickImage';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAppData } from '../../contexts/AppDataContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../../contexts/ToastContext';
+import { getEvent, getMyEvents, updateProfile, uploadAvatar, uploadBanner } from '../../lib/api';
+import { getChurch, getHoursServed } from '../../lib/features';
+import { logger } from '../../lib/logger';
+import type { Event } from '../../lib/types';
+import { EventCard } from '../../components/EventCard';
+import { useShareCard } from '../../components/ShareCard';
+import { Button, EmptyState, EventCardSkeleton, ListGroup, ListRow, Screen, Segmented } from '../../components/ui';
+import { EditProfileSheet } from '../../components/profile/EditProfileSheet';
+import { ProfileHero } from '../../components/profile/ProfileHero';
+import { StatsRow } from '../../components/profile/StatsRow';
+import { PinnedPrayerCard, ProfileVerseCard } from '../../components/profile/VerseCard';
+import { pickImageDataUrl } from '../../components/profile/pickImage';
 
 type Tab = 'saved' | 'hosting';
 
@@ -104,7 +104,7 @@ export default function MyProfileScreen() {
 
   if (!session || !token) {
     return (
-      <Screen back title="Profile">
+      <Screen title="Profile">
         <EmptyState
           art="people"
           title="Your profile lives here"
@@ -120,7 +120,7 @@ export default function MyProfileScreen() {
   const list = tab === 'saved' ? saved : hosted;
 
   return (
-    <Screen back title="Profile">
+    <Screen title="Profile">
       <ScrollView
         contentContainerStyle={{ paddingBottom: 48, gap: t.space.md }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
@@ -134,6 +134,15 @@ export default function MyProfileScreen() {
         <View style={{ flexDirection: 'row', gap: t.space.xs, paddingHorizontal: t.space.md }}>
           <Button title="Edit profile" icon="create-outline" variant="secondary" size="sm" onPress={() => setEditing(true)} style={{ flex: 1 }} fullWidth />
           <Button title="Settings" icon="settings-outline" variant="secondary" size="sm" onPress={() => router.push('/settings')} style={{ flex: 1 }} fullWidth />
+        </View>
+        <View style={{ paddingHorizontal: t.space.md }}>
+          <Button
+            title={isHost ? 'Host dashboard' : 'Host an event'}
+            icon={isHost ? 'stats-chart-outline' : 'add-circle-outline'}
+            size="sm"
+            onPress={() => router.push('/(tabs)/host')}
+            fullWidth
+          />
         </View>
 
         <StatsRow
