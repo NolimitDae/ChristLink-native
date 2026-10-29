@@ -17,7 +17,7 @@ import { formatDateLong, formatTimeRange } from '../../lib/format';
 import { haptic } from '../../lib/haptics';
 import { shadow } from '../../lib/theme';
 import type { Ticket } from '../../lib/types';
-import { AppText, Badge, BottomSheet, Button, EmptyState, Field, IconButton, Skeleton, SkeletonGroup } from '../../components/ui';
+import { AppText, Badge, BottomSheet, Button, EmptyState, Field, IconButton, Skeleton, SkeletonGroup, TicketPerforation } from '../../components/ui';
 import { MONO_FONT } from '../../components/tickets/WalletTicketCard';
 
 const QR_SIZE = 240;
@@ -231,11 +231,7 @@ export default function TicketScreen() {
             </AppText>
           </View>
 
-          <View style={s.perfRow}>
-            <View style={[s.notch, s.notchLeft, { backgroundColor: t.c.bg, borderColor: t.c.goldHairline }]} />
-            <View style={[s.dash, { borderColor: t.c.border }]} />
-            <View style={[s.notch, s.notchRight, { backgroundColor: t.c.bg, borderColor: t.c.goldHairline }]} />
-          </View>
+          <TicketPerforation size={NOTCH} />
 
           <View style={s.passBottom}>
             <View style={{ flex: 1 }}>
@@ -301,11 +297,6 @@ const useStyles = makeStyles(t => ({
   passTop: { paddingHorizontal: t.space.lg, paddingTop: t.space.lg, paddingBottom: t.space.md, alignItems: 'stretch' },
   qrFrame: { alignSelf: 'center', marginTop: t.space.lg, padding: 6, borderRadius: t.radius.lg + 6, borderWidth: 1 },
   qrCard: { backgroundColor: QR_WHITE, padding: t.space.md, borderRadius: t.radius.lg },
-  perfRow: { height: NOTCH, flexDirection: 'row', alignItems: 'center' },
-  notch: { width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2, borderWidth: 1 },
-  notchLeft: { marginLeft: -NOTCH / 2 - 1 },
-  notchRight: { marginRight: -NOTCH / 2 - 1 },
-  dash: { flex: 1, borderTopWidth: 1.5, borderStyle: 'dashed', marginHorizontal: 6 },
   passBottom: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.space.lg, paddingTop: t.space.xs, paddingBottom: t.space.lg, gap: t.space.md },
   actions: { marginTop: t.space.lg, gap: t.space.xs },
   note: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: t.space.md },

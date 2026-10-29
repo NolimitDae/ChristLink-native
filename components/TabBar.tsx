@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
@@ -19,9 +19,9 @@ const ICONS: Record<string, { on: IconName; off: IconName; label: string }> = {
   tickets: { on: 'ticket', off: 'ticket-outline', label: 'Tickets' },
 };
 
-export const TAB_BAR_HEIGHT = 64;
+export const TAB_BAR_HEIGHT = 54;
 
-/** Floating frosted tab bar with a raised gold Host button and a sliding active dot. */
+/** Floating frosted tab bar with an inline gold Host button and a sliding active dot. */
 export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
@@ -32,15 +32,23 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
 
   useEffect(() => {
     if (!slot) return;
-    const to = state.index * slot + slot / 2 - 3;
+    const to = state.index * slot + slot / 2 - 2.5;
     if (t.reduceMotion) dotX.setValue(to);
     else Animated.spring(dotX, { toValue: to, useNativeDriver: true, damping: 18, stiffness: 220 }).start();
   }, [state.index, slot, dotX, t.reduceMotion]);
 
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 10) }]}>
-      <View style={[styles.shadowBox, shadow(3, t.c.shadow), { borderRadius: 32 }]}>
-        <Glass style={[styles.bar, { borderColor: t.c.borderStrong }]} intensity={60}>
+      <View style={[styles.shadowBox, shadow(3, t.c.shadow), { borderRadius: RADIUS }]}>
+        <Glass
+          style={[
+            styles.bar,
+            { borderColor: t.c.borderStrong },
+            // Real blur only exists on iOS; elsewhere a solid fill keeps scrolled content from ghosting through
+            Platform.OS !== 'ios' && { backgroundColor: t.c.surface },
+          ]}
+          intensity={60}
+        >
           <View style={styles.row} onLayout={e => setWidth(e.nativeEvent.layout.width)} accessibilityRole="tablist">
             {state.routes.map((route, index) => {
               const focused = state.index === index;
@@ -60,8 +68,8 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
                     accessibilityLabel="Host an event"
                     style={styles.item}
                   >
-                    <View style={[styles.host, { backgroundColor: t.c.gold, borderColor: t.c.bg }, shadow(2, '#8A6A1F')]}>
-                      <Ionicons name="add" size={30} color={t.c.onGold} />
+                    <View style={[styles.host, { backgroundColor: t.c.gold }]}>
+                      <Ionicons name="add" size={26} color={t.c.onGold} />
                     </View>
                   </Pressable>
                 );
@@ -76,8 +84,8 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
                   accessibilityLabel={meta.label}
                   style={styles.item}
                 >
-                  <Ionicons name={focused ? meta.on : meta.off} size={23} color={focused ? t.c.goldText : t.c.textMuted} />
-                  <AppText variant="caption" color={focused ? t.c.text : t.c.textMuted} style={{ fontSize: 10, marginTop: 2 }}>
+                  <Ionicons name={focused ? meta.on : meta.off} size={21} color={focused ? t.c.goldText : t.c.textMuted} />
+                  <AppText variant="caption" color={focused ? t.c.text : t.c.textMuted} style={{ fontSize: 10, marginTop: 1 }}>
                     {meta.label}
                   </AppText>
                 </Pressable>
@@ -93,12 +101,15 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   );
 }
 
+const RADIUS = TAB_BAR_HEIGHT / 2;
+
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 14, right: 14 },
+  // Above every screen's content (cards with shadows or transforms otherwise paint over it)
+  wrap: { position: 'absolute', left: 14, right: 14, zIndex: 10, elevation: 12 },
   shadowBox: { backgroundColor: 'transparent' },
-  bar: { height: TAB_BAR_HEIGHT, borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  bar: { height: TAB_BAR_HEIGHT, borderRadius: RADIUS, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   row: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   item: { flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' },
-  host: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', marginTop: -26, borderWidth: 4 },
-  dot: { position: 'absolute', bottom: 6, left: 0, width: 6, height: 6, borderRadius: 3 },
+  host: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  dot: { position: 'absolute', bottom: 3, left: 0, width: 5, height: 5, borderRadius: 2.5 },
 });

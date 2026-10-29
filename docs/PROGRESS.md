@@ -340,3 +340,19 @@ migration applied earlier today stays (harmless while the website still runs on 
 - Explore: the first filter-chip row (Near me / Free / Paid / Online) looks clipped at the bottom by the type row.
   Could be web-only.
 - The floating tab bar is see-through on web (no blur); on iOS/Android `expo-blur` should cover the content.
+
+## 2026-10-29 (later) — Ticket notches and a slimmer tab bar (owner feedback)
+
+**Changed**
+- Ticket notches: the side circles were full outlined rings sitting on the card edge. `TicketPerforation`
+  (components/ui/Card.tsx) now draws clean half-circle cutouts that cover the card border; used by the ticket
+  screen and the Tickets list card (`TicketShell`). Cards keep their shadows (no clipping).
+- Tab bar: 64 → 54pt, the + (Host) button is a 42pt gold circle inside the bar (no raised button or dark ring),
+  icons 21pt, smaller active dot. The bar sits on its own layer (`zIndex`/`elevation`) and is solid on Android and
+  web, where there is no real blur, so scrolled content no longer ghosts through. iOS keeps the frosted blur.
+- Checked in the web demo, dark and light: Home, Explore, Tickets, ticket QR, Host.
+
+**Test on a phone**
+- Ticket screen and Tickets tab: notches read as cutouts on both edges, in dark and light mode.
+- Tab bar: every tab and the + are easy to hit (each tab keeps a full-height touch area); content scrolls fully
+  above the bar; on iPhone the blur still shows.
