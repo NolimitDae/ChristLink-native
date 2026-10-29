@@ -8,6 +8,7 @@ import type { Prayer } from '../../lib/types';
 import { Avatar } from '../Avatar';
 import { AppText, Button, IconButton, LightBurst } from '../ui';
 import { RollingNumber } from './RollingNumber';
+import { AppIcon } from '../icons/AppIcon';
 
 interface PrayerCardProps {
   prayer: Prayer;
@@ -93,14 +94,14 @@ export const PrayerCard = memo(function PrayerCard({ prayer, onPray, onMarkAnswe
               accessibilityLabel={prayer.has_prayed ? `You prayed. ${prayer.prayed_count} praying` : `I prayed. ${prayer.prayed_count} praying`}
               style={({ pressed }) => [s.prayBtn, prayer.has_prayed && s.prayBtnDone, { opacity: pressed ? 0.7 : 1 }]}
             >
-              <Ionicons name={prayer.has_prayed ? 'hand-left' : 'hand-left-outline'} size={14} color={prayer.has_prayed ? t.c.goldText : t.c.text} />
+              <AppIcon name={prayer.has_prayed ? 'pray' : 'pray-outline'} size={15} color={prayer.has_prayed ? t.c.goldText : t.c.text} />
               <AppText variant="caption" tone={prayer.has_prayed ? 'gold' : 'default'}>
                 {prayer.has_prayed ? 'Prayed ✓' : 'I prayed'}
               </AppText>
             </Pressable>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <RollingNumber value={prayer.prayed_count} tone={prayer.has_prayed ? 'gold' : 'muted'} />
-              <Ionicons name="flame-outline" size={12} color={t.c.textFaint} />
+              <AppIcon name="pray-outline" size={12} color={t.c.textFaint} />
             </View>
           </View>
 

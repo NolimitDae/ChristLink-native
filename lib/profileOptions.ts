@@ -3,10 +3,9 @@
  * avatar_color = CSS gradient, avatar_ring_color = hex or null, hobbies = labels joined by ", ",
  * connect_tags = ids, bible_version = translation code.
  */
-import type { Ionicons } from '@expo/vector-icons';
-import type React from 'react';
+import type { AppIconName } from '../components/icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 /** Avatar backgrounds when there is no photo (web values; shown as gradients through components/Avatar). */
 export const AVATAR_GRADIENTS = [
@@ -27,37 +26,37 @@ export const BIBLE_VERSIONS = ['NIV', 'ESV', 'KJV', 'NKJV', 'NLT', 'NASB', 'CSB'
 export const DEFAULT_BIBLE_VERSION = 'NIV';
 
 export const HOBBIES: { label: string; icon: IconName }[] = [
-  { label: 'Roller Skating', icon: 'bicycle-outline' },
+  { label: 'Roller Skating', icon: 'skate-outline' },
   { label: 'Swimming', icon: 'water-outline' },
   { label: 'Hiking', icon: 'trail-sign-outline' },
   { label: 'Reading', icon: 'book-outline' },
-  { label: 'Praying', icon: 'hand-left-outline' },
-  { label: 'Bible Study', icon: 'library-outline' },
+  { label: 'Praying', icon: 'pray-outline' },
+  { label: 'Bible Study', icon: 'bible-outline' },
   { label: 'Worship', icon: 'mic-outline' },
   { label: 'Volunteering', icon: 'ribbon-outline' },
-  { label: 'Mentorship', icon: 'people-outline' },
+  { label: 'Mentorship', icon: 'school-outline' },
   { label: 'Fitness', icon: 'barbell-outline' },
   { label: 'Content Creation', icon: 'videocam-outline' },
   { label: 'Photography', icon: 'camera-outline' },
-  { label: 'Traveling', icon: 'location-outline' },
+  { label: 'Traveling', icon: 'airplane-outline' },
   { label: 'Cooking', icon: 'restaurant-outline' },
   { label: 'Music', icon: 'musical-notes-outline' },
-  { label: 'Church Events', icon: 'home-outline' },
+  { label: 'Church Events', icon: 'church-outline' },
   { label: 'Fellowship', icon: 'people-circle-outline' },
-  { label: 'Community Outreach', icon: 'heart-outline' },
-  { label: 'Serving', icon: 'hand-right-outline' },
+  { label: 'Community Outreach', icon: 'megaphone-outline' },
+  { label: 'Serving', icon: 'serve-outline' },
   { label: 'Resting', icon: 'bed-outline' },
 ];
 
 export const CONNECT_OPTIONS: { id: string; label: string; icon: IconName }[] = [
-  { id: 'prayer', label: 'Prayer Partner', icon: 'hand-left-outline' },
-  { id: 'bible', label: 'Bible Study Buddy', icon: 'book-outline' },
-  { id: 'meetup', label: 'Meet Up at Events', icon: 'people-outline' },
+  { id: 'prayer', label: 'Prayer Partner', icon: 'pray-outline' },
+  { id: 'bible', label: 'Bible Study Buddy', icon: 'bible-outline' },
+  { id: 'meetup', label: 'Meet Up at Events', icon: 'calendar-outline' },
   { id: 'worship', label: 'Worship Team', icon: 'mic-outline' },
-  { id: 'volunteer', label: 'Volunteering', icon: 'gift-outline' },
+  { id: 'volunteer', label: 'Volunteering', icon: 'serve-outline' },
   { id: 'chat', label: 'Just Chatting', icon: 'chatbubbles-outline' },
   { id: 'mentorship', label: 'Mentorship', icon: 'school-outline' },
-  { id: 'family', label: 'Family & Parenting', icon: 'heart-outline' },
+  { id: 'family', label: 'Family & Parenting', icon: 'home-outline' },
   { id: 'fellowship', label: 'Fellowship', icon: 'people-circle-outline' },
   { id: 'new-friends', label: 'New Friends', icon: 'person-add-outline' },
 ];

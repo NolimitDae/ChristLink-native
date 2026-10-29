@@ -1,11 +1,11 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface ChipProps {
   label: string;
@@ -38,7 +38,7 @@ export function Chip({ label, selected = false, onPress, icon, style, count }: C
         style,
       ]}
     >
-      {icon ? <Ionicons name={icon} size={14} color={selected ? t.c.onGold : t.c.goldText} /> : null}
+      {icon ? <AppIcon name={icon} size={14} color={selected ? t.c.onGold : t.c.goldText} /> : null}
       <AppText variant="caption" color={fg} style={{ fontSize: 13 }}>
         {label}
       </AppText>

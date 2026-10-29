@@ -64,6 +64,8 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - Serif (DM Serif Display) for titles, Montserrat for text (Loew Next needs a license; swap in `lib/theme.ts`).
 - No bare spinners for loading screens — skeletons. Every empty state: line illustration + one action.
 - Respect Reduce Motion (`t.reduceMotion`) and Dynamic Type; 44pt touch targets; accessibility labels on custom controls.
+- Icons: one concept = one icon (docs/ICONS.md). Prayer/Amen = praying hands, church, serve and Bible use `AppIcon`
+  custom glyphs; everything else Ionicons outline, filled only when active.
 - The tab bar floats (Discover, Events, Tickets, Community, Profile; Host is a hidden tab reached from Profile).
   Tab screens pad their scroll content and floating buttons with `useTabBarClearance()` from components/TabBar.tsx.
 
@@ -79,7 +81,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - The old server.js still returns negative host earnings for `price=0`; the new backend fixes it.
 
 ## Docs
-docs/LAUNCH.pdf (plan) · docs/BACKEND.md · docs/BUILDS.md (EAS builds + updates) · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
+docs/LAUNCH.pdf (plan) · docs/BACKEND.md · docs/BUILDS.md (EAS builds + updates) · docs/ICONS.md · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
 docs/REVIEW.md (developer review packet) · docs/STORE.md (listings + launch checklist) · docs/deeplinks/
 
 ## End of every session

@@ -170,7 +170,7 @@ export default function MyProfileScreen() {
           <ListGroup title="Home Church">
             {settings?.home_church_id ? (
               <ListRow
-                icon="business-outline"
+                icon="church-outline"
                 title={churchName ?? 'Your Home Church'}
                 subtitle="Your church family"
                 onPress={() => router.push(`/church/${settings.home_church_id}`)}
@@ -178,7 +178,7 @@ export default function MyProfileScreen() {
               />
             ) : (
               <ListRow
-                icon="business-outline"
+                icon="church-outline"
                 title="Choose your Home Church"
                 subtitle="See services, prayers and serve shifts from your church"
                 onPress={() => router.push('/explore?tab=churches')}

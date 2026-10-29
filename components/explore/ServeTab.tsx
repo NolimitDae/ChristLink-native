@@ -11,6 +11,7 @@ import { errorMessage, isNotSetUp } from '../church/churchFormat';
 import { ShiftCard, shiftPlace } from '../serve/ShiftCard';
 import { SpotsBar } from '../serve/SpotsBar';
 import { useShiftActions } from '../serve/useShiftActions';
+import { AppIcon } from '../icons/AppIcon';
 
 type Load = { kind: 'loading' } | { kind: 'ready' } | { kind: 'error'; message: string } | { kind: 'notSetUp' };
 
@@ -104,7 +105,7 @@ export function ServeTab({ bottomInset, onFindChurch }: { bottomInset: number; o
               { backgroundColor: t.c.goldDim, borderColor: t.c.goldHairline, borderRadius: t.radius.md, opacity: pressed ? 0.8 : 1 },
             ]}
           >
-            <Ionicons name="hand-left-outline" size={18} color={t.c.goldText} />
+            <AppIcon name="serve-outline" size={18} color={t.c.goldText} />
             <AppText variant="bodyStrong" tone="gold" style={{ flex: 1 }}>
               My shifts & hours
             </AppText>

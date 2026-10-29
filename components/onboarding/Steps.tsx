@@ -3,14 +3,15 @@ import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { AppText, Button, Card, PinCross } from '../ui';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 const VALUES: { icon: IconName; title: string; body: string }[] = [
   { icon: 'calendar-outline', title: 'Faith events near you', body: 'Worship nights, Bible studies, retreats and concerts.' },
   { icon: 'people-outline', title: 'See where friends are going', body: 'RSVP together and never walk in alone.' },
-  { icon: 'hand-left-outline', title: 'Pray with your community', body: 'Share requests and celebrate answered prayers.' },
-  { icon: 'heart-circle-outline', title: 'Serve where it matters', body: 'Sign up for volunteer shifts at your church.' },
+  { icon: 'pray-outline', title: 'Pray with your community', body: 'Share requests and celebrate answered prayers.' },
+  { icon: 'serve-outline', title: 'Serve where it matters', body: 'Sign up for volunteer shifts at your church.' },
 ];
 
 export function WelcomeStep() {
@@ -28,7 +29,7 @@ export function WelcomeStep() {
         {VALUES.map(v => (
           <View key={v.title} style={s.value}>
             <View style={s.valueIcon}>
-              <Ionicons name={v.icon} size={20} color={t.c.goldText} />
+              <AppIcon name={v.icon} size={20} color={t.c.goldText} />
             </View>
             <View style={{ flex: 1 }}>
               <AppText variant="bodyStrong">{v.title}</AppText>
@@ -106,7 +107,7 @@ function PermissionCard({
   return (
     <Card style={{ gap: t.space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <Ionicons name={icon} size={22} color={t.c.goldText} />
+        <AppIcon name={icon} size={22} color={t.c.goldText} />
         <AppText variant="headline">{title}</AppText>
       </View>
       <AppText variant="callout" tone="muted">

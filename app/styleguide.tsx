@@ -36,6 +36,7 @@ import {
   TimingBadge,
 } from '../components/ui';
 import type { LineArtName } from '../components/ui/LineArt';
+import { AppIcon } from '../components/icons/AppIcon';
 import type { ThemePreference } from '../lib/theme';
 
 const TYPE_VARIANTS: TypeVariant[] = ['display', 'title1', 'title2', 'title3', 'headline', 'body', 'bodyStrong', 'callout', 'caption', 'overline', 'button', 'numeral'];
@@ -236,6 +237,30 @@ export default function StyleguideScreen() {
           </View>
           <View style={{ marginHorizontal: -t.space.md }}>
             <ChipRow options={['All', 'Worship', 'Youth', 'Prayer'] as const} value={chip} onChange={setChip} />
+          </View>
+        </Block>
+
+        <Block title="Faith icons" note="Custom glyphs (AppIcon) for ideas Ionicons lacks. Outline when idle, solid when active.">
+          <View style={[s.row, { flexWrap: 'wrap', gap: t.space.md }]}>
+            {(
+              [
+                ['pray-outline', 'pray', 'Prayer · Amen'],
+                ['church-outline', 'church', 'Church'],
+                ['serve-outline', 'serve', 'Serve'],
+                ['bible-outline', null, 'Bible'],
+                ['skate-outline', null, 'Skating'],
+              ] as const
+            ).map(([outline, solid, label]) => (
+              <View key={outline} style={{ alignItems: 'center', gap: 4, width: 72 }}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <AppIcon name={outline} size={24} color={t.c.text} />
+                  {solid ? <AppIcon name={solid} size={24} color={t.c.goldText} /> : null}
+                </View>
+                <AppText variant="caption" tone="muted" align="center">
+                  {label}
+                </AppText>
+              </View>
+            ))}
           </View>
         </Block>
 

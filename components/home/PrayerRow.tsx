@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View, type ListRenderItemInfo } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getPrayerWall } from '../../lib/features';
@@ -9,6 +8,7 @@ import { pluralize, timeAgo } from '../../lib/format';
 import { shadow } from '../../lib/theme';
 import type { Prayer } from '../../lib/types';
 import { AppText, Button, Card, SectionHeader, Skeleton } from '../ui';
+import { AppIcon } from '../icons/AppIcon';
 
 const PRAYER_ROUTE = '/(tabs)/community?view=prayer';
 const CARD_W = 220;
@@ -45,7 +45,7 @@ function PrayerCard({ prayer, onPress }: { prayer: Prayer; onPress: () => void }
         {prayer.body}
       </AppText>
       <View style={styles.foot}>
-        <Ionicons name={prayer.has_prayed ? 'heart' : 'heart-outline'} size={14} color={t.c.goldText} />
+        <AppIcon name={prayer.has_prayed ? 'pray' : 'pray-outline'} size={14} color={t.c.goldText} />
         <AppText variant="caption" tone="gold">
           {prayer.prayed_count} prayed
         </AppText>

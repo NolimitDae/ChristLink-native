@@ -8,6 +8,7 @@ import type { Church, ChurchRecurringEvent, ServeShift } from '../../lib/types';
 import { Avatar } from '../Avatar';
 import { AppText } from '../ui';
 import { serviceTimeLabel } from './churchFormat';
+import { AppIcon } from '../icons/AppIcon';
 
 export function Section({ title, action, onAction, children }: { title: string; action?: string; onAction?: () => void; children: React.ReactNode }) {
   const t = useTheme();
@@ -142,7 +143,7 @@ export function ServeHere({ shifts, onOpen }: { shifts: ServeShift[]; onOpen: ()
               ]}
             >
               <View style={[styles.icon, { backgroundColor: t.c.goldDim }]}>
-                <Ionicons name="hand-left-outline" size={16} color={t.c.goldText} />
+                <AppIcon name="serve-outline" size={16} color={t.c.goldText} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <AppText variant="bodyStrong">{s.role_name}</AppText>

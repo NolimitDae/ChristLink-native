@@ -304,7 +304,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
             last={!settings?.home_church_id}
           />
           {settings?.home_church_id ? (
-            <ListRow icon="business-outline" title="Share with my Home Church" subtitle="Shows under My church" toggle={shareChurch} onToggle={setShareChurch} last />
+            <ListRow icon="church-outline" title="Share with my Home Church" subtitle="Shows under My church" toggle={shareChurch} onToggle={setShareChurch} last />
           ) : null}
         </ListGroup>
       </BottomSheet>

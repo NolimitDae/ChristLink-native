@@ -1,10 +1,10 @@
 import React from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface IconButtonProps {
   icon: IconName;
@@ -47,7 +47,7 @@ export function IconButton({ icon, label, onPress, size = 40, tone = 'default', 
         style,
       ]}
     >
-      <Ionicons name={icon} size={Math.round(size * 0.5)} color={fg} />
+      <AppIcon name={icon} size={Math.round(size * 0.5)} color={fg} />
       {badge ? <View style={[styles.badge, { backgroundColor: t.c.live, borderColor: t.c.bg }]} /> : null}
     </Pressable>
   );

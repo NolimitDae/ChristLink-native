@@ -1,9 +1,9 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import type { Verse } from '../../lib/verses';
 import { AppText, Button, Card, Skeleton } from '../ui';
+import { AppIcon } from '../icons/AppIcon';
 
 interface VerseCardProps {
   verse: Verse | null;
@@ -16,7 +16,7 @@ export function VerseCard({ verse, theme, onShare }: VerseCardProps) {
   return (
     <Card variant="featured" style={{ gap: t.space.sm }}>
       <View style={styles.eyebrow}>
-        <Ionicons name="book-outline" size={14} color={t.c.goldText} />
+        <AppIcon name="bible-outline" size={15} color={t.c.goldText} />
         <AppText variant="overline" tone="gold" numberOfLines={1} style={{ flexShrink: 1 }}>
           {theme ? `Verse of the day · for your ${theme.toLowerCase()} gathering` : 'Verse of the day'}
         </AppText>

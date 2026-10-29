@@ -10,6 +10,7 @@ import { Avatar } from '../Avatar';
 import { AppText, Card, IconButton } from '../ui';
 import { POST_TYPE_LABEL, isShareable } from './postTypes';
 import { RepliesThread } from './RepliesThread';
+import { AppIcon } from '../icons/AppIcon';
 
 const DOUBLE_TAP_MS = 280;
 
@@ -114,7 +115,7 @@ export const PostCard = memo(function PostCard({ post, onAmen, onMenu, onShare, 
           </AppText>
           <Animated.View pointerEvents="none" style={[s.popWrap, { opacity: popOpacity }]} importantForAccessibility="no-hide-descendants">
             <Animated.View style={[s.popBadge, { transform: [{ scale: pop }] }]}>
-              <Ionicons name="heart" size={40} color={t.c.gold} />
+              <AppIcon name="pray" size={40} color={t.c.gold} />
             </Animated.View>
           </Animated.View>
         </Pressable>
@@ -130,7 +131,7 @@ export const PostCard = memo(function PostCard({ post, onAmen, onMenu, onShare, 
             accessibilityLabel={`Amen, ${post.amen_count}`}
             style={s.action}
           >
-            <Ionicons name={post.has_amened ? 'heart' : 'heart-outline'} size={19} color={post.has_amened ? t.c.gold : t.c.textMuted} />
+            <AppIcon name={post.has_amened ? 'pray' : 'pray-outline'} size={19} color={post.has_amened ? t.c.gold : t.c.textMuted} />
             <AppText variant="caption" tone={post.has_amened ? 'gold' : 'muted'}>
               Amen{post.amen_count > 0 ? ` · ${post.amen_count}` : ''}
             </AppText>

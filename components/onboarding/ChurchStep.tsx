@@ -5,6 +5,7 @@ import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { FeatureError, searchChurches } from '../../lib/features';
 import type { Church } from '../../lib/types';
 import { AppText, EmptyState, Field, LineArt, Skeleton } from '../ui';
+import { AppIcon } from '../icons/AppIcon';
 
 const DEBOUNCE_MS = 300;
 
@@ -94,7 +95,7 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
                 style={({ pressed }) => [s.row, selected && s.rowSelected, { opacity: pressed ? 0.75 : 1 }]}
               >
                 <View style={s.rowIcon}>
-                  <Ionicons name="business-outline" size={18} color={t.c.goldText} />
+                  <AppIcon name="church-outline" size={18} color={t.c.goldText} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

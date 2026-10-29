@@ -422,3 +422,25 @@ migration applied earlier today stays (harmless while the website still runs on 
 **Test on a phone**
 - Edit profile: pick a color and ring, tick hobbies and connect options, change translation, save, reopen: all kept.
 - Open the same account on christlinksocial.com: hobbies and connect options show as selected there too.
+
+## 2026-10-30 — Icon audit (owner request)
+
+**Found** (135 distinct icons, 389 uses; all names valid)
+- Prayer used a raised hand ("stop"/high-five) and, elsewhere, a heart and a flame for the same count; Amen used the
+  same heart as saving an event; churches used an office building; Serve/volunteer had four different icons;
+  Roller Skating was a bicycle; Mentorship and Bible study had two icons each; Blocked accounts used a raised hand.
+
+**Changed**
+- New `components/icons/AppIcon.tsx` + generated `glyphs.ts`: praying hands, church, hand-with-heart (Phosphor, MIT)
+  and Bible, roller skate (Tabler, MIT), outline + solid. `Button`, `IconButton`, `Chip`, `ListRow`, `ActionMenu`,
+  `RequirementCard`, `HostEventRow`, `EventSections` and onboarding `Steps` accept them.
+- Prayer/Amen → praying hands everywhere (prayer cards, counts, Discover row, posts, notifications, onboarding,
+  profile options). Church → church glyph (Settings, Profile, onboarding, serve, notifications, Prayer Wall toggle).
+  Serve/volunteer → hand with heart. Verse of the day / Bible study → Bible. Blocked accounts → `ban-outline`.
+  Answered post type → sparkles (matches the Answered banner). Payouts → wallet in all three places.
+  Profile options: Traveling → airplane, Community Outreach → megaphone, Family → home, Meet up → calendar.
+- docs/ICONS.md (concept → icon table), CLAUDE.md rule, `/styleguide` "Faith icons" block.
+
+**Test on a phone**
+- Prayer Wall, Discover prayers and community posts show praying hands; double-tap a post shows the praying-hands burst.
+- Settings, Profile and onboarding church rows show the church glyph; custom glyphs look crisp at small sizes.

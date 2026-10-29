@@ -11,6 +11,7 @@ import { isMyShift, useShiftActions } from '../../components/serve/useShiftActio
 import { errorMessage, isNotSetUp } from '../../components/church/churchFormat';
 import { getHoursServed, getOpenShifts } from '../../lib/features';
 import type { ServeShift } from '../../lib/types';
+import { AppIcon } from '../../components/icons/AppIcon';
 
 type Load = { kind: 'loading' } | { kind: 'ready' } | { kind: 'notSetUp' } | { kind: 'error'; message: string };
 
@@ -151,7 +152,7 @@ export default function ServeScreen() {
                   { backgroundColor: t.c.surface, borderColor: t.c.border, borderRadius: t.radius.md, opacity: pressed ? 0.8 : 1 },
                 ]}
               >
-                <Ionicons name="hand-left-outline" size={18} color={t.c.goldText} />
+                <AppIcon name="serve-outline" size={18} color={t.c.goldText} />
                 <AppText variant="bodyStrong" style={{ flex: 1 }}>
                   Open shifts
                 </AppText>

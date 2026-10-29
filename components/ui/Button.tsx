@@ -1,12 +1,12 @@
 import React, { useRef } from 'react';
 import { ActivityIndicator, Animated, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface ButtonProps {
   title: string;
@@ -89,11 +89,11 @@ export function Button({
           <ActivityIndicator color={fg} accessibilityLabel="Loading" />
         ) : (
           <View style={styles.row}>
-            {icon ? <Ionicons name={icon} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
+            {icon ? <AppIcon name={icon} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
             <AppText variant="button" color={fg} style={size === 'sm' ? { fontSize: 13 } : null} numberOfLines={1}>
               {title}
             </AppText>
-            {iconRight ? <Ionicons name={iconRight} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
+            {iconRight ? <AppIcon name={iconRight} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
           </View>
         )}
       </Pressable>

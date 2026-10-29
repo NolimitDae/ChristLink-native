@@ -230,7 +230,7 @@ export default function HostTab() {
               ) : null}
               {!payoutsReady ? (
                 <RequirementRow
-                  icon="card-outline"
+                  icon="wallet-outline"
                   title={acct ? 'Finish Stripe setup' : 'Set up payouts'}
                   body={acct ? 'Stripe needs a few more details before payouts start' : 'Connect Stripe to get paid for ticket sales'}
                   onPress={() => router.push('/host/payouts')}
@@ -330,7 +330,7 @@ export default function HostTab() {
             {sheetEvent.status === 'published' ? (
               <ListRow icon="qr-code-outline" title="Check guests in" onPress={() => { setSheetEvent(null); router.push(`/host/scan?eventId=${sheetEvent.id}`); }} />
             ) : null}
-            <ListRow icon="hand-left-outline" title="Volunteers" subtitle="Serve roles and shifts" onPress={() => { setSheetEvent(null); router.push(`/host/serve?eventId=${sheetEvent.id}`); }} />
+            <ListRow icon="serve-outline" title="Volunteers" subtitle="Serve roles and shifts" onPress={() => { setSheetEvent(null); router.push(`/host/serve?eventId=${sheetEvent.id}`); }} />
             <ListRow icon="copy-outline" title="Duplicate" subtitle="Creates a new draft" disabled={actionBusy} onPress={() => runDuplicate(sheetEvent)} last={sheetEvent.status !== 'draft'} />
             {sheetEvent.status === 'draft' ? (
               <ListRow

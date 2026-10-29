@@ -12,8 +12,9 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 export interface InfoTileProps {
   icon: IconName;
@@ -32,7 +33,7 @@ export function InfoTile({ icon, label, value, sub, subTone = 'muted', onPress, 
     <Card style={s.tile} onPress={onPress} accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}${hint ? `. ${hint}` : ''}`}>
       <View style={s.tileTop}>
         <View style={[s.tileIcon, { backgroundColor: t.c.goldDim }]}>
-          <Ionicons name={icon} size={16} color={t.c.goldText} />
+          <AppIcon name={icon} size={16} color={t.c.goldText} />
         </View>
         {onPress ? <Ionicons name="arrow-forward" size={14} color={t.c.textFaint} /> : null}
       </View>
@@ -236,7 +237,7 @@ export function ServeCard({ shifts, onPress }: { shifts: ServeShift[]; onPress: 
     <Card variant="featured" onPress={onPress} style={{ marginHorizontal: t.space.md }} accessibilityLabel={`Volunteer at this event. ${open} spots open.`}>
       <View style={s.lockRow}>
         <View style={[s.tileIcon, { backgroundColor: t.c.gold }]}>
-          <Ionicons name="hand-left-outline" size={16} color={t.c.onGold} />
+          <AppIcon name="serve-outline" size={16} color={t.c.onGold} />
         </View>
         <View style={{ flex: 1 }}>
           <AppText variant="headline">Volunteer at this event</AppText>

@@ -115,7 +115,7 @@ export default function PayoutsScreen() {
         <Card variant={status === 'active' ? 'standard' : 'featured'} style={[{ gap: t.space.sm }, status === 'active' ? { borderColor: t.c.success, backgroundColor: t.c.successDim } : null]}>
           <View style={s.statusTop}>
             <View style={[s.statusIcon, { backgroundColor: status === 'active' ? t.c.success : t.c.goldDim }]}>
-              <Ionicons name={status === 'active' ? 'checkmark' : status === 'incomplete' ? 'hourglass-outline' : 'card-outline'} size={22} color={status === 'active' ? t.c.bg : t.c.goldText} />
+              <Ionicons name={status === 'active' ? 'checkmark' : status === 'incomplete' ? 'hourglass-outline' : 'wallet-outline'} size={22} color={status === 'active' ? t.c.bg : t.c.goldText} />
             </View>
             <Badge label={statusCopy.badge} tone={statusCopy.tone} />
           </View>

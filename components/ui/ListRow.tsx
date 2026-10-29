@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface ListRowProps {
   icon?: IconName;
@@ -27,7 +28,7 @@ export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggl
     <View style={[styles.row, { borderBottomColor: t.c.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, opacity: disabled ? 0.5 : 1 }]}>
       {icon ? (
         <View style={[styles.icon, { backgroundColor: destructive ? t.c.dangerDim : t.c.goldDim }]}>
-          <Ionicons name={icon} size={17} color={destructive ? t.c.danger : t.c.goldText} />
+          <AppIcon name={icon} size={17} color={destructive ? t.c.danger : t.c.goldText} />
         </View>
       ) : null}
       <View style={{ flex: 1 }}>

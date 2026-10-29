@@ -3,8 +3,9 @@ import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { AppText } from '../ui';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface RequirementRowProps {
   icon: IconName;
@@ -32,7 +33,7 @@ export function RequirementRow({ icon, title, body, done, onPress, tone = 'gold'
       style={({ pressed }) => [s.row, !last && s.divider, { opacity: pressed ? 0.7 : 1 }]}
     >
       <View style={[s.icon, { backgroundColor: bg }]}>
-        <Ionicons name={done ? 'checkmark' : icon} size={18} color={fg} />
+        <AppIcon name={done ? 'checkmark' : icon} size={18} color={fg} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <AppText variant="bodyStrong">{title}</AppText>

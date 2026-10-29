@@ -114,7 +114,7 @@ export default function SettingsScreen() {
                 disabled={unavailable || status === 'loading'}
               />
               <ListRow
-                icon="hand-right-outline"
+                icon="ban-outline"
                 title="Blocked accounts"
                 subtitle={unavailable ? SOON : undefined}
                 value={unavailable ? undefined : String(blockedIds.size)}
@@ -122,7 +122,7 @@ export default function SettingsScreen() {
                 disabled={unavailable}
               />
               <ListRow
-                icon="business-outline"
+                icon="church-outline"
                 title="Home Church"
                 subtitle={unavailable ? SOON : churchName ?? (settings?.home_church_id ? 'Your church' : 'Not chosen yet')}
                 onPress={() => router.push(settings?.home_church_id ? `/church/${settings.home_church_id}` : '/explore?tab=churches')}
@@ -132,7 +132,7 @@ export default function SettingsScreen() {
             </ListGroup>
 
             <ListGroup title="Hosting">
-              <ListRow icon="card-outline" title="Payouts" subtitle="Connect Stripe to get paid for tickets" onPress={() => router.push('/host/payouts')} />
+              <ListRow icon="wallet-outline" title="Payouts" subtitle="Connect Stripe to get paid for tickets" onPress={() => router.push('/host/payouts')} />
               <ListRow icon="shield-checkmark-outline" title="ID verification" subtitle="Required before selling tickets" onPress={() => router.push('/host/verify')} last />
             </ListGroup>
           </>
