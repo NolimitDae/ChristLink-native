@@ -12,6 +12,7 @@ import { AppText, BottomSheet, Button, ChipRow, EmptyState, Field, ListGroup, Li
 import { ActionMenu, type MenuAction } from './ActionMenu';
 import { distributeColumns, estimatePrayerHeight } from './masonry';
 import { PrayerCard } from './PrayerCard';
+import { useTabBarClearance } from '../TabBar';
 
 const FILTERS: readonly PrayerFilter[] = ['all', 'church', 'friends', 'answered', 'mine'];
 const FILTER_LABELS: Record<PrayerFilter, string> = {
@@ -30,6 +31,7 @@ function errorMessage(err: unknown, fallback: string): string {
 
 export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
   const s = useStyles();
   const router = useRouter();
   const { session } = useAuth();
@@ -277,7 +279,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         {renderBody()}
       </ScrollView>
 
-      <View style={[s.fab, { bottom: 16 }]} pointerEvents="box-none">
+      <View style={[s.fab, { bottom: barClearance }]} pointerEvents="box-none">
         <Button title="Share a prayer" icon="add" onPress={openCompose} style={s.fabShadow} />
       </View>
 

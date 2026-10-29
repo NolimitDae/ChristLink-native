@@ -375,3 +375,16 @@ migration applied earlier today stays (harmless while the website still runs on 
 - All five tabs switch; labels sit on one line at the largest text size; home indicator area is not covered.
 - Profile → Host dashboard → Create an event; tapping Profile returns.
 - Lists on every tab scroll to their last item with no big empty gap at the bottom.
+
+## 2026-10-29 (night) — Back to the floating tab bar (owner)
+
+**Changed**
+- `components/TabBar.tsx` floats again (56pt frosted pill, solid off iOS, on its own layer) and keeps the five
+  tabs and the new ticket icon. Labels 10.5pt so "Community" fits in a fifth of the pill.
+- New `useTabBarClearance()` replaces the hard-coded 120–140pt paddings: Discover, Events, Tickets, Community
+  (feed + Prayer Wall button), Profile and Host pad their content by the bar height + offset + a small gap.
+- CLAUDE.md design rule updated.
+
+**Test on a phone**
+- The last item of every tab list scrolls fully above the bar; the Prayer Wall "Share a prayer" button sits above it.
+- At the largest text size the five labels stay on one line.

@@ -5,6 +5,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { Screen, Segmented } from '../../components/ui';
 import { FeedView } from '../../components/community/FeedView';
 import { PrayerWall } from '../../components/community/PrayerWall';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type CommunityView = 'feed' | 'prayer';
 
@@ -22,7 +23,7 @@ export default function CommunityScreen() {
     if (params.view === 'prayer' || params.view === 'feed') setView(params.view);
   }, [params.view]);
 
-  const bottomPad = 24; // the docked tab bar sits below the screen, not over it
+  const bottomPad = useTabBarClearance(24);
 
   return (
     <Screen title="Community">

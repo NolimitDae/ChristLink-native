@@ -8,6 +8,7 @@ import { EventsTab } from '../../components/explore/EventsTab';
 import { MapTab } from '../../components/explore/MapTab';
 import { ChurchesTab } from '../../components/explore/ChurchesTab';
 import { ServeTab } from '../../components/explore/ServeTab';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'events' | 'map' | 'churches' | 'serve';
 
@@ -39,9 +40,9 @@ export default function ExploreScreen() {
     router.setParams({ tab: next });
   };
 
-  // The docked tab bar sits below this screen, so insets only need breathing room
-  const listBottom = 32;
-  const mapPreviewBottom = 12;
+  const barClearance = useTabBarClearance();
+  const listBottom = barClearance + 36;
+  const mapPreviewBottom = barClearance;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg, paddingTop: insets.top }}>

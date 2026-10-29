@@ -22,6 +22,7 @@ import { EVENT_TYPES, type EventType } from '../../lib/constants';
 import { isTonight } from '../../lib/format';
 import type { Verse } from '../../lib/verses';
 import type { Event } from '../../lib/types';
+import { useTabBarClearance } from '../../components/TabBar';
 
 const HOUR = 3_600_000;
 const MAX_CATEGORY_RAILS = 6;
@@ -32,6 +33,7 @@ function startMs(e: Event): number {
 
 export default function HomeScreen() {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
@@ -89,7 +91,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg }}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + t.space.sm, paddingBottom: t.space.xl, gap: t.space.xl }}
+        contentContainerStyle={{ paddingTop: insets.top + t.space.sm, paddingBottom: barClearance + t.space.md, gap: t.space.xl }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >

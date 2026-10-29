@@ -16,9 +16,11 @@ import { WalletStack } from '../../components/tickets/WalletStack';
 import { MemoryCard } from '../../components/tickets/MemoryCard';
 import { WALLET_CARD_HEIGHT } from '../../components/tickets/WalletTicketCard';
 import { buildWallet, type WalletItem } from '../../components/tickets/walletItems';
+import { useTabBarClearance } from '../../components/TabBar';
 
 export default function TicketsScreen() {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
   const s = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -124,7 +126,7 @@ export default function TicketsScreen() {
           body="Sign in to RSVP and buy tickets. They’ll be saved here, even offline."
           actionLabel="Sign in"
           onAction={() => router.push('/auth')}
-          style={{ flex: 1, paddingBottom: 32 }}
+          style={{ flex: 1, paddingBottom: barClearance + 16 }}
         />
       </View>
     );
@@ -136,7 +138,7 @@ export default function TicketsScreen() {
   return (
     <View style={s.root}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: barClearance + 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} />}
         showsVerticalScrollIndicator={false}
       >

@@ -17,6 +17,7 @@ import { ProfileHero } from '../../components/profile/ProfileHero';
 import { StatsRow } from '../../components/profile/StatsRow';
 import { PinnedPrayerCard, ProfileVerseCard } from '../../components/profile/VerseCard';
 import { pickImageDataUrl } from '../../components/profile/pickImage';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'saved' | 'hosting';
 
@@ -27,6 +28,7 @@ function formatHours(h: number): string {
 
 export default function MyProfileScreen() {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
   const router = useRouter();
   const { session, profile, refreshProfile } = useAuth();
   const { savedIds, settings } = useAppData();
@@ -122,7 +124,7 @@ export default function MyProfileScreen() {
   return (
     <Screen title="Profile">
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 48, gap: t.space.md }}
+        contentContainerStyle={{ paddingBottom: barClearance + 16, gap: t.space.md }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
         {profile ? (

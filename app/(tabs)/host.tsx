@@ -28,6 +28,7 @@ import {
 import { HostEventRow, type RowAction } from '../../components/host/HostEventRow';
 import { RequirementRow } from '../../components/host/RequirementCard';
 import { errorMessage } from '../../components/host/errors';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'upcoming' | 'drafts' | 'past';
 const HOUR = 3_600_000;
@@ -56,6 +57,7 @@ interface SalesSnapshot {
 
 export default function HostTab() {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
   const s = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -192,7 +194,7 @@ export default function HostTab() {
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: barClearance + 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
         <View style={s.header}>
