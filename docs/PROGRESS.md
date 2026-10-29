@@ -388,3 +388,15 @@ migration applied earlier today stays (harmless while the website still runs on 
 **Test on a phone**
 - The last item of every tab list scrolls fully above the bar; the Prayer Wall "Share a prayer" button sits above it.
 - At the largest text size the five labels stay on one line.
+
+## 2026-10-29 (late) — Sliding active capsule on the floating tab bar (owner reference)
+
+**Changed**
+- `components/TabBar.tsx`: a gold capsule (`goldDim` fill, `goldHairline` edge) sits behind the active tab and
+  springs to the new tab on change (jumps with Reduce Motion). Outline icons in every state; active = gold,
+  inactive = ivory/ink. Bold 10.5pt labels, 60pt bar with a gold hairline edge, 10pt side margins.
+- Kept brand colours instead of the blue in the reference, and the five tabs + ticket icon.
+
+**Test on a phone**
+- Switch tabs quickly: the capsule follows without overshooting badly or lagging; with Reduce Motion on it jumps.
+- "Community" fits inside its capsule at the default text size.
