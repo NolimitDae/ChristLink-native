@@ -328,3 +328,15 @@ migration applied earlier today stays (harmless while the website still runs on 
 **Test** (Android APK from build 153ecab1, after `RESEND_API_KEY` is set on staging)
 - Sign in with an email code, browse events, RSVP to a free event, open the ticket QR, post on the Prayer Wall,
   change a setting, sign out and back in.
+
+## 2026-10-29 — UI demo screenshots (no app code changed)
+
+**Changed**
+- Nothing in the repo. Rendered 15 screens with Expo web in a throwaway copy (react-native-web plus stand-ins for
+  Stripe, maps, secure storage and notifications) at iPhone size, with sample events, posts, prayers and a ticket
+  injected in the browser. No request reached staging.
+
+**Noticed (check on a phone)**
+- Explore: the first filter-chip row (Near me / Free / Paid / Online) looks clipped at the bottom by the type row.
+  Could be web-only.
+- The floating tab bar is see-through on web (no blur); on iOS/Android `expo-blur` should cover the content.
