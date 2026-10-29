@@ -400,3 +400,25 @@ migration applied earlier today stays (harmless while the website still runs on 
 **Test on a phone**
 - Switch tabs quickly: the capsule follows without overshooting badly or lagging; with Reduce Motion on it jumps.
 - "Community" fits inside its capsule at the default text size.
+
+## 2026-10-29 (late night) — Edit profile: every website profile option (owner request, UI unchanged)
+
+**Changed**
+- `components/profile/EditProfileSheet.tsx` now edits everything the website's Edit Profile has, with the existing
+  components (Field, Chip, ChipRow, Avatar): avatar color (8 web gradients), profile ring (none + 9 colors), name,
+  city, bio, Instagram, Facebook, TikTok, favorite verse + reference + translation, hot takes (300), hobbies &
+  interests (20 chips), open to connect (10 chips), prayer request (400, was 500, matches web), latest testimony (600).
+  Avatar photo and banner stay on the profile header (camera buttons).
+- `lib/profileOptions.ts`: option lists in the website's stored format (hobbies = labels joined by ", " in list
+  order, connect_tags = web ids such as `bible`, `new-friends`), social-link normalizing; 14 tests.
+- Backend unchanged: PATCH /api/profile already accepted every field.
+- Checked in the web demo: the PATCH body matched the website format exactly.
+
+**Not done**
+- The app's public profile screens don't display hobbies, connect tags, hot takes or testimony yet.
+- Teal avatar gradient and 7 ring colors are matched by eye (not present in the live data); the website may use
+  slightly different hex values.
+
+**Test on a phone**
+- Edit profile: pick a color and ring, tick hobbies and connect options, change translation, save, reopen: all kept.
+- Open the same account on christlinksocial.com: hobbies and connect options show as selected there too.

@@ -15,7 +15,7 @@ export interface Profile {
   city?: string;
   avatar_url?: string;
   avatar_color?: string;
-  avatar_ring_color?: string;
+  avatar_ring_color?: string | null;
   banner_url?: string;
   role: Role;
   instagram_url?: string;
