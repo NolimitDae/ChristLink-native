@@ -463,3 +463,14 @@ migration applied earlier today stays (harmless while the website still runs on 
 - Every native package the app imports ships in Expo Go except Sentry, which runs JS-only (no DSN set anyway).
 - Expo Go limits: no Apple Pay, no remote push; the app icon/splash are Expo Go's. Republish the same command after
   JS changes (a new link each time; the dashboard lists them).
+
+## 2026-10-30 (evening) — App Store Connect key added; Apple membership is inactive
+
+- The owner added `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_ASC_API_KEY_P8` (key body only; the session adds the
+  PEM header/footer when writing it to a temporary file). The key is valid: App Store Connect `/v1/apps` returns 200.
+- Apple refuses every certificate/profile/device call: "Team ID 'QKP52JF8KD' is not associated with an active
+  membership." The Apple Developer Program membership has lapsed, so no iPhone build can be signed (cloud or local)
+  until it is renewed at developer.apple.com/account → Membership details.
+- After renewal: EAS non-interactive won't pick devices for internal distribution, so create the `com.christlink.app`
+  App ID and an ad hoc profile (cert PN5AQA5DBR, the registered iPhone) through the App Store Connect API, store it in
+  EAS credentials, then `eas build --profile preview --platform ios --non-interactive`.
