@@ -5,6 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
+import { cancelReminders, scheduledReminderKeys, schedulePrayerReminders } from '../../lib/notifications';
+import { prayerReminderKey } from '../../lib/reminderTimes';
 import { FeatureError, createPrayer, deletePrayer, getPrayerWall, markPrayerAnswered, prayFor } from '../../lib/features';
 import type { Prayer, PrayerFilter } from '../../lib/types';
 import { useReport } from '../ReportSheet';
@@ -12,6 +14,7 @@ import { AppText, BottomSheet, Button, ChipRow, EmptyState, Field, ListGroup, Li
 import { ActionMenu, type MenuAction } from './ActionMenu';
 import { distributeColumns, estimatePrayerHeight } from './masonry';
 import { PrayerCard } from './PrayerCard';
+import { confirmKindness } from './kindnessCheck';
 import { useTabBarClearance } from '../TabBar';
 
 const FILTERS: readonly PrayerFilter[] = ['all', 'church', 'friends', 'answered', 'mine'];
@@ -44,6 +47,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [menuPrayer, setMenuPrayer] = useState<Prayer | null>(null);
+  const [reminders, setReminders] = useState<Set<string>>(new Set());
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -78,6 +82,33 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
     setPrayers(null);
     load();
   }, [load]);
+
+  useEffect(() => {
+    scheduledReminderKeys().then(setReminders);
+  }, []);
+
+  const remind = async (prayer: Prayer, days: number) => {
+    try {
+      if ((await schedulePrayerReminders(prayer, days)) === 'denied') {
+        showToast('Turn on notifications for Christ Link Social in Settings to get prayer reminders', 'info');
+        return;
+      }
+      setReminders(prev => new Set(prev).add(prayerReminderKey(prayer.id)));
+      showToast(days === 1 ? 'We’ll remind you tomorrow at 9am' : `We’ll remind you at 9am for ${days} days`, 'success');
+    } catch {
+      showToast('Could not set a reminder', 'error');
+    }
+  };
+
+  const stopReminders = async (prayer: Prayer) => {
+    await cancelReminders(prayerReminderKey(prayer.id));
+    setReminders(prev => {
+      const next = new Set(prev);
+      next.delete(prayerReminderKey(prayer.id));
+      return next;
+    });
+    showToast('Prayer reminders stopped', 'info');
+  };
 
   const refresh = async () => {
     setRefreshing(true);
@@ -142,6 +173,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   const submitPrayer = async () => {
     const text = body.trim();
     if (!text) return;
+    if (!(await confirmKindness(text))) return;
     setPosting(true);
     try {
       await createPrayer(text, anonymous, shareChurch ? settings?.home_church_id : null);
@@ -164,6 +196,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         onPress: async () => {
           try {
             await deletePrayer(prayer.id);
+            cancelReminders(prayerReminderKey(prayer.id)).catch(() => undefined);
             setPrayers(prev => prev?.filter(p => p.id !== prayer.id) ?? prev);
             showToast('Prayer deleted', 'success');
           } catch (err) {
@@ -174,17 +207,26 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
     ]);
   };
 
-  const menuActions = (p: Prayer): MenuAction[] =>
+  const reminderActions = (p: Prayer): MenuAction[] => {
+    if (p.answered_at) return [];
+    if (reminders.has(prayerReminderKey(p.id))) return [{ label: 'Stop prayer reminders', icon: 'alarm-outline', onPress: () => stopReminders(p) }];
+    return [
+      { label: 'Remind me to pray tomorrow', icon: 'alarm-outline', onPress: () => remind(p, 1) },
+      { label: 'Remind me daily for a week', icon: 'alarm-outline', onPress: () => remind(p, 7) },
+    ];
+  };
+
+  const menuActions = (p: Prayer): MenuAction[] => [
+    ...reminderActions(p),
     p.is_mine
-      ? [{ label: 'Delete prayer', icon: 'trash-outline', destructive: true, onPress: () => confirmDelete(p) }]
-      : [
-          {
-            label: 'Report prayer',
-            icon: 'flag-outline',
-            onPress: () =>
-              report.open({ type: 'prayer', id: p.id, authorId: p.is_anonymous ? null : p.author_id, authorName: p.is_anonymous ? null : p.author_name }),
-          },
-        ];
+      ? { label: 'Delete prayer', icon: 'trash-outline', destructive: true, onPress: () => confirmDelete(p) }
+      : {
+          label: 'Report prayer',
+          icon: 'flag-outline',
+          onPress: () =>
+            report.open({ type: 'prayer', id: p.id, authorId: p.is_anonymous ? null : p.author_id, authorName: p.is_anonymous ? null : p.author_name }),
+        },
+  ];
 
   const visible = useMemo(() => (prayers ?? []).filter(p => !p.author_id || !blockedIds.has(p.author_id)), [prayers, blockedIds]);
   const [left, right] = useMemo(() => distributeColumns(visible, estimatePrayerHeight), [visible]);

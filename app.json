@@ -113,6 +113,15 @@
         }
       ],
       [
+        "expo-calendar",
+        {
+          "writeOnlyAccess": true,
+          "calendarPermission": "Christ Link Social adds the events you RSVP to into your calendar.",
+          "writeOnlyCalendarPermission": "Christ Link Social adds the events you RSVP to into your calendar.",
+          "remindersPermission": "Christ Link Social does not read your reminders."
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Christ Link Social uses the camera to scan tickets and volunteer passes at check-in.",

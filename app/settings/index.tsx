@@ -14,6 +14,8 @@ import { AppText, ListGroup, ListRow, Screen, Segmented } from '../../components
 import { BlockedSheet } from '../../components/settings/BlockedSheet';
 import { DELETE_EXPLANATION, DeleteAccountSheet } from '../../components/settings/DeleteAccountSheet';
 import { useSettingsStatus } from '../../components/settings/useSettingsStatus';
+import { InterestsSheet } from '../../components/settings/InterestsSheet';
+import { storage } from '../../lib/storage';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -33,9 +35,15 @@ export default function SettingsScreen() {
   const { status } = useSettingsStatus();
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [interestsOpen, setInterestsOpen] = useState(false);
+  const [interestCount, setInterestCount] = useState(0);
   const [churchName, setChurchName] = useState<string | null>(null);
   const unavailable = status === 'unavailable';
   const signedIn = !!session;
+
+  useEffect(() => {
+    storage.getInterests().then(list => setInterestCount(list.length));
+  }, []);
 
   useEffect(() => {
     const id = settings?.home_church_id;
@@ -96,6 +104,16 @@ export default function SettingsScreen() {
           <View style={{ paddingVertical: t.space.sm }}>
             <Segmented options={THEME_OPTIONS} value={preference} onChange={setPreference} />
           </View>
+        </ListGroup>
+
+        <ListGroup title="Discover">
+          <ListRow
+            icon="compass-outline"
+            title="Interests"
+            subtitle={interestCount > 0 ? `${interestCount} picked · shown first on Discover` : 'Pick the events you want to see first'}
+            onPress={() => setInterestsOpen(true)}
+            last
+          />
         </ListGroup>
 
         {signedIn ? (
@@ -170,6 +188,14 @@ export default function SettingsScreen() {
 
       <BlockedSheet visible={blockedOpen} onClose={() => setBlockedOpen(false)} />
       <DeleteAccountSheet visible={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      <InterestsSheet
+        visible={interestsOpen}
+        onClose={() => setInterestsOpen(false)}
+        onSaved={n => {
+          setInterestCount(n);
+          showToast('Interests saved', 'success');
+        }}
+      />
     </Screen>
   );
 }

@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { AppText, Button, Card, PinCross } from '../ui';
 import { AppIcon, type AppIconName } from '../icons/AppIcon';
+import { InterestPicker } from './InterestPicker';
 
 type IconName = AppIconName;
 
@@ -40,6 +41,21 @@ export function WelcomeStep() {
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+export function InterestsStep({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const t = useTheme();
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', gap: t.space.lg }}>
+      <View style={{ gap: t.space.xs }}>
+        <AppText variant="display">What draws you in?</AppText>
+        <AppText variant="body" tone="muted">
+          Pick a few. We’ll put these first on your Discover page. You can change them in Settings.
+        </AppText>
+      </View>
+      <InterestPicker value={value} onChange={onChange} />
     </View>
   );
 }

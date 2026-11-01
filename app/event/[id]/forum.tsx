@@ -16,6 +16,7 @@ import { useReport } from '../../../components/ReportSheet';
 import { Avatar } from '../../../components/Avatar';
 import { AppText, EmptyState, Field, Screen, Skeleton, SkeletonGroup } from '../../../components/ui';
 import { useAttendance } from '../../../components/event/useAttendance';
+import { confirmKindness } from '../../../components/community/kindnessCheck';
 
 const POLL_MS = 8000;
 
@@ -81,6 +82,7 @@ export default function EventForumScreen() {
   const send = async () => {
     const body = text.trim();
     if (!body || !id || !token || sendingRef.current) return;
+    if (!(await confirmKindness(body))) return;
     sendingRef.current = true;
     setSending(true);
     try {

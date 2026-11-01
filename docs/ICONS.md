@@ -20,6 +20,8 @@ One concept = one icon everywhere. Preview: `/styleguide` → Faith icons.
 | Save event | `heart-outline` / `heart` | hearts are only for saving |
 | Payouts | `wallet-outline` | Stripe card payment = `lock-closed` / `card-outline` |
 | Block | `ban-outline` | report = `flag-outline`, hide = `eye-off-outline` |
-| Location / online | `location-outline` / `videocam-outline` | |
+| Location / online | `location-outline` / `videocam-outline` | directions = `navigate-outline` |
+| Add to calendar | `calendar-outline` | same as dates |
+| Reminder (prayer, event) | `alarm-outline` | notification inbox stays `notifications-outline` |
 
 Profile hobbies and "open to connect" options keep the same mapping (lib/profileOptions.ts).

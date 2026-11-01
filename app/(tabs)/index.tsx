@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,8 +17,11 @@ import { FriendsWeek } from '../../components/home/FriendsWeek';
 import { CategoryRail } from '../../components/home/CategoryRail';
 import { EventsSkeleton, WeekStripSkeleton } from '../../components/home/HomeSkeleton';
 import { useHomeData } from '../../components/home/useHomeData';
+import { useDevotionStreak } from '../../components/home/useDevotionStreak';
 import { getVerseOfTheDay } from '../../lib/features';
 import { EVENT_TYPES, type EventType } from '../../lib/constants';
+import { rankByInterest } from '../../lib/interests';
+import { storage } from '../../lib/storage';
 import { isTonight } from '../../lib/format';
 import type { Verse } from '../../lib/verses';
 import type { Event } from '../../lib/types';
@@ -40,6 +43,16 @@ export default function HomeScreen() {
   const share = useShareCard();
   const { events, error, plans, plansLoaded, churchEventIds, homeChurchId, refreshing, refreshKey, refresh, retry } = useHomeData();
   const [verse, setVerse] = useState<Verse | null>(null);
+  const [interests, setInterests] = useState<string[]>([]);
+
+  // Re-read on focus so a change in Settings → Interests shows up when coming back.
+  useFocusEffect(
+    useCallback(() => {
+      storage.getInterests().then(setInterests);
+    }, []),
+  );
+
+  const streak = useDevotionStreak(!!verse);
 
   const eventsById = useMemo(() => new Map((events ?? []).map(e => [e.id, e])), [events]);
 
@@ -72,17 +85,18 @@ export default function HomeScreen() {
     const tonight = upcoming.filter(e => isTonight(e.start_date));
     const soon = tonight.length > 0 ? tonight : upcoming.filter(e => e.start_date && startMs(e) >= now && startMs(e) <= now + 24 * HOUR);
 
-    const categories: { type: EventType; events: Event[] }[] = EVENT_TYPES.filter(type => type !== 'All')
-      .map(type => ({ type, events: rank(upcoming.filter(e => (e.event_type ?? '').toLowerCase() === type.toLowerCase())) }))
-      .filter(s => s.events.length > 0)
-      .sort((a, b) => b.events.length - a.events.length)
-      .slice(0, MAX_CATEGORY_RAILS);
+    const categories: { type: EventType; events: Event[] }[] = rankByInterest(
+      EVENT_TYPES.filter(type => type !== 'All')
+        .map(type => ({ type, events: rank(upcoming.filter(e => (e.event_type ?? '').toLowerCase() === type.toLowerCase())) }))
+        .filter(s => s.events.length > 0),
+      interests,
+    ).slice(0, MAX_CATEGORY_RAILS);
     if (categories.length === 0 && upcoming.length > 0) categories.push({ type: 'All', events: rank(upcoming) });
 
     const nextChurchEvent = upcoming.filter(e => churchSet.has(e.id) && e.start_date).sort((a, b) => startMs(a) - startMs(b))[0] ?? null;
 
     return { upcoming, soon: rank(soon), tonightIsReal: tonight.length > 0, categories, nextChurchEvent };
-  }, [events, churchEventIds]);
+  }, [events, churchEventIds, interests]);
 
   const friends = useFriendsGoing(useMemo(() => sections.upcoming.map(e => e.id), [sections.upcoming]));
 
@@ -101,6 +115,7 @@ export default function HomeScreen() {
           <VerseCard
             verse={verse}
             theme={verseTheme}
+            streak={streak}
             onShare={v => share.open({ kind: 'verse', reference: v.reference, text: v.text })}
           />
         </View>

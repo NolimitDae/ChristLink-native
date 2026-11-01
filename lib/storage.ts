@@ -12,6 +12,8 @@ const KEYS = {
   onboarding: 'cl.onboardingDone',
   hiddenPosts: 'cl.hiddenPosts',
   reminders: 'cl.scheduledReminders',
+  devotionDays: 'cl.devotionDays',
+  interests: 'cl.interests',
 } as const;
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
@@ -57,11 +59,17 @@ export const storage = {
   getReminderMap: () => readJson<Record<string, string[]>>(KEYS.reminders, {}),
   setReminderMap: (m: Record<string, string[]>) => writeJson(KEYS.reminders, m),
 
+  getDevotionDays: () => readJson<string[]>(KEYS.devotionDays, []),
+  setDevotionDays: (days: string[]) => writeJson(KEYS.devotionDays, days),
+
+  getInterests: () => readJson<string[]>(KEYS.interests, []),
+  setInterests: (types: string[]) => writeJson(KEYS.interests, types),
+
   async clearUserData(): Promise<void> {
     // The map only holds IDs; the scheduled event/serve reminders themselves must be cancelled too.
     await Notifications.cancelAllScheduledNotificationsAsync().catch(err =>
       logger.warn('cancel reminders failed', { error: String(err) }),
     );
-    await AsyncStorage.multiRemove([KEYS.saved, KEYS.tickets, KEYS.rsvps, KEYS.hiddenPosts, KEYS.reminders]);
+    await AsyncStorage.multiRemove([KEYS.saved, KEYS.tickets, KEYS.rsvps, KEYS.hiddenPosts, KEYS.reminders, KEYS.devotionDays]);
   },
 };

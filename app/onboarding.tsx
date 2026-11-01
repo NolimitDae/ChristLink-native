@@ -14,10 +14,11 @@ import { storage } from '../lib/storage';
 import type { Church } from '../lib/types';
 import { AppText, Button } from '../components/ui';
 import { ChurchStep } from '../components/onboarding/ChurchStep';
-import { LoopStep, WelcomeStep } from '../components/onboarding/Steps';
+import { InterestsStep, LoopStep, WelcomeStep } from '../components/onboarding/Steps';
 import { setPendingHomeChurch } from '../components/onboarding/pendingChurch';
 
-const STEPS = 3;
+const STEPS = 4;
+const CHURCH_STEP = 2;
 
 export default function OnboardingScreen() {
   const t = useTheme();
@@ -29,6 +30,7 @@ export default function OnboardingScreen() {
   const pager = useRef<ScrollViewInstance>(null);
   const [index, setIndex] = useState(0);
   const [churchId, setChurchId] = useState<string | null>(null);
+  const [interests, setInterests] = useState<string[]>([]);
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [locationOn, setLocationOn] = useState(false);
   const [asking, setAsking] = useState<'notifications' | 'location' | null>(null);
@@ -89,6 +91,7 @@ export default function OnboardingScreen() {
   const finish = async () => {
     setFinishing(true);
     await storage.setOnboardingDone(true);
+    if (interests.length > 0) await storage.setInterests(interests);
     if (session && settings) {
       try {
         setSettings(await updateSettings({ onboarding_completed_at: new Date().toISOString() }));
@@ -123,10 +126,13 @@ export default function OnboardingScreen() {
         <View style={[styles.page, { width, paddingHorizontal: t.space.lg }]} accessibilityElementsHidden={index !== 0}>
           <WelcomeStep />
         </View>
-        <View style={[styles.page, { width, paddingHorizontal: t.space.lg, paddingTop: t.space.md }]} accessibilityElementsHidden={index !== 1}>
+        <View style={[styles.page, { width, paddingHorizontal: t.space.lg }]} accessibilityElementsHidden={index !== 1}>
+          <InterestsStep value={interests} onChange={next => setInterests(next)} />
+        </View>
+        <View style={[styles.page, { width, paddingHorizontal: t.space.lg, paddingTop: t.space.md }]} accessibilityElementsHidden={index !== CHURCH_STEP}>
           <ChurchStep selectedId={churchId} onSelect={selectChurch} />
         </View>
-        <View style={[styles.page, { width, paddingHorizontal: t.space.lg }]} accessibilityElementsHidden={index !== 2}>
+        <View style={[styles.page, { width, paddingHorizontal: t.space.lg }]} accessibilityElementsHidden={index !== 3}>
           <LoopStep
             notificationsOn={notificationsOn}
             locationOn={locationOn}
@@ -152,8 +158,8 @@ export default function OnboardingScreen() {
           ))}
         </View>
         <Button
-          title={last ? 'Get started' : index === 1 && !churchId ? 'Not now' : 'Next'}
-          variant={index === 1 && !churchId ? 'secondary' : 'primary'}
+          title={last ? 'Get started' : (index === CHURCH_STEP && !churchId) || (index === 1 && interests.length === 0) ? 'Not now' : 'Next'}
+          variant={(index === CHURCH_STEP && !churchId) || (index === 1 && interests.length === 0) ? 'secondary' : 'primary'}
           size="lg"
           iconRight={last ? undefined : 'arrow-forward'}
           onPress={() => (last ? finish() : goTo(index + 1))}

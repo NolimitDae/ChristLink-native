@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Brightness from 'expo-brightness';
+import { useKeepAwake } from 'expo-keep-awake';
 import QRCode from 'react-native-qrcode-svg';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +16,9 @@ import { buildTicketQr, ticketShortCode } from '../../lib/qr';
 import { formatCents } from '../../lib/fees';
 import { formatDateLong, formatTimeRange } from '../../lib/format';
 import { haptic } from '../../lib/haptics';
+import { addToCalendar } from '../../lib/calendar';
+import { openInMaps } from '../../lib/maps';
+import { eventShareUrl } from '../../lib/eventHelpers';
 import { shadow } from '../../lib/theme';
 import type { Ticket } from '../../lib/types';
 import { AppText, Badge, BottomSheet, Button, EmptyState, Field, IconButton, Skeleton, SkeletonGroup, TicketPerforation } from '../../components/ui';
@@ -74,6 +78,8 @@ export default function TicketScreen() {
   const [refundBusy, setRefundBusy] = useState(false);
 
   useFullBrightness();
+  // Door lines are slow; don't let the screen lock while the QR is up.
+  useKeepAwake();
 
   useEffect(() => {
     let cancelled = false;
@@ -185,6 +191,30 @@ export default function TicketScreen() {
   const usable = ticket.status === 'confirmed';
   const typeName = ticket.ticket_type_name ?? ticket.ticket_types?.name ?? 'General admission';
   const time = formatTimeRange(ticket.event_start_date, ticket.event_end_date);
+  const venue = [ticket.event_venue_name, ticket.event_city].filter(Boolean).join(', ');
+
+  const saveToCalendar = async () => {
+    if (!ticket.event_start_date) return;
+    try {
+      const result = await addToCalendar({
+        title: ticket.event_name ?? 'Event',
+        start: ticket.event_start_date,
+        end: ticket.event_end_date,
+        location: venue || null,
+        notes: `Ticket ${code} · ${typeName} × ${ticket.quantity}`,
+        url: eventShareUrl(ticket.event_id),
+      });
+      if (result === 'saved') {
+        haptic.success();
+        showToast('Added to your calendar', 'success');
+      }
+    } catch {
+      showToast('Could not open your calendar', 'error');
+    }
+  };
+
+  const directions = () =>
+    openInMaps({ parts: [ticket.event_venue_name, ticket.event_city] }, { directions: true }).catch(() => showToast('Could not open maps', 'error'));
 
   return (
     <View style={s.root}>
@@ -200,9 +230,9 @@ export default function TicketScreen() {
               {formatDateLong(ticket.event_start_date)}
               {time ? ` · ${time}` : ''}
             </AppText>
-            {ticket.event_venue_name || ticket.event_city ? (
+            {venue ? (
               <AppText variant="callout" tone="muted" align="center">
-                {[ticket.event_venue_name, ticket.event_city].filter(Boolean).join(', ')}
+                {venue}
               </AppText>
             ) : null}
 
@@ -252,6 +282,12 @@ export default function TicketScreen() {
         </View>
 
         <View style={s.actions}>
+          {upcoming && usable ? (
+            <View style={s.quick}>
+              <Button title="Calendar" icon="calendar-outline" variant="secondary" size="md" onPress={saveToCalendar} style={{ flex: 1 }} />
+              {venue ? <Button title="Directions" icon="navigate-outline" variant="secondary" size="md" onPress={directions} style={{ flex: 1 }} /> : null}
+            </View>
+          ) : null}
           {Platform.OS === 'ios' && token && ticket.status === 'confirmed' ? (
             <Button title="Add to Apple Wallet" icon="wallet-outline" variant="secondary" onPress={addToWallet} loading={walletBusy} fullWidth />
           ) : null}
@@ -298,6 +334,7 @@ const useStyles = makeStyles(t => ({
   qrFrame: { alignSelf: 'center', marginTop: t.space.lg, padding: 6, borderRadius: t.radius.lg + 6, borderWidth: 1 },
   qrCard: { backgroundColor: QR_WHITE, padding: t.space.md, borderRadius: t.radius.lg },
   passBottom: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.space.lg, paddingTop: t.space.xs, paddingBottom: t.space.lg, gap: t.space.md },
+  quick: { flexDirection: 'row', gap: t.space.xs },
   actions: { marginTop: t.space.lg, gap: t.space.xs },
   note: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: t.space.md },
 }));

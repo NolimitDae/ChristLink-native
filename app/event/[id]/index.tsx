@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Linking, Platform, Pressable, RefreshControl, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Linking, Pressable, RefreshControl, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,8 @@ import { FeatureError, getOpenShifts } from '../../../lib/features';
 import { eventFormatLabel, eventTiming, formatDateShort, formatTimeRange, pluralize } from '../../../lib/format';
 import { eventShareUrl, isSoldOut, locationLabel, priceLabel } from '../../../lib/eventHelpers';
 import { haptic } from '../../../lib/haptics';
+import { addToCalendar } from '../../../lib/calendar';
+import { openInMaps } from '../../../lib/maps';
 import { logger } from '../../../lib/logger';
 import type { Event, ForumMessage, PersonSummary, ServeShift } from '../../../lib/types';
 import { useFriendsGoing } from '../../../hooks/useFriendsGoing';
@@ -22,6 +24,7 @@ import {
   AppText,
   BottomSheet,
   Button,
+  Chip,
   EmptyState,
   Glass,
   IconButton,
@@ -274,14 +277,29 @@ export default function EventDetailScreen() {
   const hostVerified = event.host_role === 'verified' || event.host_role === 'admin';
   const place = [event.address, event.city, event.state].filter(Boolean).join(', ');
 
-  const openMaps = () => {
-    const q = encodeURIComponent([event.venue_name, event.address, event.city, event.state, event.zip].filter(Boolean).join(', '));
-    const hasCoords = typeof event.lat === 'number' && typeof event.lng === 'number';
-    const mapUrl =
-      Platform.OS === 'ios'
-        ? `http://maps.apple.com/?q=${q}${hasCoords ? `&ll=${event.lat},${event.lng}` : ''}`
-        : `geo:${hasCoords ? `${event.lat},${event.lng}` : '0,0'}?q=${q}`;
-    Linking.openURL(mapUrl).catch(() => showToast('Could not open maps', 'error'));
+  const mapPlace = { parts: [event.venue_name, event.address, event.city, event.state, event.zip], lat: event.lat, lng: event.lng };
+  const openMaps = (directions = false) => {
+    openInMaps(mapPlace, { directions }).catch(() => showToast('Could not open maps', 'error'));
+  };
+
+  const saveToCalendar = async () => {
+    if (!event.start_date) return;
+    try {
+      const result = await addToCalendar({
+        title: event.name,
+        start: event.start_date,
+        end: event.end_date,
+        location: event.format === 'online' ? event.online_url : [event.venue_name, place].filter(Boolean).join(', '),
+        notes: event.description,
+        url,
+      });
+      if (result === 'saved') {
+        haptic.success();
+        showToast('Added to your calendar', 'success');
+      }
+    } catch {
+      showToast('Could not open your calendar', 'error');
+    }
   };
 
   const openJoinLink = () => {
@@ -433,6 +451,12 @@ export default function EventDetailScreen() {
             {hostVerified ? <Ionicons name="checkmark-circle" size={16} color={t.c.goldText} accessibilityLabel="Verified" /> : null}
             <Ionicons name="chevron-forward" size={16} color={t.c.textFaint} />
           </Pressable>
+          {attendance.attending && !isHost && !ended && !cancelled && event.start_date ? (
+            <View style={s.planRow}>
+              <Chip label="Add to calendar" icon="calendar-outline" onPress={saveToCalendar} />
+              {!online && canOpenPlace ? <Chip label="Directions" icon="navigate-outline" onPress={() => openMaps(true)} /> : null}
+            </View>
+          ) : null}
         </View>
 
         <InfoGrid>
@@ -443,7 +467,7 @@ export default function EventDetailScreen() {
             value={online ? 'Online' : locationLabel({ ...event, format: 'in_person' })}
             sub={placeSub}
             subTone={online && canSeePrivate && event.online_url ? 'gold' : 'muted'}
-            onPress={canOpenPlace ? (online ? openJoinLink : openMaps) : undefined}
+            onPress={canOpenPlace ? (online ? openJoinLink : () => openMaps()) : undefined}
             hint={online ? 'Opens the join link' : 'Opens maps'}
           />
           <InfoTile
@@ -534,6 +558,9 @@ export default function EventDetailScreen() {
 
       <BottomSheet visible={sheet === 'menu'} onClose={() => setSheet(null)} title="Event options">
         <ListGroup>
+          {!ended && !cancelled && event.start_date ? (
+            <ListRow icon="calendar-outline" title="Add to calendar" onPress={() => afterMenu(saveToCalendar)} />
+          ) : null}
           <ListRow icon="share-outline" title="Share link" onPress={() => afterMenu(shareLink)} />
           <ListRow
             icon="image-outline"
@@ -601,6 +628,7 @@ const useStyles = makeStyles(t => ({
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: t.space.md,
   },
+  planRow: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.xs, marginTop: t.space.sm },
   hostRow: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, marginTop: t.space.md, minHeight: 44, alignSelf: 'flex-start' },
   section: { marginTop: t.space.lg },
   joinLink: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, marginHorizontal: t.space.md, marginTop: t.space.sm, minHeight: 44 },

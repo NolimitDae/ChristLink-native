@@ -62,6 +62,8 @@ must be applied (development project first).
 | Prayer Wall (anonymous, filters, I prayed glow + count roll + haptic, answered → testimony post + notify, report/hide) | Done | components/community/* | migration |
 | Daily "N people prayed for you" | Done | — | `queue_prayer_summaries()` + pg_cron |
 | Church pages, Home Church, claims + admin verification, recurring events | Done | app/church/*, components/church/* | migration |
+| Add to calendar (event, ticket, church visit), directions, ticket keep-awake | Done (native sheet needs new build; Google Calendar fallback) | lib/calendar.ts, lib/maps.ts | — |
+| Prayer reminders, verse habit dots, kindness nudge, Plan a visit, interests | Done (on device) | components/community/PrayerWall.tsx, lib/streak.ts, lib/kindness.ts, components/church/PlanVisitSheet.tsx, lib/interests.ts | — |
 | Serve: roles, shifts, two-tap sign-up, reminders 24h/2h, QR check-in, roster, message, complete, hours served | Done | app/serve, components/serve/*, app/host/serve.tsx | migration |
 
 ## Phase 4 — native

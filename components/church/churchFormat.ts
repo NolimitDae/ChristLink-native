@@ -10,6 +10,7 @@ export interface ScheduleItem {
   title: string;
   isService: boolean;
   location?: string | null;
+  minutes?: number;
 }
 
 export function formatClock(hhmm: string): string {
@@ -49,6 +50,31 @@ export function upcomingSchedule(
       .forEach((d, j) => items.push({ key: `${r.id}-${j}`, date: d, title: r.name, isService: r.is_service, location: r.location }));
   });
   return items.sort((a, b) => a.date.getTime() - b.date.getTime());
+}
+
+/** The next few services someone could visit in the coming two weeks (fixed service times and recurring services). */
+export function visitOptions(
+  church: Pick<Church, 'service_times'>,
+  recurring: ChurchRecurringEvent[],
+  now = new Date(),
+  max = 4,
+): ScheduleItem[] {
+  const end = now.getTime() + 14 * DAY_MS;
+  const items: ScheduleItem[] = [];
+  (church.service_times ?? []).forEach((st, i) => {
+    nextOccurrences(serviceTimeRule(st), now, 2).forEach((d, j) =>
+      items.push({ key: `st-${i}-${j}`, date: d, title: st.label || 'Sunday service', isService: true }),
+    );
+  });
+  recurring
+    .filter(r => r.is_service)
+    .forEach(r =>
+      nextOccurrences(r, now, 2).forEach((d, j) => items.push({ key: `${r.id}-${j}`, date: d, title: r.name, isService: true, location: r.location, minutes: r.duration_minutes })),
+    );
+  return items
+    .filter(i => i.date.getTime() > now.getTime() && i.date.getTime() <= end)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(0, max);
 }
 
 export function isNotSetUp(err: unknown): boolean {

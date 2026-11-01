@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { logger } from './logger';
 import { savePushToken } from './features';
 import { storage } from './storage';
+import { dailyReminderTimes, prayerReminderContent, prayerReminderKey } from './reminderTimes';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -164,4 +165,43 @@ export function routeForNotification(data: Record<string, unknown> | null | unde
   if (str('churchId')) return `/church/${str('churchId')}`;
   if (str('shiftId')) return '/serve';
   return '/notifications';
+}
+
+/**
+ * Local "pray for this today" reminders at 9am for `days` days. Asks for notification permission here, right after
+ * the person tapped "Remind me", so the prompt has context. Returns 'denied' when notifications are off.
+ */
+export async function schedulePrayerReminders(
+  prayer: { id: string; body: string; author_name?: string | null; is_anonymous?: boolean },
+  days: number,
+): Promise<'scheduled' | 'denied'> {
+  if (!(await requestNotificationPermissions())) return 'denied';
+  await ensureAndroidChannel();
+  const key = prayerReminderKey(prayer.id);
+  await cancelReminders(key);
+  const content = prayerReminderContent(prayer);
+  const ids: string[] = [];
+  for (const at of dailyReminderTimes(days)) {
+    ids.push(
+      await Notifications.scheduleNotificationAsync({
+        content: { ...content, data: { prayerId: prayer.id } },
+        trigger: { date: at, channelId: 'default' } as Notifications.NotificationTriggerInput,
+      }),
+    );
+  }
+  const map = await storage.getReminderMap();
+  map[key] = ids;
+  await storage.setReminderMap(map);
+  return 'scheduled';
+}
+
+/** Keys of reminders still pending on this device (e.g. prayer:<id>); keys whose reminders all fired are dropped. */
+export async function scheduledReminderKeys(): Promise<Set<string>> {
+  try {
+    const [map, pending] = await Promise.all([storage.getReminderMap(), Notifications.getAllScheduledNotificationsAsync()]);
+    const live = new Set(pending.map(n => n.identifier));
+    return new Set(Object.keys(map).filter(k => map[k].some(id => live.has(id))));
+  } catch {
+    return new Set();
+  }
 }

@@ -474,3 +474,40 @@ migration applied earlier today stays (harmless while the website still runs on 
 - After renewal: EAS non-interactive won't pick devices for internal distribution, so create the `com.christlink.app`
   App ID and an ad hoc profile (cert PN5AQA5DBR, the registered iPhone) through the App Store Connect API, store it in
   EAS credentials, then `eas build --profile preview --platform ios --non-interactive`.
+
+## 2026-11-01 — Improvements from competitor research (Eventbrite, Luma, Partiful, Dice, YouVersion, Hallow, Echo, Church Center)
+
+**Changed**
+- Bug: Discover "Your week" showed Sunday twice on the day clocks fall back (24-hour steps). `weekDays()` now uses
+  calendar days; Jest now runs in America/New_York (jest.globalSetup.js) so DST bugs fail tests.
+- Add to calendar: event menu, a "Add to calendar · Directions" row for people going, ticket screen, and church
+  visits. Uses the system "new event" sheet (expo-calendar, no calendar permission) and falls back to Google
+  Calendar on builds made before expo-calendar was added (lib/calendar.ts). Directions open Apple Maps / Google
+  navigation (lib/maps.ts).
+- Ticket screen keeps the phone awake while the QR is open (expo-keep-awake), next to the existing brightness boost.
+- Prayer Wall: "Remind me to pray tomorrow" / "daily for a week" (local 9am reminders, permission asked on tap),
+  "Stop prayer reminders"; deleting a prayer cancels them.
+- Verse of the day: gentle habit row — this week's dots and "N days in a row" / "Perfect week", stored on the device
+  (lib/streak.ts). No loud resets.
+- Kindness nudge (Instagram-style): posts, replies, event discussion and prayers with insults, profanity, threats or
+  shouting get "Is this kind and true?" with Edit / Post anyway (lib/kindness.ts). Reports stay the moderation.
+- Church pages: "Plan a visit" sheet for non-members — pick one of the next services (two weeks), add it to the
+  calendar, reminders 24h/2h before, directions.
+- Onboarding: new "What draws you in?" interests step; Settings → Discover → Interests edits them; Discover puts
+  those categories first (lib/interests.ts).
+- Chips get a 4pt hit slop (44pt touch targets).
+
+**Needs a new build** (JS works over the air with fallbacks until then): expo-calendar (native "add event" sheet)
+and its app.json plugin. Current Android APK uses the Google Calendar fallback.
+
+**Not done (need backend)**: waitlist for sold-out events, "someone prayed for you" real-time push per tap
+(the daily summary exists), church connect card to the church admin, Google Wallet.
+
+**Test on a phone**
+- Discover: week strip days are consecutive; verse card shows the dots row after it loads.
+- Event you RSVP'd to: "Add to calendar" and "Directions" under the host; "…" menu → Add to calendar.
+- Ticket: Calendar / Directions buttons; screen doesn't sleep while the QR is open.
+- Prayer Wall → "…" on a prayer → Remind me tomorrow (allow notifications) → menu now shows "Stop prayer reminders".
+- Post "you are an idiot" in Community → kindness prompt; Edit keeps the text.
+- A church page with service times (not your Home Church) → Plan a visit.
+- Fresh install / reset onboarding → interests step; Settings → Interests.

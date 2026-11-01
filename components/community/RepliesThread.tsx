@@ -9,6 +9,7 @@ import { createCommunityReply, getCommunityReplies } from '../../lib/api';
 import { timeAgo } from '../../lib/format';
 import { haptic } from '../../lib/haptics';
 import type { CommunityReply } from '../../lib/types';
+import { confirmKindness } from './kindnessCheck';
 import { Avatar } from '../Avatar';
 import { AppText, Button, Field, IconButton, Skeleton } from '../ui';
 
@@ -47,6 +48,7 @@ export function RepliesThread({ postId, onCountChange, onReportReply }: RepliesT
   const send = async () => {
     const text = draft.trim();
     if (!text || !token || !session) return;
+    if (!(await confirmKindness(text))) return;
     setSending(true);
     try {
       const reply = await createCommunityReply(postId, text, token);
