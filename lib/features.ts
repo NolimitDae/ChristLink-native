@@ -270,6 +270,35 @@ export async function setFollowChurch(churchId: string, follow: boolean): Promis
   await call('setFollowChurch', `/api/churches/${id(churchId)}/follow`, { method: follow ? 'POST' : 'DELETE' });
 }
 
+// ── Plan a visit (connect card) ──────────────────────────────
+export interface ChurchVisit {
+  id: string;
+  church_id: string;
+  visit_at: string;
+  service_label: string | null;
+  party_size: number;
+  note: string | null;
+  share_contact: boolean;
+  created_at: string;
+  visitor?: { id: string; full_name: string | null; avatar_url?: string | null; avatar_color?: string | null; email: string | null };
+}
+
+export function planChurchVisit(
+  churchId: string,
+  input: { visit_at: string; service_label?: string; party_size?: number; note?: string; share_contact?: boolean },
+): Promise<ChurchVisit> {
+  return call<ChurchVisit>('planChurchVisit', `/api/churches/${id(churchId)}/visits`, body(input));
+}
+
+/** Church owner/admin: upcoming visits, soonest first. */
+export async function getChurchVisits(churchId: string): Promise<ChurchVisit[]> {
+  return (await call<ChurchVisit[] | null>('getChurchVisits', `/api/churches/${id(churchId)}/visits`)) ?? [];
+}
+
+export async function cancelChurchVisit(visitId: string): Promise<void> {
+  await call('cancelChurchVisit', `/api/church-visits/${id(visitId)}`, { method: 'DELETE' });
+}
+
 export async function getMyManagedChurches(): Promise<Church[]> {
   return (await call<Church[] | null>('getMyManagedChurches', '/api/my-churches')) ?? [];
 }

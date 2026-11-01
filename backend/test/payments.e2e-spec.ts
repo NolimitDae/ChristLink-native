@@ -316,6 +316,33 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
       await http.get(`/api/tickets/${ticketId}/wallet`).set(as('stranger')).expect(404, { error: 'Ticket not found or not confirmed.' });
     });
 
+    it('Google Wallet: 503 until configured, then owner-only save link', async () => {
+      await http.get(`/api/tickets/${ticketId}/google-wallet-link`).set(as('buyer')).expect(503, { error: 'Google Wallet not configured on this server.' });
+      const { generateKeyPairSync } = await import('crypto');
+      const pem = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+      process.env.GOOGLE_WALLET_ISSUER_ID = '3388000000012345';
+      process.env.GOOGLE_WALLET_KEY_JSON_BASE64 = Buffer.from(JSON.stringify({ client_email: 'w@p.iam.gserviceaccount.com', private_key: pem })).toString('base64');
+      const realFetch = global.fetch;
+      const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) =>
+        String(url).includes('oauth2') ? new Response(JSON.stringify({ access_token: 'tok' })) : new Response('{}'),
+      );
+      try {
+        await http.get(`/api/tickets/${ticketId}/google-wallet-link`).set(as('stranger')).expect(404);
+        const { body } = await http.get(`/api/tickets/${ticketId}/google-wallet-link`).set(as('buyer')).expect(200);
+        expect(body.url).toMatch(/^https:\/\/pay\.google\.com\/gp\/v\/save\/[\w-]+\.[\w-]+\.[\w-]+$/);
+        const posted = fetchSpy.mock.calls.map(([u, init]) => `${(init as RequestInit)?.method} ${String(u)}`);
+        expect(posted).toEqual(expect.arrayContaining([
+          'POST https://walletobjects.googleapis.com/walletobjects/v1/eventTicketClass',
+          'POST https://walletobjects.googleapis.com/walletobjects/v1/eventTicketObject',
+        ]));
+      } finally {
+        fetchSpy.mockRestore();
+        global.fetch = realFetch;
+        delete process.env.GOOGLE_WALLET_ISSUER_ID;
+        delete process.env.GOOGLE_WALLET_KEY_JSON_BASE64;
+      }
+    });
+
     it('signed link: owner only, works without a token, rejects bad signatures', async () => {
       await http.get(`/api/tickets/${ticketId}/wallet-link`).set(as('stranger')).expect(404);
       const { body } = await http.get(`/api/tickets/${ticketId}/wallet-link`).set(as('buyer')).expect(200);

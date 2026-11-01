@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isUuid } from '../events/event-helpers';
+import { WaitlistService } from '../waitlist/waitlist.service';
 
 @Injectable()
 export class RsvpService {
@@ -10,6 +11,7 @@ export class RsvpService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly waitlist: WaitlistService,
   ) {}
 
   async get(eventId: string, userId: string) {
@@ -76,12 +78,17 @@ export class RsvpService {
     });
     // The dropped rsvps_notify_friends trigger ran after INSERT only (not when an RSVP was re-confirmed)
     if (!existed) void this.notifyFriends(ev, userId);
+    await this.waitlist.markIn(eventId, userId);
     return { success: true, rsvp };
   }
 
   async cancel(eventId: string, userId: string) {
     if (isUuid(eventId)) {
-      await this.prisma.rsvps.updateMany({ where: { event_id: eventId, user_id: userId }, data: { status: 'cancelled' } });
+      const { count } = await this.prisma.rsvps.updateMany({
+        where: { event_id: eventId, user_id: userId, status: 'confirmed' },
+        data: { status: 'cancelled' },
+      });
+      if (count) void this.waitlist.spotsOpened(eventId);
     }
     return { success: true };
   }

@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import appConfig from '../../config/app.config';
 import { isUuid, JsonError } from './json-error';
 import { piShortCode } from './tickets.service';
+import { parseServiceAccount, saveUrl, upsertPass } from './google-wallet';
 
 const LINK_TTL_SECONDS = 600;
 const TRANSPARENT_PNG = Buffer.from(
@@ -82,6 +83,42 @@ export class WalletService {
     if (!(await this.findTicket(ticketId, userId))) throw new NotFoundException('Ticket not found or not confirmed.');
     const exp = Math.floor(Date.now() / 1000) + LINK_TTL_SECONDS;
     return { url: `${baseUrl}/api/tickets/${ticketId}/wallet.pkpass?exp=${exp}&sig=${walletSignature(ticketId, exp)}` };
+  }
+
+  /** "Add to Google Wallet": creates the event class + ticket object, then returns the save link. Owner only. */
+  async googleLink(ticketId: string, userId: string, fetchFn: typeof fetch = fetch) {
+    const issuerId = appConfig().google_wallet.issuer_id;
+    const sa = parseServiceAccount(appConfig().google_wallet.key_json_base64);
+    if (!issuerId || !sa) throw new JsonError(503, { error: 'Google Wallet not configured on this server.' });
+    const ticket = await this.findTicket(ticketId, userId);
+    if (!ticket) throw new NotFoundException('Ticket not found or not confirmed.');
+    const ev = ticket.events;
+    const holder = await this.prisma.profiles.findUnique({ where: { id: userId }, select: { full_name: true } });
+    const place = [ev?.city, ev?.state].filter(Boolean).join(', ');
+    try {
+      await upsertPass(
+        sa,
+        issuerId,
+        {
+          ticketId: ticket.id,
+          eventId: ticket.event_id,
+          shortCode: piShortCode(ticket),
+          eventName: ev?.name || 'Christ Link Event',
+          venue: ev?.venue_name || place || 'See event details',
+          address: place || null,
+          start: ev?.start_date ?? null,
+          end: ev?.end_date ?? null,
+          ticketType: ticket.ticket_types?.name || 'General Admission',
+          quantity: ticket.quantity || 1,
+          holder: holder?.full_name || null,
+        },
+        fetchFn,
+      );
+    } catch (e) {
+      this.logger.error(`Google Wallet error: ${(e as Error).message}`);
+      throw new JsonError(502, { error: 'Google Wallet is unavailable right now. Please try again.' });
+    }
+    return { url: saveUrl(sa, issuerId, ticket.id) };
   }
 
   checkLink(ticketId: string, exp: unknown, sig: unknown) {

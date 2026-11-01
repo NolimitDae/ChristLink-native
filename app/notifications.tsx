@@ -21,6 +21,9 @@ const ICONS: Record<string, IconName> = {
   friend_rsvp: 'people-outline',
   prayer_answered: 'sparkles-outline',
   prayer_summary: 'pray-outline',
+  prayer_prayed: 'pray-outline',
+  waitlist_promoted: 'ticket-outline',
+  waitlist_spot: 'ticket-outline',
   serve_message: 'serve-outline',
   church_claim: 'church-outline',
 };

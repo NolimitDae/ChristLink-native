@@ -77,6 +77,11 @@ export class TicketsController {
     return this.wallet.link(ticketId, userId, `${req.protocol}://${req.get('host')}`);
   }
 
+  @Get('tickets/:ticketId/google-wallet-link')
+  googleWalletLink(@CurrentUser('id') userId: string, @Param('ticketId') ticketId: string) {
+    return this.wallet.googleLink(ticketId, userId);
+  }
+
   /** Public: the signed link is the authorization (Safari / Wallet can't send a bearer token). */
   @Public()
   @Get('tickets/:ticketId/wallet.pkpass')

@@ -4,6 +4,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { isAdmin, OK } from '../reports/is-admin';
 
 export const PRAYER_FILTERS = ['all', 'answered', 'mine', 'friends', 'church'];
+export const PRAYED_WINDOW_HOURS = 6;
+
+export function prayerExcerpt(body: string): string {
+  const text = body.replace(/\s+/g, ' ').trim();
+  return `“${text.length > 90 ? `${text.slice(0, 87)}…` : text}”`;
+}
 
 @Injectable()
 export class PrayersService {
@@ -60,16 +66,47 @@ export class PrayersService {
     return OK;
   }
 
-  /** pray_for(): one prayer per person; the count only goes up the first time. */
+  /** pray_for(): one prayer per person; the count only goes up the first time. The author hears about it right away. */
   async prayFor(uid: string, id: string): Promise<number> {
-    return this.prisma.$transaction(async (tx) => {
-      const p = await tx.prayers.findUnique({ where: { id }, select: { prayed_count: true } });
+    const result = await this.prisma.$transaction(async (tx) => {
+      const p = await tx.prayers.findUnique({ where: { id }, select: { prayed_count: true, author_id: true, body: true, answered_at: true } });
       if (!p) throw new NotFoundException('Prayer not found.');
       const added = await tx.$executeRaw`
         insert into public.prayer_prays (prayer_id, user_id) values (${id}::uuid, ${uid}::uuid) on conflict do nothing`;
-      if (!added) return p.prayed_count;
+      if (!added) return { count: p.prayed_count, notify: null };
       const updated = await tx.prayers.update({ where: { id }, data: { prayed_count: { increment: 1 } }, select: { prayed_count: true } });
-      return updated.prayed_count;
+      const notify = p.author_id !== uid && !p.answered_at ? { authorId: p.author_id, body: p.body } : null;
+      return { count: updated.prayed_count, notify };
+    });
+    if (result.notify) await this.notifyPrayed(uid, id, result.notify.authorId, result.notify.body);
+    return result.count;
+  }
+
+  /**
+   * "Grace prayed for you": one push per prayer per PRAYED_WINDOW_HOURS. Further taps in that window update the same
+   * unread inbox row ("3 people prayed for you") without another push, so a popular request doesn't buzz all day.
+   */
+  private async notifyPrayed(uid: string, prayerId: string, authorId: string, body: string) {
+    if (await this.prisma.blocks.findFirst({ where: { blocker_id: authorId, blocked_id: uid }, select: { blocker_id: true } })) return;
+    const since = new Date(Date.now() - PRAYED_WINDOW_HOURS * 3_600_000);
+    const [open] = await this.prisma.$queryRaw<{ id: string; count: number }[]>`
+      select id, coalesce((data->>'count')::int, 1) as count from public.notifications
+       where user_id = ${authorId}::uuid and type = 'prayer_prayed' and not read
+         and data->>'prayerId' = ${prayerId} and created_at > ${since}
+       order by created_at desc limit 1`;
+    if (open) {
+      const count = open.count + 1;
+      await this.prisma.notifications.update({
+        where: { id: open.id },
+        data: { title: `${count} people prayed for you`, data: { prayerId, count } },
+      });
+      return;
+    }
+    const who = await this.prisma.profiles.findUnique({ where: { id: uid }, select: { full_name: true } });
+    const first = (who?.full_name ?? '').trim().split(/\s+/)[0];
+    await this.notifications.create(authorId, 'prayer_prayed', first ? `${first} prayed for you` : 'Someone prayed for you', prayerExcerpt(body), {
+      prayerId,
+      count: 1,
     });
   }
 

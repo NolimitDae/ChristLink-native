@@ -22,6 +22,7 @@ One concept = one icon everywhere. Preview: `/styleguide` → Faith icons.
 | Block | `ban-outline` | report = `flag-outline`, hide = `eye-off-outline` |
 | Location / online | `location-outline` / `videocam-outline` | directions = `navigate-outline` |
 | Add to calendar | `calendar-outline` | same as dates |
+| Waitlist | `hourglass-outline` | join / on the waitlist |
 | Reminder (prayer, event) | `alarm-outline` | notification inbox stays `notifications-outline` |
 
 Profile hobbies and "open to connect" options keep the same mapping (lib/profileOptions.ts).

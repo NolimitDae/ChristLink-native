@@ -511,3 +511,28 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
 - Post "you are an idiot" in Community → kindness prompt; Edit keeps the text.
 - A church page with service times (not your Home Church) → Plan a visit.
 - Fresh install / reset onboarding → interests step; Settings → Interests.
+
+## 2026-11-01 (later) — Backend: waitlist, "prayed for you" push, church visit cards, Google Wallet
+
+**Changed (backend/, with e2e tests; app wired with graceful fallbacks until staging has it)**
+- Waitlist (`/api/events/:id/waitlist`, migration `20261101000000_event_waitlist` adds `status` to the website's
+  existing `event_waitlist` table). Free events: a cancelled RSVP or a raised capacity RSVPs the next person
+  automatically and pushes "You're in". Paid events: a refund or more tickets pushes "Tickets are available" to the next
+  people (a notice holds its seat for 12 h). App: "Join waitlist" / "On the waitlist · You're #3 in line" on full and
+  sold-out events.
+- Instant "Grace prayed for you" push on each new pray tap; further taps within 6 h update the same unread inbox row
+  ("3 people prayed for you") without another push. Blocked users never trigger it. The daily summary stays.
+- Church visit cards (`/api/churches/:id/visits`, migration `20261101010000_church_visits`): Plan a visit can tell the
+  church (party size, note, optional email); the owner gets a push and a "Planned visits" list on the church page.
+- Google Wallet (`/api/tickets/:id/google-wallet-link`): creates the class/object via the Wallet REST API and returns a
+  short save link; Android ticket screen shows "Add to Google Wallet". Needs `GOOGLE_WALLET_ISSUER_ID` and
+  `GOOGLE_WALLET_KEY_JSON_BASE64` in Railway (503 until then; the app says passes are coming soon).
+- Backend checks: typecheck, 49 unit, 161 e2e, build, and `prisma migrate diff` (empty) all pass.
+
+**To deploy**: staging deploys from `claude/railway-launch`; these commits are on `claude/blissful-mccarthy-qc0y20`.
+
+**Test on a phone (after staging deploy)**
+- Fill a free event (capacity 1), join the waitlist from a second account, cancel the first RSVP → second account gets
+  "You're in" and the RSVP shows in Tickets.
+- Pray for someone's prayer → they get "<name> prayed for you" right away.
+- Plan a visit on a claimed church with "Let them know" on → the owner sees it under Planned visits.

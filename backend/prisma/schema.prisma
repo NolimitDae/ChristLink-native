@@ -106,6 +106,7 @@ model churches {
   church_events                          church_events[]
   church_follows                         church_follows[]
   church_recurring_events                church_recurring_events[]
+  church_visits                          church_visits[]
   profiles_churches_claimed_byToprofiles profiles?                 @relation("churches_claimed_byToprofiles", fields: [claimed_by], references: [id], onUpdate: NoAction)
   profiles_churches_created_byToprofiles profiles?                 @relation("churches_created_byToprofiles", fields: [created_by], references: [id], onUpdate: NoAction)
   prayers                                prayers[]
@@ -243,11 +244,13 @@ model event_waitlist {
   user_id     String    @db.Uuid
   notified_at DateTime? @db.Timestamptz(6)
   created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  status      String    @default("waiting")
   events      events    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   profiles    profiles  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([event_id, user_id])
   @@index([event_id, created_at], map: "event_waitlist_event_idx")
+  @@index([event_id, status, created_at], map: "idx_event_waitlist_queue")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -448,6 +451,7 @@ model profiles {
   church_claims_church_claims_decided_byToprofiles                    church_claims[]          @relation("church_claims_decided_byToprofiles")
   church_claims_church_claims_user_idToprofiles                       church_claims[]          @relation("church_claims_user_idToprofiles")
   church_follows                                                      church_follows[]
+  church_visits                                                       church_visits[]
   churches_churches_claimed_byToprofiles                              churches[]               @relation("churches_claimed_byToprofiles")
   churches_churches_created_byToprofiles                              churches[]               @relation("churches_created_byToprofiles")
   community_post_amens                                                community_post_amens[]
@@ -745,4 +749,22 @@ model webhook_events {
   created_at      DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([created_at], map: "idx_webhook_events_created_at")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model church_visits {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  church_id     String   @db.Uuid
+  user_id       String   @db.Uuid
+  visit_at      DateTime @db.Timestamptz(6)
+  service_label String?
+  party_size    Int      @default(1)
+  note          String?
+  share_contact Boolean  @default(false)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  churches      churches @relation(fields: [church_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles      profiles @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([church_id, user_id, visit_at])
+  @@index([church_id, visit_at], map: "idx_church_visits_upcoming")
 }

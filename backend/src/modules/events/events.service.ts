@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, HttpExcepti
 import { Prisma } from '../../../prisma/generated/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WaitlistService } from '../waitlist/waitlist.service';
 import { StorageService } from '../storage/storage.service';
 import {
   dbBadRequest,
@@ -55,6 +56,7 @@ export class EventsService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
+    private readonly waitlist: WaitlistService,
   ) {}
 
   async list(q: Record<string, string | undefined>) {
@@ -159,7 +161,9 @@ export class EventsService {
       if (coords) Object.assign(updates, coords);
     }
     updates.updated_at = new Date();
-    return dbBadRequest(this.prisma.events.update({ where: { id }, data: updates }));
+    const updated = await dbBadRequest(this.prisma.events.update({ where: { id }, data: updates }));
+    if ('max_capacity' in updates) void this.waitlist.spotsOpened(id);
+    return updated;
   }
 
   async publish(id: string, userId: string) {
@@ -400,6 +404,7 @@ export class EventsService {
     const where: Prisma.ticket_typesWhereInput = { id, sold: tt.sold };
     const { count } = await dbBadRequest(this.prisma.ticket_types.updateMany({ where, data }));
     if (!count) throw new ConflictException('Tickets just sold. Refresh and try again.');
+    if (data.quantity !== undefined) void this.waitlist.spotsOpened(tt.event_id);
     return this.prisma.ticket_types.findUnique({ where: { id } });
   }
 

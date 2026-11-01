@@ -71,7 +71,7 @@ Response shapes equal what the Supabase RPC / table query returned (see the SQL 
 | getFriendsThisWeek / getMyFriends | `GET /api/friends/this-week`, `GET /api/friends` |
 | getPrayerWall | `GET /api/prayers?filter=&before=&limit=30` → `Prayer[]` |
 | createPrayer / deletePrayer | `POST /api/prayers { body, is_anonymous, church_id }`, `DELETE /api/prayers/:id` |
-| prayFor | `POST /api/prayers/:id/pray` → `{ count }` |
+| prayFor | `POST /api/prayers/:id/pray` → `{ count }`; the author gets a `prayer_prayed` push (one per prayer per 6 h; later taps update the same unread row: "3 people prayed for you") |
 | markPrayerAnswered | `POST /api/prayers/:id/answer { testimony }` → `{ post_id }` |
 | setPostType | `PATCH /api/community-posts/:id/type { type }` |
 | reportContent | `POST /api/reports { target_type, target_id, reason, details }` (duplicate = 200) |
@@ -85,6 +85,8 @@ Response shapes equal what the Supabase RPC / table query returned (see the SQL 
 | getChurchEventIds / linkEventToChurch | `GET /api/churches/:id/events` → `string[]` (public), `POST /api/churches/:id/events { event_id }` |
 | isFollowingChurch / setFollowChurch | `GET /api/churches/:id/follow` → `{ following }`, `POST` / `DELETE /api/churches/:id/follow` |
 | getMyManagedChurches | `GET /api/my-churches` |
+| planChurchVisit / cancelChurchVisit | `POST /api/churches/:id/visits { visit_at, service_label?, party_size? 1–20, note?, share_contact? }` (upsert per service; owner gets a `church_visit` push the first time), `DELETE /api/church-visits/:id` (own) |
+| getChurchVisits | `GET /api/churches/:id/visits` (owner/admin) → upcoming visits with `visitor { id, full_name, avatar_*, email }` — email only when `share_contact` |
 | getOpenShifts | `GET /api/serve/shifts?church_id=&event_id=` (public) |
 | signUpForShift / cancelSignup | `POST /api/serve/shifts/:id/signup` → `{ id, code }`, `POST /api/serve/signups/:id/cancel` |
 | createServeRole | `POST /api/serve/roles` → `{ id }` |
@@ -93,12 +95,19 @@ Response shapes equal what the Supabase RPC / table query returned (see the SQL 
 | completeShift / messageVolunteers | `POST /api/serve/shifts/:id/complete` → `{ count }`, `POST /api/serve/shifts/:id/message { message }` → `{ count }` |
 | getHoursServed | `GET /api/serve/hours` → `{ hours }` |
 
+### Native-only routes in lib/api.ts (not in server.js)
+| lib/api.ts | Route |
+|---|---|
+| getWaitlist / joinWaitlist / leaveWaitlist | `GET` / `POST` / `DELETE /api/events/:id/waitlist` → `{ joined, status: 'waiting'\|'notified'\|null, position, waiting }`. Join only when full / sold out (else 400). Free events: a cancelled RSVP or raised `max_capacity` RSVPs the next person automatically (`waitlist_promoted` push). Paid events: a refund or raised ticket quantity tells the next people a ticket is back (`waitlist_spot`); a notice holds its seat in the count for 12 h. RSVP/purchase takes you off the list. Table: `event_waitlist` (the website's table plus `status`). |
+| getGoogleWalletLink | `GET /api/tickets/:id/google-wallet-link` → `{ url }` (owner; 503 until `GOOGLE_WALLET_*` set). Creates the event class + ticket object through the Wallet REST API, then returns a short "skinny JWT" save link. Same QR message as the Apple pass. |
+
 ## Environment variables (set in Railway; never in the repo)
 `DATABASE_URL`, `REDIS_URL` (Railway references), `JWT_SECRET`, `CLIENT_APP_URL`, `CORS_ORIGINS`, `APP_URL`,
 `RESEND_API_KEY`, `FROM_EMAIL`, `REVIEW_EMAIL`, `REVIEW_CODE`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
 `STRIPE_CONNECT_WEBHOOK_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`,
 `R2_PUBLIC_URL`, `EXPO_ACCESS_TOKEN` (optional), `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, `APPLE_PASS_P12_BASE64`,
-`APPLE_PASS_PASSWORD` (Wallet), `SENTRY_DSN` (optional).
+`APPLE_PASS_PASSWORD` (Wallet), `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_KEY_JSON_BASE64` (Google Wallet, optional),
+`SENTRY_DSN` (optional).
 
 ## Data copy (production Supabase → Railway)
 `backend/scripts/import-supabase.ts` loads a `supabase db dump --data-only` file: `auth.users` (id, email,

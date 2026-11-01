@@ -23,6 +23,7 @@ import { PrayersModule } from './modules/prayers/prayers.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ChurchesModule } from './modules/churches/churches.module';
 import { ServeModule } from './modules/serve/serve.module';
+import { WaitlistModule } from './modules/waitlist/waitlist.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { ServeModule } from './modules/serve/serve.module';
     ReportsModule,
     ChurchesModule,
     ServeModule,
+    WaitlistModule,
   ],
   controllers: [HealthController],
   providers: [

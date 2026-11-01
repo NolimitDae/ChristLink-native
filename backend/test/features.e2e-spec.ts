@@ -135,6 +135,17 @@ describe('Native features (e2e)', () => {
     expect((await http.post(`/api/prayers/${open.body.id}/pray`).set(auth(ben)).expect(200)).body).toEqual({ count: 1 });
     expect((await http.post(`/api/prayers/${open.body.id}/pray`).set(auth(cat)).expect(200)).body).toEqual({ count: 2 });
     await http.post(`/api/prayers/${randomUUID()}/pray`).set(auth(cat)).expect(404);
+    // the author hears right away: one push ("ben prayed for you"), later taps update the same unread row
+    await http.post(`/api/prayers/${open.body.id}/pray`).set(auth(ann)).expect(200);
+    const prayedRows = await prisma.notifications.findMany({ where: { user_id: ann.id, type: 'prayer_prayed' } });
+    expect(prayedRows).toHaveLength(1);
+    expect(prayedRows[0]).toMatchObject({ title: '2 people prayed for you', body: '“Healing for my mum”', data: { prayerId: open.body.id, count: 2 } });
+    await prisma.notifications.update({ where: { id: prayedRows[0].id }, data: { read: true } });
+    await prisma.prayer_prays.delete({ where: { prayer_id_user_id: { prayer_id: open.body.id, user_id: cat.id } } });
+    await prisma.prayers.update({ where: { id: open.body.id }, data: { prayed_count: { decrement: 1 } } });
+    await http.post(`/api/prayers/${open.body.id}/pray`).set(auth(cat)).expect(200);
+    const fresh = await prisma.notifications.findMany({ where: { user_id: ann.id, type: 'prayer_prayed', read: false } });
+    expect(fresh.map((n) => n.title)).toEqual(['cat prayed for you']);
 
     const sent: string[] = [];
     const notif = app.get(NotificationsService);
@@ -244,6 +255,25 @@ describe('Native features (e2e)', () => {
     await http.post(`/api/churches/${id}/follow`).set(auth(cat)).expect(200, { following: true });
     expect((await http.get(`/api/churches/${id}/follow`).set(auth(cat)).expect(200)).body).toEqual({ following: true });
     await http.delete(`/api/churches/${id}/follow`).set(auth(cat)).expect(200, { following: false });
+
+    // Plan a visit: owner hears once, sees visitors; email only when shared
+    const sunday = new Date(Date.now() + 3 * 86400_000);
+    await http.post(`/api/churches/${id}/visits`).set(auth(cat)).send({ visit_at: new Date(Date.now() - 2 * 86400_000).toISOString() }).expect(400);
+    await http.post(`/api/churches/${id}/visits`).set(auth(cat)).send({ visit_at: sunday.toISOString(), party_size: 30 }).expect(400);
+    const visit = await http.post(`/api/churches/${id}/visits`).set(auth(cat))
+      .send({ visit_at: sunday.toISOString(), service_label: 'Sunday Service', party_size: 3, note: 'First time!' }).expect(200);
+    expect(visit.body).toMatchObject({ church_id: id, user_id: cat.id, party_size: 3, share_contact: false });
+    await http.post(`/api/churches/${id}/visits`).set(auth(cat)).send({ visit_at: sunday.toISOString(), service_label: 'Sunday Service', share_contact: true }).expect(200);
+    const visitNotes = await prisma.notifications.findMany({ where: { user_id: ann.id, type: 'church_visit' } });
+    expect(visitNotes).toHaveLength(1);
+    expect(visitNotes[0].title).toBe('cat is planning to visit (party of 3)');
+    await http.get(`/api/churches/${id}/visits`).set(auth(cat)).expect(403);
+    const visitors = await http.get(`/api/churches/${id}/visits`).set(auth(ann)).expect(200);
+    expect(visitors.body).toEqual([expect.objectContaining({ id: visit.body.id, party_size: 1, share_contact: true, visitor: expect.objectContaining({ id: cat.id, full_name: 'cat', email: cat.email }) })]);
+    await http.delete(`/api/church-visits/${visit.body.id}`).set(auth(ben)).expect(200);
+    expect((await http.get(`/api/churches/${id}/visits`).set(auth(ann)).expect(200)).body).toHaveLength(1);
+    await http.delete(`/api/church-visits/${visit.body.id}`).set(auth(cat)).expect(200);
+    expect((await http.get(`/api/churches/${id}/visits`).set(auth(ann)).expect(200)).body).toHaveLength(0);
 
     // Hidden churches disappear for everyone but owner and admins
     await prisma.churches.update({ where: { id }, data: { hidden: true } });

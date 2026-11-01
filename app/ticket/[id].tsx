@@ -9,7 +9,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { getMyTickets, getWalletLink, requestRefund } from '../../lib/api';
+import { ApiError, getGoogleWalletLink, getMyTickets, getWalletLink, requestRefund } from '../../lib/api';
 import { storage } from '../../lib/storage';
 import { logger } from '../../lib/logger';
 import { buildTicketQr, ticketShortCode } from '../../lib/qr';
@@ -117,10 +117,18 @@ export default function TicketScreen() {
     setWalletBusy(true);
     try {
       // Signed short-lived URL: Safari hands the .pkpass to Wallet without needing our bearer token.
-      const { url } = await getWalletLink(ticket.id, token);
+      const { url } = await (Platform.OS === 'ios' ? getWalletLink(ticket.id, token) : getGoogleWalletLink(ticket.id, token));
       await Linking.openURL(url);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not open Apple Wallet', 'error');
+      const name = Platform.OS === 'ios' ? 'Apple Wallet' : 'Google Wallet';
+      showToast(
+        err instanceof ApiError && (err.status === 503 || err.status === 404) && /not configured|Cannot GET/.test(err.message)
+          ? `${name} passes are coming soon — your QR code works at the door`
+          : err instanceof Error
+            ? err.message
+            : `Could not open ${name}`,
+        'error',
+      );
     } finally {
       setWalletBusy(false);
     }
@@ -288,8 +296,15 @@ export default function TicketScreen() {
               {venue ? <Button title="Directions" icon="navigate-outline" variant="secondary" size="md" onPress={directions} style={{ flex: 1 }} /> : null}
             </View>
           ) : null}
-          {Platform.OS === 'ios' && token && ticket.status === 'confirmed' ? (
-            <Button title="Add to Apple Wallet" icon="wallet-outline" variant="secondary" onPress={addToWallet} loading={walletBusy} fullWidth />
+          {(Platform.OS === 'ios' || Platform.OS === 'android') && token && ticket.status === 'confirmed' ? (
+            <Button
+              title={Platform.OS === 'ios' ? 'Add to Apple Wallet' : 'Add to Google Wallet'}
+              icon="wallet-outline"
+              variant="secondary"
+              onPress={addToWallet}
+              loading={walletBusy}
+              fullWidth
+            />
           ) : null}
           <Button title="View event" icon="calendar-outline" variant="secondary" onPress={() => router.push(`/event/${ticket.event_id}`)} fullWidth />
           {canRefund && token ? (

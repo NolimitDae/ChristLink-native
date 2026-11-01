@@ -63,6 +63,7 @@ must be applied (development project first).
 | Daily "N people prayed for you" | Done | — | `queue_prayer_summaries()` + pg_cron |
 | Church pages, Home Church, claims + admin verification, recurring events | Done | app/church/*, components/church/* | migration |
 | Add to calendar (event, ticket, church visit), directions, ticket keep-awake | Done (native sheet needs new build; Google Calendar fallback) | lib/calendar.ts, lib/maps.ts | — |
+| Waitlist (auto-RSVP free, notify paid), instant prayed-for-you push, church visit cards, Google Wallet link | Done (backend on this branch; deploy to staging) | app/event/[id]/index.tsx, components/church/PlanVisitSheet.tsx, PlannedVisits.tsx, app/ticket/[id].tsx | backend/src/modules/waitlist, prayers, churches, payments/google-wallet.ts |
 | Prayer reminders, verse habit dots, kindness nudge, Plan a visit, interests | Done (on device) | components/community/PrayerWall.tsx, lib/streak.ts, lib/kindness.ts, components/church/PlanVisitSheet.tsx, lib/interests.ts | — |
 | Serve: roles, shifts, two-tap sign-up, reminders 24h/2h, QR check-in, roster, message, complete, hours served | Done | app/serve, components/serve/*, app/host/serve.tsx | migration |
 

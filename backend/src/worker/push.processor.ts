@@ -16,6 +16,9 @@ export const CATEGORY: Record<string, string> = {
   friend_rsvp: 'friend_rsvps',
   prayer_answered: 'prayer',
   prayer_summary: 'prayer',
+  prayer_prayed: 'prayer',
+  waitlist_promoted: 'tickets',
+  waitlist_spot: 'tickets',
   serve_message: 'serve',
   serve_reminder: 'serve',
   forum_reply: 'forum',
@@ -25,6 +28,7 @@ export const CATEGORY: Record<string, string> = {
   refund_denied: 'refunds',
   verification: 'host',
   church_claim: 'host',
+  church_visit: 'host',
 };
 
 const EXPO_URL = 'https://exp.host/--/api/v2/push/send';

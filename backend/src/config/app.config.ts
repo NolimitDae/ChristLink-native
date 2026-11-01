@@ -52,5 +52,9 @@ export default () => ({
     p12_base64: process.env.APPLE_PASS_P12_BASE64,
     password: process.env.APPLE_PASS_PASSWORD,
   },
+  google_wallet: {
+    issuer_id: process.env.GOOGLE_WALLET_ISSUER_ID,
+    key_json_base64: process.env.GOOGLE_WALLET_KEY_JSON_BASE64,
+  },
   sentry: { dsn: process.env.SENTRY_DSN },
 });

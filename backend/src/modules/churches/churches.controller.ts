@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, Res } from '@nestjs/common';
 import {
-  IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, MaxLength,
+  IsArray, IsBoolean, IsDateString, IsInt, IsNumber, IsOptional, IsString, IsUrl, IsUUID, Length, Max, MaxLength, Min,
 } from 'class-validator';
 import type { Response } from 'express';
 import { Admin, CurrentUser, OptionalAuth, Public } from '../../common/auth.decorators';
@@ -33,6 +33,13 @@ class ClaimDto {
 }
 class DecideDto {
   @IsBoolean() approve: boolean;
+}
+class VisitDto {
+  @IsDateString() visit_at: string;
+  @IsOptional() @IsString() @MaxLength(80) service_label?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(20) party_size?: number;
+  @IsOptional() @IsString() @MaxLength(500) note?: string;
+  @IsOptional() @IsBoolean() share_contact?: boolean;
 }
 class LinkEventDto {
   @IsUUID() event_id: string;
@@ -122,6 +129,22 @@ export class ChurchesController {
   @HttpCode(200)
   linkEvent(@CurrentUser('id') uid: string, @Param('id', ParseUUIDPipe) id: string, @Body() b: LinkEventDto) {
     return this.churches.linkEvent(uid, id, b.event_id);
+  }
+
+  @Post('churches/:id/visits')
+  @HttpCode(200)
+  planVisit(@CurrentUser('id') uid: string, @Param('id', ParseUUIDPipe) id: string, @Body() b: VisitDto) {
+    return this.churches.planVisit(uid, id, b);
+  }
+
+  @Get('churches/:id/visits')
+  visits(@CurrentUser('id') uid: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.churches.visits(uid, id);
+  }
+
+  @Delete('church-visits/:id')
+  cancelVisit(@CurrentUser('id') uid: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.churches.cancelVisit(uid, id);
   }
 
   @Get('churches/:id/follow')

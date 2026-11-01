@@ -5,6 +5,7 @@ import { randomInt } from 'crypto';
 import Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { WaitlistService } from '../waitlist/waitlist.service';
 import { EmailJob, QUEUE_EMAIL } from '../../queues/queues';
 import appConfig from '../../config/app.config';
 import type { AuthUser } from '../../common/auth.decorators';
@@ -36,6 +37,7 @@ export class PaymentsService {
     @Inject(STRIPE) private readonly stripe: Stripe,
     private readonly notifications: NotificationsService,
     @InjectQueue(QUEUE_EMAIL) private readonly emailQueue: Queue<EmailJob>,
+    private readonly waitlist: WaitlistService,
   ) {}
 
   // ── Fees ──────────────────────────────────────────────────
@@ -230,6 +232,7 @@ export class PaymentsService {
     if (rows.length > 0 && rows[0].ticket_type_id) {
       await this.incrementSold(rows[0].ticket_type_id, rows[0].quantity || 1);
       void this.afterSale(rows[0]);
+      if (rows[0].user_id) await this.waitlist.markIn(rows[0].event_id, rows[0].user_id);
     }
     return rows;
   }
@@ -242,6 +245,8 @@ export class PaymentsService {
       select: SALE_SELECT,
     });
     for (const t of rows) await this.incrementSold(t.ticket_type_id, -(t.quantity || 1));
+    // Returned seats go to the waitlist first
+    for (const eventId of new Set(rows.map((t) => t.event_id))) void this.waitlist.spotsOpened(eventId);
     return rows;
   }
 

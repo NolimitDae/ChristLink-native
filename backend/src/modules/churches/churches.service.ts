@@ -5,6 +5,19 @@ import { isAdmin, OK } from '../reports/is-admin';
 import type { ChurchDto } from './churches.controller';
 import { RecurringInput, recurringOut, toRecurringData } from './recurring';
 
+export const VISIT_WINDOW_DAYS = 60;
+
+/** "Sun, Nov 8, 9:00 AM" in the church owner's time zone (UTC, labelled, when unknown or invalid). */
+export function visitWhen(at: Date, timezone: string | null | undefined): string {
+  const opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  try {
+    if (timezone) return at.toLocaleString('en-US', { ...opts, timeZone: timezone });
+  } catch {
+    // fall through to UTC
+  }
+  return `${at.toLocaleString('en-US', { ...opts, timeZone: 'UTC' })} UTC`;
+}
+
 @Injectable()
 export class ChurchesService {
   constructor(
@@ -169,6 +182,70 @@ export class ChurchesService {
   async isFollowing(uid: string, churchId: string) {
     const row = await this.prisma.church_follows.findUnique({ where: { church_id_user_id: { church_id: churchId, user_id: uid } } });
     return { following: !!row };
+  }
+
+  /**
+   * "Plan a visit" connect card. One per person per service time (sending it again updates it). The church owner hears
+   * about it; email is shared only when the visitor opts in.
+   */
+  async planVisit(uid: string, churchId: string, b: { visit_at: string; service_label?: string; party_size?: number; note?: string; share_contact?: boolean }) {
+    const church = await this.get(uid, churchId);
+    if (!church) throw new NotFoundException('Church not found.');
+    const at = new Date(b.visit_at);
+    const now = Date.now();
+    if (isNaN(at.getTime()) || at.getTime() < now - 3_600_000 || at.getTime() > now + VISIT_WINDOW_DAYS * 86_400_000) {
+      throw new BadRequestException(`Pick a service in the next ${VISIT_WINDOW_DAYS} days.`);
+    }
+    const data = {
+      service_label: b.service_label?.trim() || null,
+      party_size: b.party_size ?? 1,
+      note: b.note?.trim() || null,
+      share_contact: !!b.share_contact,
+    };
+    const key = { church_id_user_id_visit_at: { church_id: churchId, user_id: uid, visit_at: at } };
+    const existed = await this.prisma.church_visits.findUnique({ where: key, select: { id: true } });
+    const visit = await this.prisma.church_visits.upsert({
+      where: key,
+      create: { church_id: churchId, user_id: uid, visit_at: at, ...data },
+      update: data,
+    });
+    const ownerId = (church as { claimed_by?: string | null }).claimed_by;
+    if (!existed && ownerId && ownerId !== uid) {
+      const [who, ownerSettings] = await Promise.all([
+        this.prisma.profiles.findUnique({ where: { id: uid }, select: { full_name: true } }),
+        this.prisma.user_settings.findUnique({ where: { user_id: ownerId }, select: { timezone: true } }),
+      ]);
+      const name = who?.full_name?.trim() || 'Someone';
+      const party = data.party_size > 1 ? ` (party of ${data.party_size})` : '';
+      await this.notifications.create(
+        ownerId,
+        'church_visit',
+        `${name} is planning to visit${party}`,
+        `${data.service_label ?? 'Service'} · ${visitWhen(at, ownerSettings?.timezone)}`,
+        { churchId, visitId: visit.id },
+      );
+    }
+    return visit;
+  }
+
+  async cancelVisit(uid: string, visitId: string) {
+    await this.prisma.church_visits.deleteMany({ where: { id: visitId, user_id: uid } });
+    return OK;
+  }
+
+  /** Owner/admin: upcoming visits (from an hour ago), soonest first. */
+  async visits(uid: string, churchId: string) {
+    await this.assertManager(uid, churchId);
+    const rows = await this.prisma.church_visits.findMany({
+      where: { church_id: churchId, visit_at: { gte: new Date(Date.now() - 3_600_000) } },
+      orderBy: { visit_at: 'asc' },
+      take: 200,
+      include: { profiles: { select: { id: true, full_name: true, avatar_url: true, avatar_color: true, email: true } } },
+    });
+    return rows.map(({ profiles: p, ...v }) => ({
+      ...v,
+      visitor: { id: p.id, full_name: p.full_name, avatar_url: p.avatar_url, avatar_color: p.avatar_color, email: v.share_contact ? p.email : null },
+    }));
   }
 
   async setFollow(uid: string, churchId: string, follow: boolean) {

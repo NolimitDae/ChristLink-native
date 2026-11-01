@@ -17,6 +17,7 @@ import { Leaders, RecurringList, Section, ServeHere, ServiceTimes } from '../../
 import { useChurchPage } from '../../components/church/useChurchPage';
 import { errorMessage, visitOptions } from '../../components/church/churchFormat';
 import { PlanVisitSheet } from '../../components/church/PlanVisitSheet';
+import { PlannedVisits } from '../../components/church/PlannedVisits';
 import { openInMaps } from '../../lib/maps';
 import { setFollowChurch, updateSettings } from '../../lib/features';
 import { SITE_URL } from '../../lib/constants';
@@ -245,6 +246,8 @@ export default function ChurchScreen() {
               <Button title="Manage page" icon="create-outline" variant="ghost" onPress={() => router.push(`/church/edit?id=${church.id}`)} fullWidth />
             ) : null}
           </View>
+
+          {canManage ? <PlannedVisits churchId={church.id} /> : null}
 
           <ServiceTimes church={church} recurring={recurring} />
           <RecurringList recurring={recurring} />

@@ -309,6 +309,26 @@ export function getRsvp(eventId: string, accessToken: string): Promise<{ rsvp: R
   return apiFetch(`/api/rsvp/${eventId}`, {}, accessToken);
 }
 
+/** Waitlist for a full free event or a sold-out paid one. `position` is 1-based while waiting; null once notified. */
+export interface WaitlistStatus {
+  joined: boolean;
+  status: 'waiting' | 'notified' | null;
+  position: number | null;
+  waiting: number;
+}
+
+export function getWaitlist(eventId: string, accessToken: string): Promise<WaitlistStatus> {
+  return apiFetch(`/api/events/${eventId}/waitlist`, {}, accessToken);
+}
+
+export function joinWaitlist(eventId: string, accessToken: string): Promise<WaitlistStatus> {
+  return apiFetch(`/api/events/${eventId}/waitlist`, { method: 'POST' }, accessToken);
+}
+
+export function leaveWaitlist(eventId: string, accessToken: string): Promise<{ success?: boolean }> {
+  return apiFetch(`/api/events/${eventId}/waitlist`, { method: 'DELETE' }, accessToken);
+}
+
 export async function getEventAttendees(
   eventId: string,
   accessToken?: string,
@@ -365,6 +385,11 @@ export function hostRefundTicket(ticketId: string, accessToken: string): Promise
 /** A short-lived signed .pkpass URL that Safari / Wallet can open without a bearer header. */
 export function getWalletLink(ticketId: string, accessToken: string): Promise<{ url: string }> {
   return apiFetch(`/api/tickets/${ticketId}/wallet-link`, {}, accessToken);
+}
+
+/** "Add to Google Wallet" save link (pay.google.com). 503 until the server has Google Wallet keys. */
+export function getGoogleWalletLink(ticketId: string, accessToken: string): Promise<{ url: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/google-wallet-link`, {}, accessToken);
 }
 
 export function validateListingPromo(
