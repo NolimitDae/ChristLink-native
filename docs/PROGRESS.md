@@ -536,3 +536,8 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
   "You're in" and the RSVP shows in Tickets.
 - Pray for someone's prayer → they get "<name> prayed for you" right away.
 - Plan a visit on a claimed church with "Let them know" on → the owner sees it under Planned visits.
+- Deploy: owner approved; `claude/railway-launch` was fast-forwarded to 2ea1f39 (2026-11-01 05:07 UTC), but Railway
+  staging did not start a build from the push (last staging deploy is still dcf01c1 from 2026-10-20). In Railway →
+  ChristLink Staging → ChristLink-API and ChristLink-Worker → Settings → Source, check the trigger branch is
+  `claude/railway-launch` with auto-deploy on, or press Deploy on the latest commit. The pre-deploy step runs the two
+  new migrations (additive: a column + index on `event_waitlist`, a new `church_visits` table).
