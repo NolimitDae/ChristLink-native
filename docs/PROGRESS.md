@@ -541,3 +541,15 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
   ChristLink Staging → ChristLink-API and ChristLink-Worker → Settings → Source, check the trigger branch is
   `claude/railway-launch` with auto-deploy on, or press Deploy on the latest commit. The pre-deploy step runs the two
   new migrations (additive: a column + index on `event_waitlist`, a new `church_visits` table).
+
+## 2026-11-02 — Web preview of the app (sample data) at https://christlink.expo.app
+
+- The real app screens now build for the web: `metro.config.js` swaps Stripe, Maps, SecureStore and Notifications for
+  stand-ins in `web-preview/stubs/` on web only; `expo-router` async routes are off for web (EAS Hosting doesn't
+  serve chunk files named like `[id]-….js`).
+- `EXPO_PUBLIC_DEMO=1` web builds load `web-preview/demo.tsx`: sample data for every screen, a signed-in sample user,
+  interactions that change state until reload, and a phone frame on wide screens. Deployed with EAS Hosting
+  (`npm run web:preview && npx eas-cli deploy --prod`; docs/WEB-PREVIEW.md).
+- Checked: app tests/typecheck/lint, Android bundle still exports, and every main screen on the deployed site with no
+  page errors.
+- Not in the preview: payments, notifications, maps, camera.

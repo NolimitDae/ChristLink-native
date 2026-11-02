@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -24,6 +24,11 @@ import { storage } from '../lib/storage';
 import { registerForPushNotifications, routeForNotification, useLastNotificationResponse } from '../lib/notifications';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+// Web preview with sample data (docs/WEB-PREVIEW.md). Never loaded in the iOS/Android apps.
+const preview: typeof import('../web-preview/demo') | null =
+  Platform.OS === 'web' && process.env.EXPO_PUBLIC_DEMO === '1' ? require('../web-preview/demo') : null;
+preview?.installDemo();
 
 if (SENTRY_DSN) {
   Sentry.init({
@@ -129,6 +134,7 @@ function RootLayout() {
 }
 
 export default Sentry.wrap(function WrappedRootLayout() {
+  if (preview?.shouldFrame()) return <preview.PhoneFrame />;
   return (
     <ErrorBoundary>
       <RootLayout />

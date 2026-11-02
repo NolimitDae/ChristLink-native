@@ -82,7 +82,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 
 ## Docs
 docs/LAUNCH.pdf (plan) · docs/BACKEND.md · docs/BUILDS.md (EAS builds + updates) · docs/ICONS.md · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
-docs/REVIEW.md (developer review packet) · docs/STORE.md (listings + launch checklist) · docs/deeplinks/
+docs/REVIEW.md (developer review packet) · docs/STORE.md (listings + launch checklist) · docs/WEB-PREVIEW.md (browser preview with sample data) · docs/deeplinks/
 
 ## End of every session
 Answer "Summarize what you changed, what you didn't finish, and anything I should test" in docs/PROGRESS.md.
