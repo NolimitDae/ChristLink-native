@@ -634,3 +634,9 @@ single 4.5 MB (1.1 MB compressed) bundle: ~3.4 s on fast networks, ~18.5 s on sl
 **Recommendations, not changed**: run 2 API replicas on production (the API is stateless: sessions, rate limits and
 queues are in Redis/Postgres); turn on Railway tracing for ChristLink-API; set `SENTRY_DSN`/`EXPO_PUBLIC_SENTRY_DSN`
 for real-user crash and speed data (the app already samples 20% of sessions when a DSN is set).
+- Staging: pushed d368a75 to `claude/railway-launch` and turned on Railway tracing for ChristLink-API (staging only).
+  Because neither staging service has a branch linked (Railway shows `branch: null`), enabling tracing redeployed the
+  API from `master` (old f962774). It was rolled back within ~3 minutes by redeploying the previous build (11230a1);
+  data was untouched. **To do (owner):** in Railway → ChristLink Staging → ChristLink-API and ChristLink-Worker →
+  Settings → Source, set the branch to `claude/railway-launch` (reconnect GitHub if branches won't load), then Deploy
+  the latest commit. Tracing spans appear once the d368a75 build (with src/tracing.ts) is live.
