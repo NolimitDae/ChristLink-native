@@ -155,9 +155,9 @@ export class ServeService {
       where: { shift_id: shiftId, status: { in: ['signed_up', 'checked_in'] } },
       select: { user_id: true },
     });
-    for (const v of volunteers) {
-      await this.notifications.create(v.user_id, 'serve_message', `Message about your ${roleName} shift`, text.slice(0, 500), { shiftId });
-    }
+    await this.notifications.createMany(
+      volunteers.map((v) => ({ userId: v.user_id, type: 'serve_message', title: `Message about your ${roleName} shift`, body: text.slice(0, 500), data: { shiftId } })),
+    );
     return volunteers.length;
   }
 

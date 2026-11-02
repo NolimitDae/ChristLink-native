@@ -10,7 +10,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     if (!connectionString) {
       throw new Error('DATABASE_URL is not defined in environment variables');
     }
-    super({ adapter: new PrismaPg({ connectionString }) });
+    // pg pool: DB_POOL_MAX connections per instance (keep instances × max under Postgres max_connections);
+    // fail fast when the pool is exhausted instead of hanging a request.
+    super({
+      adapter: new PrismaPg({
+        connectionString,
+        max: Number(process.env.DB_POOL_MAX) || 10,
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 5_000,
+      }),
+    });
   }
 
   async onModuleInit() {

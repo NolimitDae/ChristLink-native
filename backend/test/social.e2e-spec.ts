@@ -165,7 +165,8 @@ describe('Social + admin (e2e)', () => {
 
   it('uploads and identity verification through admin review', async () => {
     const av = await http.post('/api/upload-avatar').set(auth(alice)).send({ dataUrl: PNG }).expect(200);
-    expect(av.body.url).toMatch(new RegExp(`/avatars/${alice.id}/[0-9a-f-]+\\.png$`));
+    // Uploads are re-encoded as WebP (resized) before they're stored
+    expect(av.body.url).toMatch(new RegExp(`/avatars/${alice.id}/[0-9a-f-]+\\.webp$`));
     const bn = await http.post('/api/upload-banner').set(auth(alice)).send({ dataUrl: PNG }).expect(200);
     expect(bn.body.url).toMatch(new RegExp(`/banners/${alice.id}/`));
     await http.post('/api/upload-avatar').set(auth(alice)).send({ dataUrl: 'nope' }).expect(400, { error: 'Invalid image data.' });

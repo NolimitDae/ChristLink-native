@@ -6,6 +6,7 @@ import { BullModule } from '@nestjs/bullmq';
 import appConfig from './config/app.config';
 import { PrismaModule } from './prisma/prisma.module';
 import { InjectRedis, redisProvider, REDIS } from './redis';
+import { CacheService } from './cache/cache.service';
 import { QUEUE_EMAIL, QUEUE_JOBS, QUEUE_PUSH } from './queues/queues';
 import { HealthService } from './health/health.service';
 import { EmailService } from './modules/email/email.service';
@@ -33,8 +34,8 @@ const queues = BullModule.registerQueue({ name: QUEUE_PUSH }, { name: QUEUE_EMAI
       verifyOptions: { algorithms: ['HS256'] },
     }),
   ],
-  providers: [redisProvider, HealthService, EmailService, StorageService, NotificationsService],
-  exports: [REDIS, queues, HealthService, EmailService, StorageService, NotificationsService],
+  providers: [redisProvider, HealthService, EmailService, StorageService, NotificationsService, CacheService],
+  exports: [REDIS, queues, HealthService, EmailService, StorageService, NotificationsService, CacheService],
 })
 export class CoreModule implements OnApplicationShutdown {
   constructor(@InjectRedis() private readonly redis: Redis) {}

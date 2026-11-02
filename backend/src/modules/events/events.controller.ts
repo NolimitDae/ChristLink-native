@@ -12,7 +12,7 @@ export class EventsController {
   @Public()
   @Get('events')
   list(@Query() q: Record<string, string | undefined>) {
-    return this.events.list(q);
+    return this.events.listCached(q);
   }
 
   @OptionalAuth()

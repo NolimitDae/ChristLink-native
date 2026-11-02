@@ -14,6 +14,7 @@ export class EmailService {
       return;
     }
     const res = await fetch('https://api.resend.com/emails', {
+      signal: AbortSignal.timeout(10_000),
       method: 'POST',
       headers: { Authorization: `Bearer ${resend_api_key}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ from, to, subject, html, text }),

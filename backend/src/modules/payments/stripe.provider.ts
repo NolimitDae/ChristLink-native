@@ -7,5 +7,10 @@ export const STRIPE = 'STRIPE';
 export const stripeProvider = {
   provide: STRIPE,
   // Same API version as server.js. Stripe's SDK retries only safe failures and reuses our idempotency keys.
-  useFactory: () => new Stripe(appConfig().stripe.secret_key || 'sk_test_placeholder', { apiVersion: '2024-04-10' }),
+  useFactory: () => new Stripe(appConfig().stripe.secret_key || 'sk_test_placeholder', {
+      apiVersion: '2024-04-10',
+      // Fail a hung request in 20 s instead of the 80 s default; the client retries once with the same idempotency key
+      timeout: 20_000,
+      maxNetworkRetries: 1,
+    }),
 };

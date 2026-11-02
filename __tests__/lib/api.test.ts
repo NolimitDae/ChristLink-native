@@ -152,3 +152,21 @@ describe('normalizeEvent', () => {
     expect(normalizeEvent({ id: 'e', rsvp_count: 2 }).going_count).toBe(2);
   });
 });
+
+describe('duplicate GETs', () => {
+  it('shares one request between callers asking for the same data at once', async () => {
+    mockFetch.mockResolvedValue(respond(200, { tickets: [] }));
+    const [a, b] = await Promise.all([getMyTickets('tok'), getMyTickets('tok')]);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(a).toEqual(b);
+    // once settled, the next call goes to the network again
+    await getMyTickets('tok');
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('never shares writes', async () => {
+    mockFetch.mockResolvedValue(respond(200, { valid: true }));
+    await Promise.all([verifyTicket({ ticketId: 't1', eventId: 'e1' }, 'tok'), verifyTicket({ ticketId: 't1', eventId: 'e1' }, 'tok')]);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+});

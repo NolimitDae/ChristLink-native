@@ -107,7 +107,8 @@ Response shapes equal what the Supabase RPC / table query returned (see the SQL 
 `STRIPE_CONNECT_WEBHOOK_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`,
 `R2_PUBLIC_URL`, `EXPO_ACCESS_TOKEN` (optional), `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, `APPLE_PASS_P12_BASE64`,
 `APPLE_PASS_PASSWORD` (Wallet), `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_KEY_JSON_BASE64` (Google Wallet, optional),
-`SENTRY_DSN` (optional).
+`SENTRY_DSN` (optional), `DB_POOL_MAX` (Postgres connections per instance, default 10), `OTEL_EXPORTER_OTLP_*`
+(set by Railway when tracing is on; enables OpenTelemetry in src/tracing.ts), `CACHE_DISABLED=1` (tests only).
 
 ## Data copy (production Supabase → Railway)
 `backend/scripts/import-supabase.ts` loads a `supabase db dump --data-only` file: `auth.users` (id, email,

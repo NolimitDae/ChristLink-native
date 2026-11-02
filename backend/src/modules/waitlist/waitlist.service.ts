@@ -145,11 +145,9 @@ export class WaitlistService {
       }
       return next;
     });
-    for (const w of promoted) {
-      await this.notifications.create(w.user_id, 'waitlist_promoted', `You’re in — ${ev.name}`, 'A spot opened up and we saved it for you. See you there!', {
-        eventId: ev.id,
-      });
-    }
+    await this.notifications.createMany(
+      promoted.map((w) => ({ userId: w.user_id, type: 'waitlist_promoted', title: `You’re in — ${ev.name}`, body: 'A spot opened up and we saved it for you. See you there!', data: { eventId: ev.id } })),
+    );
   }
 
   private async notifyPaid(ev: { id: string; name: string; is_paid: boolean | null; max_capacity: number | null }) {
@@ -168,10 +166,8 @@ export class WaitlistService {
     });
     if (!next.length) return;
     await this.prisma.event_waitlist.updateMany({ where: { id: { in: next.map((w) => w.id) } }, data: { status: 'notified', notified_at: new Date() } });
-    for (const w of next) {
-      await this.notifications.create(w.user_id, 'waitlist_spot', `Tickets are available — ${ev.name}`, 'A ticket just opened up. Grab it before someone else does.', {
-        eventId: ev.id,
-      });
-    }
+    await this.notifications.createMany(
+      next.map((w) => ({ userId: w.user_id, type: 'waitlist_spot', title: `Tickets are available — ${ev.name}`, body: 'A ticket just opened up. Grab it before someone else does.', data: { eventId: ev.id } })),
+    );
   }
 }

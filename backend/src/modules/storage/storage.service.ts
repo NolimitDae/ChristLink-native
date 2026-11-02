@@ -1,8 +1,29 @@
-import { BadRequestException, Injectable, PayloadTooLargeException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, PayloadTooLargeException } from '@nestjs/common';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
+import sharp = require('sharp');
 import appConfig from '../../config/app.config';
+
+/** Longest edge kept per upload kind; phones send 3–12 MP photos that no screen here needs. */
+const MAX_EDGE: Record<string, number> = { avatars: 600 };
+const DEFAULT_MAX_EDGE = 1600;
+
+/**
+ * Re-encodes a public image as WebP at most `maxEdge` px on its longest side (EXIF rotation applied, metadata
+ * stripped). Returns null when it can't (e.g. HEIC without a decoder), so the original is stored instead.
+ */
+export async function optimizeImage(input: Buffer, maxEdge: number): Promise<Buffer | null> {
+  try {
+    return await sharp(input, { failOn: 'none' })
+      .rotate()
+      .resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
 
 const IMAGE_TYPES: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -21,6 +42,7 @@ export interface PutDataUrlOptions {
 @Injectable()
 export class StorageService {
   private client?: S3Client;
+  private readonly log = new Logger('Storage');
 
   private s3(): S3Client {
     const r2 = appConfig().r2;
@@ -37,7 +59,11 @@ export class StorageService {
 
   /** Validates a `data:<mime>;base64,...` upload and stores it at `<prefix>/<ownerId>/<uuid>.<ext>`. Returns the public URL. */
   async putDataUrl(prefix: string, ownerId: string, dataUrl: unknown, opts: PutDataUrlOptions = {}): Promise<string> {
-    const { buffer, type } = parseDataUrl(dataUrl, opts);
+    const parsed = parseDataUrl(dataUrl, opts);
+    // Smaller, faster images: WebP, resized for how they're shown. Falls back to the original on any failure.
+    const webp = await optimizeImage(parsed.buffer, MAX_EDGE[prefix] ?? DEFAULT_MAX_EDGE);
+    if (!webp) this.log.warn(`Stored ${parsed.type} as uploaded (could not convert to WebP)`);
+    const { buffer, type } = webp ? { buffer: webp, type: 'image/webp' } : parsed;
     const key = `${prefix}/${ownerId}/${randomUUID()}.${IMAGE_TYPES[type] ?? type.split('/')[1]}`;
     await this.put(key, buffer, type, 'public, max-age=31536000, immutable');
     return `${appConfig().r2.public_url}/${key}`;

@@ -104,13 +104,9 @@ export async function notifyFollowersOfEvent(
       prisma.user_follows.findMany({ where: { following_id: ev.host_id }, select: { follower_id: true } }),
     ]);
     const title = `${host?.full_name || 'Someone you follow'} posted a new event`;
-    for (const f of followers) {
-      await notifications.create(f.follower_id, 'new_event', title, ev.name, {
-        eventId: ev.id,
-        event_id: ev.id,
-        event_name: ev.name,
-      });
-    }
+    await notifications.createMany(
+      followers.map((f) => ({ userId: f.follower_id, type: 'new_event', title, body: ev.name, data: { eventId: ev.id, event_id: ev.id, event_name: ev.name } })),
+    );
   } catch (e) {
     log.error(`new_event notifications for ${ev.id} failed: ${(e as Error).message}`);
   }

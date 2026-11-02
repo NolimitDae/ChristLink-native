@@ -89,7 +89,7 @@ export class PushProcessor extends WorkerHost {
         sound: 'default',
         channelId: 'default',
       }));
-      const res = await fetch(EXPO_URL, { method: 'POST', headers, body: JSON.stringify(messages) });
+      const res = await fetch(EXPO_URL, { method: 'POST', headers, body: JSON.stringify(messages), signal: AbortSignal.timeout(15_000) });
       if (!res.ok) throw new Error(`Expo push ${res.status}: ${await res.text()}`); // BullMQ retries
       const result = (await res.json()) as { data?: { status: string; details?: { error?: string } }[] };
       (result.data ?? []).forEach((r, idx) => {

@@ -59,8 +59,15 @@ export default function PublicProfileScreen() {
 
   const load = useCallback(async () => {
     if (!id || isMe) return;
+    // Profile, their events and their prayers are independent: fetch all three at once
+    const profileReq = getPublicProfile(id, token);
+    // Settled up front so a failure while the profile is still loading isn't an unhandled rejection
+    const eventsReq = getEvents({ host_id: id }).catch(() => null);
+    getUserPrayers(id)
+      .then(setPrayers)
+      .catch(() => setPrayers([]));
     try {
-      const p = await getPublicProfile(id, token);
+      const p = await profileReq;
       // A missing or malformed profile shows the "couldn't load" state instead of crashing the screen
       if (!p?.id) throw new Error('Profile not found');
       setProfile(p);
@@ -70,16 +77,8 @@ export default function PublicProfileScreen() {
     } catch {
       setFailed(true);
     }
-    // Their prayers from the Prayer Wall (never their anonymous ones); hidden if the route isn't deployed yet
-    getUserPrayers(id)
-      .then(setPrayers)
-      .catch(() => setPrayers([]));
-    try {
-      const res = await getEvents({ host_id: id });
-      setEvents(res.events.filter(e => e.host_id === id));
-    } catch {
-      setEvents([]);
-    }
+    const res = await eventsReq;
+    setEvents(res ? res.events.filter(e => e.host_id === id) : []);
   }, [id, isMe, token]);
 
   useEffect(() => {

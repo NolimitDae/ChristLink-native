@@ -3,6 +3,7 @@ import { Prisma } from '../../../prisma/generated/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { WaitlistService } from '../waitlist/waitlist.service';
+import { CacheService } from '../../cache/cache.service';
 import { StorageService } from '../storage/storage.service';
 import {
   dbBadRequest,
@@ -57,7 +58,21 @@ export class EventsService {
     private readonly notifications: NotificationsService,
     private readonly storage: StorageService,
     private readonly waitlist: WaitlistService,
+    private readonly cache: CacheService,
   ) {}
+
+  /**
+   * Public event lists are the hottest read; cached for 30 s per query and dropped whenever a host publishes, edits,
+   * hides or deletes an event. RSVP counts in the list may lag by up to 30 s (the event page is always live).
+   */
+  listCached(q: Record<string, string | undefined>) {
+    const key = Object.keys(q)
+      .filter((k) => q[k] !== undefined && q[k] !== '')
+      .sort()
+      .map((k) => `${k}=${q[k]}`)
+      .join('&');
+    return this.cache.getOrSet('events', key || 'all', 30, () => this.list(q));
+  }
 
   async list(q: Record<string, string | undefined>) {
     const { city, type, is_paid, format, host_id, lat, lng } = q;
@@ -162,6 +177,7 @@ export class EventsService {
     }
     updates.updated_at = new Date();
     const updated = await dbBadRequest(this.prisma.events.update({ where: { id }, data: updates }));
+    await this.cache.bump('events');
     if ('max_capacity' in updates) void this.waitlist.spotsOpened(id);
     return updated;
   }
@@ -171,6 +187,7 @@ export class EventsService {
     if (ev.status !== 'draft') throw new BadRequestException('Only draft events can be published.');
     if (ev.is_paid && !ev.listing_fee_paid) throw new HttpException('Listing fee required.', 402);
     const updated = await this.prisma.events.update({ where: { id }, data: { status: 'published', publish_at: null } });
+    await this.cache.bump('events');
     void notifyFollowersOfEvent(this.prisma, this.notifications, updated);
     return updated;
   }
@@ -189,6 +206,7 @@ export class EventsService {
     const ev = await this.ownEvent(id, userId);
     // Soft-cancel instead of deleting when tickets exist, so payment records survive (server.js: published only)
     const hasTickets = !!(await this.prisma.tickets.findFirst({ where: { event_id: id }, select: { id: true } }));
+    await this.cache.bump('events');
     if (ev.status === 'published' || hasTickets) {
       await this.prisma.events.update({ where: { id }, data: { status: 'cancelled' } });
       return { success: true, action: 'cancelled' };
@@ -203,6 +221,7 @@ export class EventsService {
     // server.js skipped this check, which let a paid event go live without its listing fee
     if (status === 'published' && ev.is_paid && !ev.listing_fee_paid) throw new HttpException('Listing fee required.', 402);
     await this.prisma.events.update({ where: { id }, data: { status } });
+    await this.cache.bump('events');
     return { success: true, status };
   }
 
@@ -347,13 +366,15 @@ export class EventsService {
     // Only real profiles (a bad id used to fail the whole insert)
     const ids = [...new Set(followerIds.filter(isUuid))];
     const recipients = await this.prisma.profiles.findMany({ where: { id: { in: ids } }, select: { id: true } });
-    for (const r of recipients) {
-      await this.notifications.create(r.id, 'event_invite', `${hostName} invited you to an event`, ev.name, {
-        event_id: ev.id,
-        event_name: ev.name,
-        eventId: ev.id,
-      });
-    }
+    await this.notifications.createMany(
+      recipients.map((r) => ({
+        userId: r.id,
+        type: 'event_invite',
+        title: `${hostName} invited you to an event`,
+        body: ev.name,
+        data: { event_id: ev.id, event_name: ev.name, eventId: ev.id },
+      })),
+    );
     return { sent: recipients.length };
   }
 

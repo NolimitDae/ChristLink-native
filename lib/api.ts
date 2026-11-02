@@ -65,7 +65,22 @@ export interface FetchOptions extends RequestInit {
   retry?: boolean;
 }
 
-export async function apiFetch<T>(
+/** GETs already on the wire, keyed by path + token: a second caller for the same data shares the first request. */
+const inFlight = new Map<string, Promise<unknown>>();
+
+export function apiFetch<T>(path: string, options: FetchOptions = {}, accessToken?: string, signal?: AbortSignal): Promise<T> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  // Only plain GETs without a caller's abort signal are shared (one caller cancelling must not cancel the other)
+  if (method !== 'GET' || signal || options.body) return apiFetchOnce<T>(path, options, accessToken, signal);
+  const key = `${accessToken ?? ''} ${path}`;
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<T>;
+  const request = apiFetchOnce<T>(path, options, accessToken).finally(() => inFlight.delete(key));
+  inFlight.set(key, request);
+  return request;
+}
+
+async function apiFetchOnce<T>(
   path: string,
   options: FetchOptions = {},
   accessToken?: string,
@@ -453,8 +468,12 @@ export function getIdentityStatus(accessToken: string): Promise<IdentityStatus> 
 }
 
 // ── Community ────────────────────────────────────────────────
-export async function getCommunityPosts(accessToken?: string, signal?: AbortSignal): Promise<CommunityPostsResponse> {
-  const res = await apiFetch<{ posts?: RawPost[] }>('/api/community-posts', {}, accessToken, signal);
+export const FEED_PAGE = 30;
+
+/** Newest posts first; `offset` loads the next page (the server's default page is FEED_PAGE). */
+export async function getCommunityPosts(accessToken?: string, signal?: AbortSignal, offset = 0): Promise<CommunityPostsResponse> {
+  const path = offset > 0 ? `/api/community-posts?limit=${FEED_PAGE}&offset=${offset}` : '/api/community-posts';
+  const res = await apiFetch<{ posts?: RawPost[] }>(path, {}, accessToken, signal);
   return { posts: (res.posts ?? []).map(normalizePost) };
 }
 

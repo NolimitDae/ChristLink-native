@@ -115,12 +115,9 @@ export class RsvpService {
              )`,
       ]);
       const title = `${actor?.full_name || 'A friend'} is going to ${ev.name}`;
-      for (const f of friends) {
-        await this.notifications.create(f.id, 'friend_rsvp', title, 'Tap to see the event and join them.', {
-          eventId: ev.id,
-          friendId: userId,
-        });
-      }
+      await this.notifications.createMany(
+        friends.map((f) => ({ userId: f.id, type: 'friend_rsvp', title, body: 'Tap to see the event and join them.', data: { eventId: ev.id, friendId: userId } })),
+      );
     } catch (e) {
       this.log.error(`friend_rsvp notifications failed: ${(e as Error).message}`);
     }

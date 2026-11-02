@@ -594,3 +594,43 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
   their Prayer Wall prayers with "I prayed" and report.
 - Backend: `GET /api/prayers?author=<id>` (never that person's anonymous prayers, except to themselves); the app also
   filters by author so an older API can't show other people's prayers there.
+
+## 2026-11-02 (late) — Performance pass
+
+**Changed — backend**
+- Notification fan-outs (new event to followers, invites, serve messages, friend RSVPs, answered prayers, daily prayer
+  summary, waitlist) were N+1: one insert + one queue job per person. Now `NotificationsService.createMany`: one bulk
+  insert + one bulk queue add per 500.
+- Migration `20261103000000_query_indexes`: feed by date/author, prayers by author/church, prayer_prays by date/user,
+  notifications by user+date, serve shifts/sign-ups, block/follow/church-event reverse lookups, confirmed RSVPs.
+- gzip/Brotli response compression (`compression`, > 1 KB) — e2e tested (`test/perf.e2e-spec.ts`).
+- Redis read-through cache (`src/cache`): public event lists 30 s (dropped on publish/edit/hide/delete), verse of the
+  day 10 min (dropped on admin edits). Fails open if Redis is down.
+- Timeouts on every external call: Stripe 20 s (+1 retry with the same idempotency key), Resend 10 s, Expo push 15 s,
+  Google Wallet 10 s (geocoding already had 5 s). pg pool: `DB_POOL_MAX` (10), 5 s connect timeout.
+- Uploaded images are resized (avatars 600 px, others 1600 px) and stored as WebP with `sharp`; falls back to the
+  original if it can't decode (e.g. some HEIC). Public files already had 1-year immutable cache headers on R2 (CDN).
+- OpenTelemetry (`src/tracing.ts`): http, express, Nest, pg (every SQL query), ioredis spans; on only when an OTLP
+  endpoint is set — Railway sets it when tracing is enabled on the service. Verified exporting with a local collector.
+- Caught before shipping: `import compression from 'compression'` type-checks but crashes at startup in this CJS
+  build; it's `import compression = require('compression')`.
+
+**Changed — app**
+- Concurrent identical GETs share one request (`apiFetch` in-flight de-dup; writes never shared; tested).
+- Community feed and Prayer Wall load more pages while scrolling (offset / `before` cursor), with skeleton footers.
+- Someone's profile loads the profile, their events and their prayers in parallel.
+
+**Already in place (checked, no change)**: skeleton loaders everywhere, 300 ms debounced searches, retries for GETs
+only, request timeouts in `apiFetch`, optimistic updates (pray, amen, follow, save), virtualized lists (FlatList for
+feed, events, rails), memoized contexts and list items, BullMQ for push/email/scheduled jobs, API + Postgres + Redis
+in the same Railway region (us-west2), fonts bundled in the app (self-hosted, 4 Montserrat weights all used),
+no unused dependencies (depcheck).
+
+**Not applicable to a native app**: AI streaming (no AI features), server/build-time page rendering, third-party
+script loading, browser caching and per-page JS splitting (the app's JS ships inside the build). The web preview is a
+single 4.5 MB (1.1 MB compressed) bundle: ~3.4 s on fast networks, ~18.5 s on slow 3G with 4x CPU throttling
+(measured with Playwright); fine for a demo, and the real site is a separate project.
+
+**Recommendations, not changed**: run 2 API replicas on production (the API is stateless: sessions, rate limits and
+queues are in Redis/Postgres); turn on Railway tracing for ChristLink-API; set `SENTRY_DSN`/`EXPO_PUBLIC_SENTRY_DSN`
+for real-user crash and speed data (the app already samples 20% of sessions when a DSN is set).

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +27,9 @@ const FILTER_LABELS: Record<PrayerFilter, string> = {
 };
 const NEEDS_SIGN_IN: PrayerFilter[] = ['church', 'friends', 'mine'];
 const MAX = 1000;
+const PAGE = 30;
+/** Start fetching the next page this far (px) before the bottom. */
+const LOAD_AHEAD = 600;
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
@@ -47,6 +50,8 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [menuPrayer, setMenuPrayer] = useState<Prayer | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const loadingMore = useRef(false);
   const [reminders, setReminders] = useState<Set<string>>(new Set());
 
   const [composeOpen, setComposeOpen] = useState(false);
@@ -68,7 +73,9 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
       return;
     }
     try {
-      setPrayers(await getPrayerWall(filter));
+      const rows = await getPrayerWall(filter);
+      setPrayers(rows);
+      setHasMore(rows.length >= PAGE);
       setFailed(false);
       setNotSetUp(false);
     } catch (err) {
@@ -108,6 +115,25 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
       return next;
     });
     showToast('Prayer reminders stopped', 'info');
+  };
+
+  // Older prayers, by created_at cursor, when scrolling near the bottom
+  const loadMore = async () => {
+    const last = prayers?.[prayers.length - 1];
+    if (!hasMore || loadingMore.current || !last || gated || noChurch) return;
+    loadingMore.current = true;
+    try {
+      const rows = await getPrayerWall(filter, last.created_at);
+      setPrayers(prev => {
+        const seen = new Set((prev ?? []).map(p => p.id));
+        return [...(prev ?? []), ...rows.filter(p => !seen.has(p.id))];
+      });
+      setHasMore(rows.length >= PAGE);
+    } catch {
+      // Keep what's shown; scrolling again retries
+    } finally {
+      loadingMore.current = false;
+    }
   };
 
   const refresh = async () => {
@@ -313,6 +339,11 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
+        scrollEventThrottle={200}
+        onScroll={e => {
+          const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+          if (contentOffset.y + layoutMeasurement.height > contentSize.height - LOAD_AHEAD) loadMore();
+        }}
         contentContainerStyle={{ paddingBottom: bottomPad + 56 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >

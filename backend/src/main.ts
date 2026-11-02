@@ -1,4 +1,6 @@
 import 'dotenv/config';
+// Must come before the app's imports so the instrumented libraries are patched as they load
+import './tracing';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';

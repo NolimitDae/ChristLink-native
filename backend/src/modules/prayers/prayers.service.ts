@@ -132,10 +132,10 @@ export class PrayersService {
       return { postId: post.id, notify: { name, userIds: prayed.map((r) => r.user_id) } };
     });
     if (result.notify) {
-      for (const userId of result.notify.userIds) {
-        await this.notifications.create(userId, 'prayer_answered', 'A prayer you prayed for was answered',
-          `${result.notify.name} shared how God answered their prayer.`, { prayerId: id, postId: result.postId });
-      }
+      const body = `${result.notify.name} shared how God answered their prayer.`;
+      await this.notifications.createMany(
+        result.notify.userIds.map((userId) => ({ userId, type: 'prayer_answered', title: 'A prayer you prayed for was answered', body, data: { prayerId: id, postId: result.postId } })),
+      );
     }
     return result.postId;
   }
@@ -150,9 +150,14 @@ export async function queuePrayerSummaries(prisma: PrismaService, notifications:
       join public.prayers p on p.id = pp.prayer_id
      where pp.created_at > now() - interval '24 hours' and pp.user_id <> p.author_id
      group by p.author_id`;
-  for (const r of rows) {
-    await notifications.create(r.author_id, 'prayer_summary',
-      `${r.n} ${r.n === 1 ? 'person prayed' : 'people prayed'} for you today`, 'Your community is standing with you.', { count: r.n });
-  }
+  await notifications.createMany(
+    rows.map((r) => ({
+      userId: r.author_id,
+      type: 'prayer_summary',
+      title: `${r.n} ${r.n === 1 ? 'person prayed' : 'people prayed'} for you today`,
+      body: 'Your community is standing with you.',
+      data: { count: r.n },
+    })),
+  );
   return rows.length;
 }

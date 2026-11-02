@@ -3,6 +3,7 @@ import { IsArray, IsBoolean, IsOptional, IsString, Length, MaxLength } from 'cla
 import type { Response } from 'express';
 import { Admin, Public } from '../../common/auth.decorators';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CacheService } from '../../cache/cache.service';
 
 class VerseDto {
   @IsOptional() @IsString() @Length(1, 100) reference?: string;
@@ -15,16 +16,24 @@ class VerseDto {
 // Small enough that the controller talks to Prisma directly.
 @Controller()
 export class VersesController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: CacheService,
+  ) {}
 
   /** verse_of_the_day(theme), kept in the database. Sends JSON null when there are no active verses. */
   @Get('verses/today')
   @Public()
   async today(@Query('theme') theme: string | undefined, @Res() res: Response) {
     const t = typeof theme === 'string' && theme.trim() ? theme.trim().toLowerCase() : null;
-    const rows = await this.prisma.$queryRaw<{ reference: string; text: string; translation: string }[]>`
-      select reference, text, translation from public.verse_of_the_day(${t}::text)`;
-    res.json(rows[0] ?? null);
+    // Same verse for everyone all day: cache per theme and UTC date for 10 minutes (admin edits show within that)
+    const day = new Date().toISOString().slice(0, 10);
+    const verse = await this.cache.getOrSet('verse', `${day}:${t ?? '-'}`, 600, async () => {
+      const rows = await this.prisma.$queryRaw<{ reference: string; text: string; translation: string }[]>`
+        select reference, text, translation from public.verse_of_the_day(${t}::text)`;
+      return rows[0] ?? null;
+    });
+    res.json(verse);
   }
 
   @Get('admin/verses')
@@ -36,17 +45,21 @@ export class VersesController {
   @Post('admin/verses')
   @Admin()
   @HttpCode(200)
-  create(@Body() b: VerseDto) {
+  async create(@Body() b: VerseDto) {
     if (!b.reference?.trim() || !b.text?.trim()) throw new BadRequestException('Reference and text are required.');
-    return this.prisma.verses.create({
+    const row = await this.prisma.verses.create({
       data: { reference: b.reference.trim(), text: b.text.trim(), translation: b.translation ?? 'WEB', themes: b.themes ?? [], active: b.active ?? true },
     });
+    await this.cache.bump('verse');
+    return row;
   }
 
   @Patch('admin/verses/:id')
   @Admin()
   async update(@Param('id', ParseIntPipe) id: number, @Body() b: VerseDto) {
     if (!(await this.prisma.verses.findUnique({ where: { id } }))) throw new NotFoundException('Verse not found.');
-    return this.prisma.verses.update({ where: { id }, data: b });
+    const row = await this.prisma.verses.update({ where: { id }, data: b });
+    await this.cache.bump('verse');
+    return row;
   }
 }

@@ -102,6 +102,7 @@ async function accessToken(sa: GoogleServiceAccount, fetchFn: typeof fetch): Pro
   const assertion = signJwt({ iss: sa.client_email, scope: SCOPE, aud: TOKEN_URL, iat: now, exp: now + 3600 }, sa.private_key);
   const res = await fetchFn(TOKEN_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(10_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }).toString(),
   });
@@ -115,10 +116,15 @@ export async function upsertPass(sa: GoogleServiceAccount, issuerId: string, t: 
   const token = await accessToken(sa, fetchFn);
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   const put = async (kind: 'eventTicketClass' | 'eventTicketObject', resource: { id: string }) => {
-    const insert = await fetchFn(`${WALLET_API}/${kind}`, { method: 'POST', headers, body: JSON.stringify(resource) });
+    const insert = await fetchFn(`${WALLET_API}/${kind}`, { method: 'POST', headers, body: JSON.stringify(resource), signal: AbortSignal.timeout(10_000) });
     if (insert.ok) return;
     if (insert.status !== 409) throw new Error(`Google Wallet ${kind} insert failed: ${insert.status} ${await insert.text()}`);
-    const update = await fetchFn(`${WALLET_API}/${kind}/${encodeURIComponent(resource.id)}`, { method: 'PATCH', headers, body: JSON.stringify(resource) });
+    const update = await fetchFn(`${WALLET_API}/${kind}/${encodeURIComponent(resource.id)}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(resource),
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!update.ok) throw new Error(`Google Wallet ${kind} update failed: ${update.status} ${await update.text()}`);
   };
   await put('eventTicketClass', eventTicketClass(issuerId, t));

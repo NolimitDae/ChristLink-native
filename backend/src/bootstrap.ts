@@ -2,6 +2,7 @@ import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import helmet from 'helmet';
+import compression = require('compression');
 import appConfig from './config/app.config';
 import { HealthService } from './health/health.service';
 
@@ -28,6 +29,8 @@ export function configureApi(app: NestExpressApplication) {
   app.enableCors({ origin: origins, credentials: true, maxAge: 86400 });
 
   app.use(helmet());
+  // gzip/Brotli for JSON over ~1 KB (event lists, feeds). Clients that don't ask for it get plain JSON.
+  app.use(compression({ threshold: 1024 }));
   // DTO classes are validated and stripped of unknown fields. Routes that accept server.js's loose bodies type
   // @Body() with a plain interface instead: the pipe skips those and the service validates by hand.
   app.useGlobalPipes(

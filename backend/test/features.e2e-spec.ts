@@ -159,6 +159,10 @@ describe('Native features (e2e)', () => {
       sent.push(`${type}:${userId}`);
       return null as never;
     });
+    const spyMany = jest.spyOn(notif, 'createMany').mockImplementation(async (rows) => {
+      for (const r of rows) sent.push(`${r.type}:${r.userId}`);
+      return rows.length;
+    });
     expect(await queuePrayerSummaries(prisma, notif)).toBeGreaterThanOrEqual(1);
     expect(sent).toContain(`prayer_summary:${ann.id}`);
     sent.length = 0;
@@ -173,6 +177,7 @@ describe('Native features (e2e)', () => {
     // idempotent
     expect((await http.post(`/api/prayers/${open.body.id}/answer`).set(auth(ann)).send({}).expect(200)).body).toEqual(ans.body);
     spy.mockRestore();
+    spyMany.mockRestore();
 
     const answered = await http.get('/api/prayers?filter=answered').set(auth(cat)).expect(200);
     expect(answered.body.find((p: { id: string }) => p.id === open.body.id)).toMatchObject({ has_prayed: true, testimony: 'She is home and well!' });
@@ -330,9 +335,9 @@ describe('Native features (e2e)', () => {
     expect(roster.body).toEqual([expect.objectContaining({ user_id: ben.id, status: 'signed_up', profiles: expect.objectContaining({ full_name: 'ben' }) })]);
 
     const sent: string[] = [];
-    const spy = jest.spyOn(app.get(NotificationsService), 'create').mockImplementation(async (userId: string, type: string, title: string) => {
-      sent.push(`${type}:${userId}:${title}`);
-      return null as never;
+    const spy = jest.spyOn(app.get(NotificationsService), 'createMany').mockImplementation(async (rows) => {
+      for (const r of rows) sent.push(`${r.type}:${r.userId}:${r.title}`);
+      return rows.length;
     });
     await http.post(`/api/serve/shifts/${shift.shift_id}/message`).set(auth(ben)).send({ message: 'hi' }).expect(403);
     await http.post(`/api/serve/shifts/${shift.shift_id}/message`).set(auth(ann)).send({ message: ' ' }).expect(400);
