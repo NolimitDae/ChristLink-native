@@ -61,9 +61,17 @@ function RootNavigator() {
     SplashScreen.hideAsync().catch(() => undefined);
     const first = segments[0] as string | undefined;
     if (!onboardingDone && first !== 'onboarding' && first !== 'auth' && first !== 'legal') {
-      // shortcut: keeps the path only (no query string); enough for /event/:id and /church/:id links.
-      if (pathname && pathname !== '/') pendingRoute.current = pathname;
-      router.replace('/onboarding');
+      // Re-check storage first: finishing onboarding saves the flag and navigates in the same moment, so this
+      // state can still say "not done" and would send people through onboarding a second time.
+      storage.getOnboardingDone().then(done => {
+        if (done) {
+          setOnboardingDone(true);
+          return;
+        }
+        // shortcut: keeps the path only (no query string); enough for /event/:id and /church/:id links.
+        if (pathname && pathname !== '/') pendingRoute.current = pathname;
+        router.replace('/onboarding');
+      });
     } else if (onboardingDone && pendingRoute.current) {
       const to = pendingRoute.current;
       pendingRoute.current = null;

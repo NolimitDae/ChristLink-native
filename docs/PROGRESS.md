@@ -640,3 +640,10 @@ for real-user crash and speed data (the app already samples 20% of sessions when
   data was untouched. **To do (owner):** in Railway → ChristLink Staging → ChristLink-API and ChristLink-Worker →
   Settings → Source, set the branch to `claude/railway-launch` (reconnect GitHub if branches won't load), then Deploy
   the latest commit. Tracing spans appear once the d368a75 build (with src/tracing.ts) is live.
+
+## 2026-11-03 — Fix: onboarding showed twice
+
+- Finishing or skipping onboarding saved the flag and navigated to the tabs in the same moment; the root layout's
+  in-memory flag was still "not done", so it redirected straight back to onboarding (reproduced on the web preview:
+  onboarding reappeared after both "Get started" and "Skip"). The redirect now re-reads storage first
+  (app/_layout.tsx). Verified: both paths land on Discover and stay there; a fresh install still starts onboarding.
