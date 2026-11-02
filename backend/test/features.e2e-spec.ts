@@ -256,6 +256,14 @@ describe('Native features (e2e)', () => {
     expect((await http.get(`/api/churches/${id}/follow`).set(auth(cat)).expect(200)).body).toEqual({ following: true });
     await http.delete(`/api/churches/${id}/follow`).set(auth(cat)).expect(200, { following: false });
 
+    // A member listing their church: unclaimed (leaders can still claim), and no duplicates by name + city
+    await http.post('/api/churches').set(auth(ben)).send({ name: `${churchName} Chapel`, as_member: true }).expect(400);
+    const listed = await http.post('/api/churches').set(auth(ben)).send({ name: `${churchName} Chapel`, city: 'Austin', as_member: true }).expect(200);
+    expect(listed.body).toMatchObject({ claimed_by: null, created_by: ben.id, verified: false });
+    const again = await http.post('/api/churches').set(auth(cat)).send({ name: `  ${churchName} chapel `, city: 'austin', as_member: true }).expect(200);
+    expect(again.body.id).toBe(listed.body.id);
+    await http.post(`/api/churches/${listed.body.id}/claim`).set(auth(cat)).send({ role_at_church: 'Pastor' }).expect(200);
+
     // Plan a visit: owner hears once, sees visitors; email only when shared
     const sunday = new Date(Date.now() + 3 * 86400_000);
     await http.post(`/api/churches/${id}/visits`).set(auth(cat)).send({ visit_at: new Date(Date.now() - 2 * 86400_000).toISOString() }).expect(400);

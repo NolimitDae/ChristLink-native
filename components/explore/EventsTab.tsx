@@ -171,6 +171,6 @@ export function EventsTab({ initialType, bottomInset }: { initialType?: string; 
 }
 
 const styles = StyleSheet.create({
-  filterBar: { flexGrow: 0, marginTop: 12, marginBottom: 8 },
+  filterBar: { flexGrow: 0, flexShrink: 0, marginTop: 12, marginBottom: 8 },
   filters: { gap: 8, paddingHorizontal: 16 },
 });

@@ -553,3 +553,14 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
 - Checked: app tests/typecheck/lint, Android bundle still exports, and every main screen on the deployed site with no
   page errors.
 - Not in the preview: payments, notifications, maps, camera.
+
+## 2026-11-02 (later) — Add your church; web filter bar fix
+
+- Onboarding "Find your Home Church": "Can't find your church? Add it" (and an "Add your church" action when a search
+  finds nothing) opens a short form (name, city, state, optional address and denomination, "I'm a pastor or on staff
+  here"). Members' listings stay unclaimed (backend `POST /api/churches { as_member: true }`), so the real leaders can
+  still claim the page; the same name in the same city returns the existing church instead of a duplicate. Guests'
+  churches are created and set as Home Church right after sign-in (components/onboarding/pendingChurch.ts).
+- Web: horizontal chip rows no longer get squeezed (Explore filter bar was cut off); the web preview hides scrollbars
+  and focus outlines.
+- Needs the backend change on staging (`as_member`); until then a member who adds a church becomes its owner.

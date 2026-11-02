@@ -16,6 +16,7 @@ interface BrowserWindow {
   self: unknown;
   top: unknown;
   innerWidth: number;
+  document: { head: { appendChild(n: unknown): void }; createElement(tag: string): { textContent: string } };
   localStorage: { getItem(k: string): string | null; setItem(k: string, v: string): void };
 }
 const win = (): BrowserWindow | null => ('document' in globalThis ? (globalThis as unknown as BrowserWindow) : null);
@@ -30,6 +31,7 @@ const state = {
   prayers: D.PRAYERS.map(p => ({ ...p })),
   rsvps: D.RSVPS.map(r => ({ ...r })),
   tickets: D.TICKETS.map(t => ({ ...t })),
+  churches: D.CHURCHES.map(c => ({ ...c })),
   profile: { ...D.PROFILE },
   settings: { user_id: D.ME.id, notification_prefs: {}, hide_rsvps_from_non_friends: false } as Row,
   waitlist: new Map<string, boolean>(),
@@ -152,9 +154,18 @@ const routes: [string, RegExp, Handler][] = [
   ['GET', /^\/notifications$/, () => ({ notifications: D.NOTIFICATIONS })],
   ['GET', /^\/settings$/, () => state.settings],
   ['PATCH', /^\/settings$/, (_m, body) => Object.assign(state.settings, body)],
-  ['GET', /^\/churches$/, () => D.CHURCHES],
+  ['GET', /^\/churches$/, (_m, _b, q) => {
+    const term = (q.get('q') ?? '').trim().toLowerCase();
+    return state.churches.filter(c => !term || `${c.name} ${c.city ?? ''}`.toLowerCase().includes(term));
+  }],
+  ['POST', /^\/churches$/, (_m, body) => {
+    const { as_member: asMember, ...fields } = body;
+    const row = { id: nextId(), service_times: [], leaders: [], photos: [], verified: false, ...fields, claimed_by: asMember ? null : D.ME.id, created_at: new Date().toISOString() };
+    state.churches.push(row);
+    return row;
+  }],
   ['GET', /^\/my-churches$/, () => []],
-  ['GET', /^\/churches\/([^/]+)$/, ([id]) => D.CHURCHES.find(c => c.id === id) ?? null],
+  ['GET', /^\/churches\/([^/]+)$/, ([id]) => state.churches.find(c => c.id === id) ?? null],
   ['GET', /^\/churches\/([^/]+)\/recurring$/, ([id]) => D.RECURRING.filter(r => r.church_id === id)],
   ['GET', /^\/churches\/([^/]+)\/events$/, ([id]) => (id === D.CHURCHES[0].id ? [state.events[0].id, state.events[5].id] : [])],
   ['GET', /^\/churches\/([^/]+)\/follow$/, ([id]) => ({ following: state.following.has(id) })],
@@ -220,6 +231,10 @@ export function installDemo() {
   if (installed || !w) return;
   installed = true;
   seedSession(w);
+  // Phones don't show a scrollbar; in the browser it would sit under the floating tab bar
+  const style = w.document.createElement('style');
+  style.textContent = '*{scrollbar-width:none}*::-webkit-scrollbar{display:none}input,textarea{outline:none}';
+  w.document.head.appendChild(style);
   const realFetch = w.fetch.bind(globalThis);
   w.fetch = ((input: string | URL | Request, init?: RequestInit) => {
     const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;

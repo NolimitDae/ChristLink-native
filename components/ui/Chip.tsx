@@ -62,7 +62,7 @@ interface ChipRowProps<T extends string> {
 
 export function ChipRow<T extends string>({ options, value, onChange, labels, style }: ChipRowProps<T>) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, style]}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bar} contentContainerStyle={[styles.row, style]}>
       {options.map(o => (
         <Chip key={o} label={labels?.[o] ?? o} selected={o === value} onPress={() => onChange(o)} />
       ))}
@@ -72,6 +72,8 @@ export function ChipRow<T extends string>({ options, value, onChange, labels, st
 }
 
 const styles = StyleSheet.create({
+  // Never squeezed by a flex column (react-native-web shrinks scroll views by default)
+  bar: { flexGrow: 0, flexShrink: 0 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',

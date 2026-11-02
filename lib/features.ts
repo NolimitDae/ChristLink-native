@@ -208,7 +208,8 @@ export async function getChurch(churchId: string): Promise<Church | null> {
   return (await call<Church | null>('getChurch', `/api/churches/${id(churchId)}`)) ?? null;
 }
 
-export function createChurch(input: Partial<Church> & { name: string }): Promise<Church> {
+/** `as_member`: a member listing their church; it stays unclaimed and an existing same-name church in that city is returned. */
+export function createChurch(input: Partial<Church> & { name: string; as_member?: boolean }): Promise<Church> {
   return call<Church>('createChurch', '/api/churches', body(input));
 }
 

@@ -60,17 +60,32 @@ export class ChurchesService {
     return this.prisma.churches.findMany({ where: { claimed_by: uid }, orderBy: { name: 'asc' } });
   }
 
-  /** churches_guard on insert: non-admins get verified=false, hidden=false and own the church. */
+  /**
+   * churches_guard on insert: non-admins get verified=false, hidden=false and own the church — unless `as_member`:
+   * then nobody owns it (leaders can claim it later), and the same name in the same city returns the existing church
+   * instead of a duplicate.
+   */
   async create(uid: string, b: ChurchDto) {
     if (!b.name) throw new BadRequestException('Church name is required.');
-    const { verified, hidden, ...fields } = b;
+    const { verified, hidden, as_member: asMember, ...fields } = b;
+    if (asMember) {
+      if (!fields.city?.trim()) throw new BadRequestException('City is required.');
+      const existing = await this.prisma.churches.findFirst({
+        where: {
+          hidden: false,
+          name: { equals: fields.name.trim(), mode: 'insensitive' },
+          city: { equals: fields.city.trim(), mode: 'insensitive' },
+        },
+      });
+      if (existing) return existing;
+    }
     const admin = await isAdmin(this.prisma, uid);
     return this.prisma.churches.create({
       data: {
         ...fields,
         name: fields.name.trim(),
         created_by: uid,
-        claimed_by: admin ? null : uid,
+        claimed_by: admin || asMember ? null : uid,
         verified: admin ? verified ?? false : false,
         hidden: admin ? hidden ?? false : false,
       },

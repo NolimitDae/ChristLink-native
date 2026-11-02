@@ -15,7 +15,7 @@ import type { Church } from '../lib/types';
 import { AppText, Button } from '../components/ui';
 import { ChurchStep } from '../components/onboarding/ChurchStep';
 import { InterestsStep, LoopStep, WelcomeStep } from '../components/onboarding/Steps';
-import { setPendingHomeChurch } from '../components/onboarding/pendingChurch';
+import { PENDING_NEW_CHURCH_ID, setPendingHomeChurch, setPendingNewChurch } from '../components/onboarding/pendingChurch';
 
 const STEPS = 4;
 const CHURCH_STEP = 2;
@@ -50,6 +50,9 @@ export default function OnboardingScreen() {
     haptic.tap();
     const id = church?.id ?? null;
     setChurchId(id);
+    // A church the guest just added is already stored as a draft (pendingChurch.ts) and created after sign-in
+    if (id === PENDING_NEW_CHURCH_ID) return;
+    if (!session) await setPendingNewChurch(null);
     if (session) {
       try {
         setSettings(await updateSettings({ home_church_id: id }));

@@ -26,6 +26,8 @@ export class ChurchDto {
   // Admin only (churches_guard): ignored for everyone else
   @IsOptional() @IsBoolean() verified?: boolean;
   @IsOptional() @IsBoolean() hidden?: boolean;
+  // Create only: a member listing their church (not running it). It stays unclaimed so its leaders can still claim it.
+  @IsOptional() @IsBoolean() as_member?: boolean;
 }
 class ClaimDto {
   @IsOptional() @IsString() @MaxLength(200) role_at_church?: string;
