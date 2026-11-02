@@ -64,6 +64,9 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - Serif (DM Serif Display) for titles, Montserrat for text (Loew Next needs a license; swap in `lib/theme.ts`).
 - No bare spinners for loading screens — skeletons. Every empty state: line illustration + one action.
 - Respect Reduce Motion (`t.reduceMotion`) and Dynamic Type; 44pt touch targets; accessibility labels on custom controls.
+- Motion: springs from `lib/motion.ts` (`SPRING.*`: damping ratio + response, critically damped by default; bounce only
+  after a flick). Tappable cards/chips/buttons use `components/ui/PressScale` (feedback on touch-down); content that
+  replaces a skeleton uses `Appear`; drags track 1:1, rubber-band at edges and hand their velocity to the spring.
 - Icons: one concept = one icon (docs/ICONS.md). Prayer/Amen = praying hands, church, serve and Bible use `AppIcon`
   custom glyphs; everything else Ionicons outline, filled only when active.
 - The tab bar floats (Discover, Events, Tickets, Community, Profile; Host is a hidden tab reached from Profile).

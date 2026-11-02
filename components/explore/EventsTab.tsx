@@ -8,7 +8,7 @@ import { EVENT_TYPES, type EventType } from '../../lib/constants';
 import { isWithinDays } from '../../lib/format';
 import type { Event } from '../../lib/types';
 import { EventCard } from '../EventCard';
-import { Chip, ChipRow, EmptyState, Field, ListSkeleton } from '../ui';
+import { Appear, Chip, ChipRow, EmptyState, Field, ListSkeleton } from '../ui';
 import { errorMessage } from '../church/churchFormat';
 import { useUserLocation, type Coords } from './useUserLocation';
 
@@ -149,7 +149,16 @@ export function EventsTab({ initialType, bottomInset }: { initialType?: string; 
               colors={[t.c.gold]}
             />
           }
-          renderItem={({ item }: ListRenderItemInfo<Event>) => <EventCard event={item} variant="row" friends={friends[item.id]} />}
+          renderItem={({ item, index }: ListRenderItemInfo<Event>) =>
+            // Only the first screenful settles in; rows scrolled into view later just appear
+            index < 6 ? (
+              <Appear index={index}>
+                <EventCard event={item} variant="row" friends={friends[item.id]} />
+              </Appear>
+            ) : (
+              <EventCard event={item} variant="row" friends={friends[item.id]} />
+            )
+          }
           ListEmptyComponent={
             filtersActive ? (
               <EmptyState

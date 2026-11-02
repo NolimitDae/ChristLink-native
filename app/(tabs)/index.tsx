@@ -6,7 +6,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFriendsGoing } from '../../hooks/useFriendsGoing';
 import { useShareCard } from '../../components/ShareCard';
-import { EmptyState, SectionHeader } from '../../components/ui';
+import { Appear, EmptyState, SectionHeader } from '../../components/ui';
 import { HomeHeader } from '../../components/home/HomeHeader';
 import { VerseCard } from '../../components/home/VerseCard';
 import { WeekStrip } from '../../components/home/WeekStrip';
@@ -130,12 +130,14 @@ export default function HomeScreen() {
         ) : events === null ? (
           <EmptyState art="offline" title="We couldn’t load events" body={error ?? undefined} actionLabel="Try again" onAction={retry} compact />
         ) : sections.soon.length > 0 ? (
-          <TonightCarousel
-            title={sections.tonightIsReal ? 'Happening tonight' : 'In the next 24 hours'}
-            eyebrow={sections.tonightIsReal ? 'Tonight' : 'Soon'}
-            events={sections.soon}
-            friends={friends}
-          />
+          <Appear>
+            <TonightCarousel
+              title={sections.tonightIsReal ? 'Happening tonight' : 'In the next 24 hours'}
+              eyebrow={sections.tonightIsReal ? 'Tonight' : 'Soon'}
+              events={sections.soon}
+              friends={friends}
+            />
+          </Appear>
         ) : null}
 
         <View style={{ paddingHorizontal: t.space.md }}>
@@ -155,16 +157,17 @@ export default function HomeScreen() {
             onAction={() => router.push('/(tabs)/host')}
           />
         ) : (
-          sections.categories.map(s => (
-            <CategoryRail
-              key={s.type}
-              title={s.type === 'All' ? 'Coming up' : s.type}
-              events={s.events}
-              friends={friends}
-              onSeeAll={() =>
-                router.push(s.type === 'All' ? '/explore?tab=events' : `/explore?tab=events&type=${encodeURIComponent(s.type)}`)
-              }
-            />
+          sections.categories.map((s, i) => (
+            <Appear key={s.type} index={i + 1}>
+              <CategoryRail
+                title={s.type === 'All' ? 'Coming up' : s.type}
+                events={s.events}
+                friends={friends}
+                onSeeAll={() =>
+                  router.push(s.type === 'All' ? '/explore?tab=events' : `/explore?tab=events&type=${encodeURIComponent(s.type)}`)
+                }
+              />
+            </Appear>
           ))
         )}
       </ScrollView>

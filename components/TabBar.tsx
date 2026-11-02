@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
+import { SPRING } from '../lib/motion';
+import { PressScale } from './ui/PressScale';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
@@ -63,7 +65,7 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
       capsuleX.setValue(to);
       placed.current = true;
     } else {
-      Animated.spring(capsuleX, { toValue: to, useNativeDriver: true, damping: 20, stiffness: 240, mass: 0.9 }).start();
+      Animated.spring(capsuleX, { toValue: to, ...SPRING.move, useNativeDriver: true }).start();
     }
   }, [activeIdx, slot, capsuleX, t.reduceMotion]);
 
@@ -101,13 +103,14 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
                   if (route.name !== current && !event.defaultPrevented) navigateToTab(route.key);
                 };
                 return (
-                  <Pressable
+                  <PressScale
                     key={route.key}
                     onPress={onPress}
                     onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: focused }}
                     accessibilityLabel={meta.label}
+                    scaleTo={0.9}
                     style={styles.item}
                   >
                     <View style={styles.icon}>
@@ -120,7 +123,7 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
                     <AppText variant="caption" color={color} numberOfLines={1} style={styles.label}>
                       {meta.label}
                     </AppText>
-                  </Pressable>
+                  </PressScale>
                 );
               })}
             </View>

@@ -1,5 +1,7 @@
 export { AppText } from './AppText';
 export { Button } from './Button';
+export { PressScale } from './PressScale';
+export { Appear } from './Appear';
 export { IconButton } from './IconButton';
 export { Chip, ChipRow } from './Chip';
 export { Card, TicketPerforation, TicketShell } from './Card';

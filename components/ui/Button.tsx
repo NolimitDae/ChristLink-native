@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
+import { SPRING } from '../../lib/motion';
 import { AppText } from './AppText';
 import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
@@ -51,9 +52,11 @@ export function Button({
   const border = variant === 'secondary' ? t.c.borderStrong : variant === 'danger' ? t.c.danger : 'transparent';
   const fg = variant === 'primary' ? t.c.onGold : variant === 'danger' ? t.c.danger : variant === 'ghost' ? t.c.goldText : t.c.text;
 
+  // Shrinks the instant it's touched, settles back without overshoot (a tap has no momentum to bounce with)
   const animate = (to: number) => {
     if (t.reduceMotion) return;
-    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+    if (to < 1) Animated.timing(scale, { toValue: to, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    else Animated.spring(scale, { toValue: to, ...SPRING.press, useNativeDriver: true }).start();
   };
 
   return (

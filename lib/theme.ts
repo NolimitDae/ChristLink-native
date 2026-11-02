@@ -149,8 +149,8 @@ export type TypeVariant =
 export const type: Record<TypeVariant, TextStyle> = {
   display: { fontFamily: fonts.display, fontSize: 36, lineHeight: 42, letterSpacing: -0.3 },
   title1: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, letterSpacing: -0.2 },
-  title2: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30 },
-  title3: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26 },
+  title2: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.15 },
+  title3: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26, letterSpacing: -0.1 },
   headline: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22 },
   body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
   bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },

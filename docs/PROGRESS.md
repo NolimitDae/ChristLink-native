@@ -569,3 +569,20 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
 - Fixed: event header photo slid below the hero while scrolling (parallax without a bottom clip), showing behind the
   title and "Hosted by" — very visible in light mode. The photo is now clipped at the hero's bottom edge; the pull-down
   stretch still has room above.
+
+## 2026-11-02 (evening) — Motion and polish pass (Apple "Designing Fluid Interfaces")
+
+- `lib/motion.ts`: springs described by damping ratio + response (`SPRING.press/move/sheet/momentum/pop`),
+  momentum projection and rubber-band helpers (tested).
+- Press feedback on touch-down for buttons, cards, event cards, chips and tab icons (`PressScale`: shrink in 90 ms,
+  settle back critically damped; Reduce Motion dims instead). Buttons no longer bounce on release.
+- Tab bar highlight and segmented control: critically damped (a tap has no momentum, so no overshoot).
+- Bottom sheets: grab mid-animation from where they are, 1:1 drag with the backdrop dimming as you pull, rubber-band
+  upward (sheet extends below the screen so no gap shows), dismiss decided by projected landing point, and the exit
+  continues at the finger's speed; otherwise it springs back with the release velocity.
+- Save heart pops in (small earned bounce) on the same frame as the haptic.
+- Content that replaces a skeleton rises and fades in, staggered (Discover rails, Tonight, Events list first screen,
+  Tickets wallet and memories); Reduce Motion: cross-fade only.
+- Serif title tracking tightened slightly at 24/20 pt.
+- Test on a phone: drag a sheet down slowly (follows, backdrop lightens) vs. a quick flick (closes at your speed);
+  pull a sheet up (resists); press and hold an event card (shrinks immediately); save an event (heart pops).

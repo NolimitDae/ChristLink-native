@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { SPRING } from '../../lib/motion';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
@@ -19,7 +20,7 @@ export function Segmented<T extends string>({ options, value, onChange, style }:
   const segW = width / options.length;
 
   useEffect(() => {
-    Animated.spring(x, { toValue: idx * segW, useNativeDriver: true, damping: 20, stiffness: 240 }).start();
+    Animated.spring(x, { toValue: idx * segW, ...SPRING.move, useNativeDriver: true }).start();
   }, [idx, segW, x]);
 
   return (

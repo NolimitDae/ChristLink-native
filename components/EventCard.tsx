@@ -1,5 +1,5 @@
-import React, { memo } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import React, { memo, useRef } from 'react';
+import { Animated, Image, Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +14,8 @@ import { AppText } from './ui/AppText';
 import { AvatarStack } from './ui/AvatarStack';
 import { DateBlock } from './ui/DateBlock';
 import { TimingBadge } from './ui/Badge';
+import { PressScale } from './ui/PressScale';
+import { SPRING } from '../lib/motion';
 
 export type EventCardVariant = 'carousel' | 'row' | 'grid';
 
@@ -29,10 +31,16 @@ function SaveHeart({ eventId, onImage }: { eventId: string; onImage?: boolean })
   const t = useTheme();
   const { savedIds, toggleSaved } = useAppData();
   const saved = savedIds.has(eventId);
+  const pop = useRef(new Animated.Value(1)).current;
   return (
     <Pressable
       onPress={() => {
         haptic.light();
+        // Saving pops the heart in (a small, earned bounce); un-saving just settles. Same frame as the haptic.
+        if (!saved && !t.reduceMotion) {
+          pop.setValue(0.6);
+          Animated.spring(pop, { toValue: 1, ...SPRING.pop, useNativeDriver: true }).start();
+        }
         toggleSaved(eventId);
       }}
       hitSlop={10}
@@ -41,7 +49,9 @@ function SaveHeart({ eventId, onImage }: { eventId: string; onImage?: boolean })
       accessibilityState={{ selected: saved }}
       style={[styles.heart, onImage ? { backgroundColor: t.c.scrim } : { backgroundColor: t.c.surface2 }]}
     >
-      <Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? t.c.gold : onImage ? t.c.onImage : t.c.textMuted} />
+      <Animated.View style={{ transform: [{ scale: pop }] }}>
+        <Ionicons name={saved ? 'heart' : 'heart-outline'} size={18} color={saved ? t.c.gold : onImage ? t.c.onImage : t.c.textMuted} />
+      </Animated.View>
     </Pressable>
   );
 }
@@ -99,7 +109,7 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
 
   if (variant === 'carousel') {
     return (
-      <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={a11y} style={({ pressed }) => [{ width, opacity: pressed ? 0.9 : 1 }]}>
+      <PressScale onPress={open} accessibilityRole="button" accessibilityLabel={a11y} scaleTo={0.98} style={{ width }}>
         <View style={[{ borderRadius: t.radius.lg }, shadow(2, t.c.shadow)]}>
           <Cover event={event} height={Math.round(width * 0.62)} radius={t.radius.lg} />
           <LinearGradient colors={['transparent', t.c.scrimStrong]} style={[StyleSheet.absoluteFill, { borderRadius: t.radius.lg }]} />
@@ -123,19 +133,18 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
           </View>
           <FriendsRow event={event} friends={friends} />
         </View>
-      </Pressable>
+      </PressScale>
     );
   }
 
   if (variant === 'grid') {
     return (
-      <Pressable
+      <PressScale
         onPress={open}
         accessibilityRole="button"
         accessibilityLabel={a11y}
-        style={({ pressed }) => [
-          { flex: 1, backgroundColor: t.c.surface, borderRadius: t.radius.lg, borderWidth: 1, borderColor: t.c.border, overflow: 'hidden', opacity: pressed ? 0.9 : 1 },
-        ]}
+        scaleTo={0.97}
+        style={{ flex: 1, backgroundColor: t.c.surface, borderRadius: t.radius.lg, borderWidth: 1, borderColor: t.c.border, overflow: 'hidden' }}
       >
         <Cover event={event} height={110} radius={0} />
         <View style={{ padding: 10, gap: 4 }}>
@@ -147,18 +156,19 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
           </AppText>
           <PriceChip event={event} />
         </View>
-      </Pressable>
+      </PressScale>
     );
   }
 
   return (
-    <Pressable
+    <PressScale
       onPress={open}
       accessibilityRole="button"
       accessibilityLabel={a11y}
-      style={({ pressed }) => [
+      scaleTo={0.98}
+      style={[
         styles.row,
-        { backgroundColor: t.c.surface, borderColor: t.c.border, borderRadius: t.radius.lg, opacity: pressed ? 0.9 : 1 },
+        { backgroundColor: t.c.surface, borderColor: t.c.border, borderRadius: t.radius.lg },
         t.scheme === 'light' ? shadow(1, t.c.shadow) : null,
       ]}
     >
@@ -182,7 +192,7 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
         </View>
       </View>
       <SaveHeart eventId={event.id} />
-    </Pressable>
+    </PressScale>
   );
 }
 

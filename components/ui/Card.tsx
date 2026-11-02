@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { PressScale } from './PressScale';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { shadow } from '../../lib/theme';
@@ -47,15 +48,16 @@ export function Card({ children, variant = 'standard', onPress, onLongPress, sty
     );
   }
   return (
-    <Pressable
+    <PressScale
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [base, { opacity: pressed ? 0.85 : 1 }, style]}
+      scaleTo={0.98}
+      style={[base, style]}
     >
       {content}
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -77,7 +79,7 @@ export function TicketShell({
   accessibilityLabel?: string;
 }) {
   const t = useTheme();
-  const Wrapper = onPress ? Pressable : View;
+  const Wrapper = onPress ? PressScale : View;
   return (
     <Wrapper
       onPress={onPress}

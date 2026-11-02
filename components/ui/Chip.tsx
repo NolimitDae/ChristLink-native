@@ -1,8 +1,9 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
+import { PressScale } from './PressScale';
 import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
 type IconName = AppIconName;
@@ -20,7 +21,7 @@ export function Chip({ label, selected = false, onPress, icon, style, count }: C
   const t = useTheme();
   const fg = selected ? t.c.onGold : t.c.text;
   return (
-    <Pressable
+    <PressScale
       onPress={() => {
         haptic.tap();
         onPress?.();
@@ -29,12 +30,12 @@ export function Chip({ label, selected = false, onPress, icon, style, count }: C
       accessibilityState={{ selected }}
       accessibilityLabel={label}
       hitSlop={4}
-      style={({ pressed }) => [
+      scaleTo={0.95}
+      style={[
         styles.chip,
         {
           backgroundColor: selected ? t.c.gold : t.c.surface,
           borderColor: selected ? t.c.gold : t.c.border,
-          opacity: pressed ? 0.75 : 1,
         },
         style,
       ]}
@@ -48,7 +49,7 @@ export function Chip({ label, selected = false, onPress, icon, style, count }: C
           {count}
         </AppText>
       ) : null}
-    </Pressable>
+    </PressScale>
   );
 }
 

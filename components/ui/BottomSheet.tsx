@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -15,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppText } from './AppText';
 import { IconButton } from './IconButton';
+import { project, rubberband, SPRING } from '../../lib/motion';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -28,6 +30,8 @@ interface BottomSheetProps {
 }
 
 const SCREEN_H = Dimensions.get('window').height;
+/** Extra sheet below the screen edge, so pulling up (rubber-band) never shows a gap under it. */
+const BLEED = 60;
 
 export function BottomSheet({ visible, onClose, title, subtitle, children, footer, scroll = true, maxHeightRatio = 0.88 }: BottomSheetProps) {
   const t = useTheme();
@@ -35,33 +39,82 @@ export function BottomSheet({ visible, onClose, title, subtitle, children, foote
   const [mounted, setMounted] = useState(visible);
   const translate = useRef(new Animated.Value(SCREEN_H)).current;
   const backdrop = useRef(new Animated.Value(0)).current;
+  /** Measured sheet height (projection threshold, backdrop dimming while dragging). */
+  const sheetH = useRef(400);
+  /** Live on-screen offset, so a grab mid-animation starts exactly where the sheet is. */
+  const live = useRef(SCREEN_H);
+  const grabFrom = useRef(0);
+  /** Finger speed (px/ms) when dismissed by a flick; the exit continues at that speed. */
+  const flickExit = useRef<number | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const id = translate.addListener(({ value }) => {
+      live.current = value;
+    });
+    return () => translate.removeListener(id);
+  }, [translate]);
 
   useEffect(() => {
     if (visible) {
       setMounted(true);
+      flickExit.current = null;
       translate.setValue(t.reduceMotion ? 0 : SCREEN_H * 0.5);
       Animated.parallel([
-        Animated.spring(translate, { toValue: 0, useNativeDriver: true, damping: 22, stiffness: 220 }),
+        t.reduceMotion
+          ? Animated.timing(translate, { toValue: 0, duration: 0, useNativeDriver: true })
+          : Animated.spring(translate, { toValue: 0, ...SPRING.sheet, useNativeDriver: true }),
         Animated.timing(backdrop, { toValue: 1, duration: t.motion.base, useNativeDriver: true }),
       ]).start();
     } else if (mounted) {
-      Animated.parallel([
-        Animated.timing(translate, { toValue: SCREEN_H * 0.6, duration: t.reduceMotion ? 0 : t.motion.base, useNativeDriver: true }),
-        Animated.timing(backdrop, { toValue: 0, duration: t.motion.base, useNativeDriver: true }),
-      ]).start(() => setMounted(false));
+      const v = flickExit.current;
+      flickExit.current = null;
+      const remaining = Math.max(0, SCREEN_H - live.current);
+      // A flick keeps the finger's speed (linear, no seam); a tap on close/backdrop eases out
+      const exit =
+        v !== null && !t.reduceMotion
+          ? Animated.timing(translate, { toValue: SCREEN_H, duration: Math.min(320, Math.max(120, remaining / v)), easing: Easing.linear, useNativeDriver: true })
+          : Animated.timing(translate, { toValue: SCREEN_H * 0.6, duration: t.reduceMotion ? 0 : t.motion.base, easing: Easing.in(Easing.quad), useNativeDriver: true });
+      Animated.parallel([exit, Animated.timing(backdrop, { toValue: 0, duration: t.motion.base, useNativeDriver: true })]).start(() => setMounted(false));
     }
   }, [visible, mounted, translate, backdrop, t.reduceMotion, t.motion.base]);
 
+  const settle = (velocity: number) => {
+    Animated.parallel([
+      Animated.spring(translate, { toValue: 0, velocity, ...SPRING.sheet, useNativeDriver: true }),
+      Animated.timing(backdrop, { toValue: 1, duration: t.motion.fast, useNativeDriver: true }),
+    ]).start();
+  };
+
   const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderGrant: () => {
+        // Grab it wherever it is, even mid-spring
+        translate.stopAnimation(v => {
+          grabFrom.current = v;
+        });
+        backdrop.stopAnimation();
+      },
       onPanResponderMove: (_e, g) => {
-        if (g.dy > 0) translate.setValue(g.dy);
+        const raw = grabFrom.current + g.dy;
+        // 1:1 downward; upward resists progressively instead of hitting a wall
+        const y = raw >= 0 ? raw : rubberband(raw, BLEED);
+        translate.setValue(y);
+        backdrop.setValue(Math.max(0, Math.min(1, 1 - y / (sheetH.current * 1.2))));
       },
       onPanResponderRelease: (_e, g) => {
-        if (g.dy > 120 || g.vy > 1.2) onClose();
-        else Animated.spring(translate, { toValue: 0, useNativeDriver: true }).start();
+        // Decide from where the flick is heading, not where the finger let go
+        const landing = live.current + project(g.vy * 1000);
+        if (landing > sheetH.current * 0.5 && g.vy > -0.05) {
+          flickExit.current = Math.max(g.vy, 0.8);
+          onCloseRef.current();
+        } else {
+          settle(g.vy);
+        }
       },
+      onPanResponderTerminate: (_e, g) => settle(g.vy),
     }),
   ).current;
 
@@ -76,10 +129,15 @@ export function BottomSheet({ visible, onClose, title, subtitle, children, foote
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.kav} pointerEvents="box-none">
         <Animated.View
           accessibilityViewIsModal
+          onLayout={e => {
+            sheetH.current = e.nativeEvent.layout.height - BLEED;
+          }}
           style={[
             styles.sheet,
             {
-              maxHeight: SCREEN_H * maxHeightRatio,
+              maxHeight: SCREEN_H * maxHeightRatio + BLEED,
+              marginBottom: -BLEED,
+              paddingBottom: BLEED,
               backgroundColor: t.c.bgElevated,
               borderColor: t.c.border,
               borderTopLeftRadius: t.radius.xl,

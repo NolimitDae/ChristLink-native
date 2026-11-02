@@ -11,7 +11,7 @@ import { storage } from '../../lib/storage';
 import { logger } from '../../lib/logger';
 import { pluralize } from '../../lib/format';
 import type { RSVP, Ticket } from '../../lib/types';
-import { AppText, Button, EmptyState, SectionHeader, Skeleton, SkeletonGroup } from '../../components/ui';
+import { Appear, AppText, Button, EmptyState, SectionHeader, Skeleton, SkeletonGroup } from '../../components/ui';
 import { WalletStack } from '../../components/tickets/WalletStack';
 import { MemoryCard } from '../../components/tickets/MemoryCard';
 import { WALLET_CARD_HEIGHT } from '../../components/tickets/WalletTicketCard';
@@ -168,7 +168,9 @@ export default function TicketsScreen() {
               <View style={s.section}>
                 <SectionHeader title="Upcoming" />
                 <View style={{ paddingHorizontal: t.space.md }}>
-                  <WalletStack items={upcoming} onOpen={open} />
+                  <Appear>
+                    <WalletStack items={upcoming} onOpen={open} />
+                  </Appear>
                 </View>
               </View>
             ) : (
@@ -185,8 +187,10 @@ export default function TicketsScreen() {
               <View style={s.section}>
                 <SectionHeader eyebrow={pluralize(past.length, 'gathering')} title="Memories" />
                 <View style={s.grid}>
-                  {past.map(item => (
-                    <MemoryCard key={item.key} item={item} width={memoryWidth} onPress={() => router.push(`/event/${item.eventId}`)} />
+                  {past.map((item, i) => (
+                    <Appear key={item.key} index={i + 1}>
+                      <MemoryCard item={item} width={memoryWidth} onPress={() => router.push(`/event/${item.eventId}`)} />
+                    </Appear>
                   ))}
                 </View>
               </View>
