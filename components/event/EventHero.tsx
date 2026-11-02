@@ -24,18 +24,22 @@ export function EventHero({ event, height, scrollY }: EventHeroProps) {
 
   return (
     <View style={{ height }} accessible accessibilityRole="image" accessibilityLabel={`Cover photo for ${event.name}`}>
-      <Animated.View style={[StyleSheet.absoluteFill, !t.reduceMotion && { transform: [{ translateY }, { scale }] }]}>
-        {event.cover_url ? (
-          <Image source={{ uri: event.cover_url }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
-        ) : (
-          <LinearGradient colors={[t.c.surface3, t.c.surface, t.c.bg]} style={[StyleSheet.absoluteFill, styles.center]}>
-            <View style={[styles.glyphRing, { borderColor: t.c.goldHairline, backgroundColor: t.c.goldDim }]}>
-              <AppText style={{ fontSize: 64, lineHeight: 78 }}>{eventGlyph(event)}</AppText>
-            </View>
-          </LinearGradient>
-        )}
-        <LinearGradient colors={[t.c.scrim, 'transparent']} style={styles.topShade} pointerEvents="none" />
-      </Animated.View>
+      {/* Clips the parallax at the hero's bottom edge, so the photo never slides under the title, while leaving a
+          hero-height of room above for the pull-down stretch. */}
+      <View style={[styles.clip, { top: -height }]} pointerEvents="none">
+        <Animated.View style={[styles.photo, { top: height }, !t.reduceMotion && { transform: [{ translateY }, { scale }] }]}>
+          {event.cover_url ? (
+            <Image source={{ uri: event.cover_url }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityIgnoresInvertColors />
+          ) : (
+            <LinearGradient colors={[t.c.surface3, t.c.surface, t.c.bg]} style={[StyleSheet.absoluteFill, styles.center]}>
+              <View style={[styles.glyphRing, { borderColor: t.c.goldHairline, backgroundColor: t.c.goldDim }]}>
+                <AppText style={{ fontSize: 64, lineHeight: 78 }}>{eventGlyph(event)}</AppText>
+              </View>
+            </LinearGradient>
+          )}
+          <LinearGradient colors={[t.c.scrim, 'transparent']} style={styles.topShade} pointerEvents="none" />
+        </Animated.View>
+      </View>
       <LinearGradient colors={['transparent', t.c.bg]} style={styles.bottomFade} pointerEvents="none" />
     </View>
   );
@@ -43,6 +47,8 @@ export function EventHero({ event, height, scrollY }: EventHeroProps) {
 
 const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
+  clip: { position: 'absolute', left: 0, right: 0, bottom: 0, overflow: 'hidden' },
+  photo: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   glyphRing: { width: 140, height: 140, borderRadius: 70, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   topShade: { position: 'absolute', top: 0, left: 0, right: 0, height: 120 },
   bottomFade: { position: 'absolute', left: 0, right: 0, bottom: -1, height: 140 },

@@ -564,3 +564,8 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
 - Web: horizontal chip rows no longer get squeezed (Explore filter bar was cut off); the web preview hides scrollbars
   and focus outlines.
 - Needs the backend change on staging (`as_member`); until then a member who adds a church becomes its owner.
+- Fixed: other people's profiles crashed when the name was missing (`full_name.split`); a malformed profile now
+  shows the "couldn't load" state. Web preview has sample public profiles and follow/unfollow.
+- Fixed: event header photo slid below the hero while scrolling (parallax without a bottom clip), showing behind the
+  title and "Hosted by" — very visible in light mode. The photo is now clipped at the hero's bottom edge; the pull-down
+  stretch still has room above.

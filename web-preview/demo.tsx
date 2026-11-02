@@ -101,6 +101,7 @@ const routes: [string, RegExp, Handler][] = [
   })],
   ['GET', /^\/profile$/, () => state.profile],
   ['PATCH', /^\/profile$/, (_m, body) => Object.assign(state.profile, body)],
+  ['GET', /^\/profile\/public\/([^/]+)$/, ([id]) => publicProfile(id)],
   ['GET', /^\/profiles\/([^/]+)\/stats$/, () => ({ eventsHosted: 6, totalAttendees: 1108, isVerified: true })],
   ['GET', /^\/profiles\/([^/]+)$/, ([id]) => {
     const p = Object.values(D.people).find(x => x.id === id);
@@ -175,8 +176,34 @@ const routes: [string, RegExp, Handler][] = [
   ['GET', /^\/serve\/shifts$/, () => D.SHIFTS],
   ['GET', /^\/serve\/hours$/, () => ({ hours: 12 })],
   ['GET', /^\/blocks$/, () => []],
+  ['POST', /^\/follow\/([^/]+)$/, ([id]) => (state.following.add(id), { success: true })],
+  ['DELETE', /^\/follow\/([^/]+)$/, ([id]) => (state.following.delete(id), { success: true })],
   ['POST', /^\/auth\/refresh$/, () => ({ accessToken: 'preview', refreshToken: 'preview', expiresIn: 86_400 })],
 ];
+
+const BIOS: Record<string, string> = {
+  [D.people.grace.id]: 'Small group leader at Hope Church. Mom of two. Coffee and long walks.',
+  [D.people.daniel.id]: 'Saturday prayer walks around Piedmont Park. Come join!',
+  [D.people.ruth.id]: 'Nurse, choir alto, learning to be still.',
+  [D.people.samuel.id]: 'Baptized this year. Grateful for every invite.',
+  [D.people.hope.id]: 'A church for the city. Sundays at 9 and 11.',
+};
+
+function publicProfile(id: string) {
+  const p = Object.values(D.people).find(x => x.id === id) ?? D.people.grace;
+  return {
+    ...p,
+    bio: BIOS[p.id] ?? 'Following Jesus in Atlanta.',
+    role: p.id === D.people.hope.id ? 'host' : 'attendee',
+    followers_count: 214,
+    following_count: 180,
+    is_following: state.following.has(p.id),
+    created_at: new Date(2025, 0, 1).toISOString(),
+    favorite_verse: 'The Lord is my shepherd; I shall not want.',
+    favorite_verse_ref: 'Psalm 23:1',
+    hobbies: 'Worship, Reading, Hiking',
+  };
+}
 
 function waitlistStatus(eventId: string) {
   const joined = !!state.waitlist.get(eventId);

@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { followUser, getEvents, getPublicProfile, unfollowUser } from '../../lib/api';
 import { unblockUser } from '../../lib/features';
 import { haptic } from '../../lib/haptics';
+import { firstName } from '../../lib/format';
 import type { Event, Profile } from '../../lib/types';
 import { EventCard } from '../../components/EventCard';
 import { useReport } from '../../components/ReportSheet';
@@ -57,6 +58,8 @@ export default function PublicProfileScreen() {
     if (!id || isMe) return;
     try {
       const p = await getPublicProfile(id, token);
+      // A missing or malformed profile shows the "couldn't load" state instead of crashing the screen
+      if (!p?.id) throw new Error('Profile not found');
       setProfile(p);
       setFollowing(!!p.is_following);
       setFollowers(p.followers_count ?? 0);
@@ -219,7 +222,7 @@ export default function PublicProfileScreen() {
             {events === null ? (
               <EventCardSkeleton variant="row" />
             ) : events.length === 0 ? (
-              <EmptyState compact art="calendar" title="No upcoming events" body={`${profile.full_name.split(' ')[0] || 'They'} isn't hosting anything right now.`} />
+              <EmptyState compact art="calendar" title="No upcoming events" body={`${firstName(profile.full_name) || 'They'} isn't hosting anything right now.`} />
             ) : (
               events.map(e => <EventCard key={e.id} event={e} variant="row" />)
             )}
