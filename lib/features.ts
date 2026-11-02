@@ -144,6 +144,14 @@ export async function getPrayerWall(filter: PrayerFilter = 'all', before?: strin
   return (await call<Prayer[] | null>('getPrayerWall', `/api/prayers?${qs.toString()}`)) ?? [];
 }
 
+/** Someone's prayers for their profile (their anonymous ones are never included unless they're yours). */
+export async function getUserPrayers(userId: string): Promise<Prayer[]> {
+  const qs = new URLSearchParams({ filter: 'all', limit: '30', author: userId });
+  const rows = await call<Prayer[] | null>('getUserPrayers', `/api/prayers?${qs.toString()}`);
+  // An API without the author filter returns the whole wall; never show other people's prayers on this profile
+  return Array.isArray(rows) ? rows.filter(p => p.author_id === userId) : [];
+}
+
 export async function createPrayer(text: string, isAnonymous: boolean, churchId?: string | null): Promise<void> {
   await call('createPrayer', '/api/prayers', body({ body: text.trim(), is_anonymous: isAnonymous, church_id: churchId ?? null }));
 }

@@ -130,6 +130,12 @@ describe('Native features (e2e)', () => {
     const friends = await http.get('/api/prayers?filter=friends').set(auth(ben)).expect(200);
     expect(friends.body.map((p: { id: string }) => p.id)).toEqual([open.body.id]);
     await http.get('/api/prayers?filter=bogus').set(auth(ben)).expect(400);
+    // A profile's prayers: only that author, never their anonymous ones (except to themselves)
+    const annForBen = await http.get(`/api/prayers?author=${ann.id}`).set(auth(ben)).expect(200);
+    expect(annForBen.body.map((p: { id: string }) => p.id)).toEqual([open.body.id]);
+    const annForAnn = await http.get(`/api/prayers?author=${ann.id}`).set(auth(ann)).expect(200);
+    expect(annForAnn.body.map((p: { id: string }) => p.id).sort()).toEqual([anon.body.id, open.body.id].sort());
+    await http.get('/api/prayers?author=nope').set(auth(ben)).expect(400);
 
     expect((await http.post(`/api/prayers/${open.body.id}/pray`).set(auth(ben)).expect(200)).body).toEqual({ count: 1 });
     expect((await http.post(`/api/prayers/${open.body.id}/pray`).set(auth(ben)).expect(200)).body).toEqual({ count: 1 });

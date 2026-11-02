@@ -6,10 +6,10 @@ import { useAppData } from '../../contexts/AppDataContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
 import { followUser, getEvents, getPublicProfile, unfollowUser } from '../../lib/api';
-import { unblockUser } from '../../lib/features';
+import { getUserPrayers, prayFor, unblockUser } from '../../lib/features';
 import { haptic } from '../../lib/haptics';
 import { firstName } from '../../lib/format';
-import type { Event, Profile } from '../../lib/types';
+import type { Event, Prayer, Profile } from '../../lib/types';
 import { EventCard } from '../../components/EventCard';
 import { useReport } from '../../components/ReportSheet';
 import { useShareCard } from '../../components/ShareCard';
@@ -28,6 +28,8 @@ import {
 import { ProfileHero } from '../../components/profile/ProfileHero';
 import { StatsRow } from '../../components/profile/StatsRow';
 import { PinnedPrayerCard, ProfileVerseCard } from '../../components/profile/VerseCard';
+import { ProfileDetails } from '../../components/profile/ProfileDetails';
+import { PrayerCard } from '../../components/community/PrayerCard';
 
 export default function PublicProfileScreen() {
   const t = useTheme();
@@ -45,6 +47,7 @@ export default function PublicProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [failed, setFailed] = useState(false);
   const [events, setEvents] = useState<Event[] | null>(null);
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [following, setFollowing] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -67,6 +70,10 @@ export default function PublicProfileScreen() {
     } catch {
       setFailed(true);
     }
+    // Their prayers from the Prayer Wall (never their anonymous ones); hidden if the route isn't deployed yet
+    getUserPrayers(id)
+      .then(setPrayers)
+      .catch(() => setPrayers([]));
     try {
       const res = await getEvents({ host_id: id });
       setEvents(res.events.filter(e => e.host_id === id));
@@ -109,6 +116,29 @@ export default function PublicProfileScreen() {
       setBusy(false);
     }
   };
+
+  const pray = useCallback(
+    async (prayer: Prayer) => {
+      if (!token) {
+        router.push('/auth');
+        return;
+      }
+      setPrayers(list => list.map(p => (p.id === prayer.id ? { ...p, has_prayed: true, prayed_count: p.prayed_count + 1 } : p)));
+      try {
+        const count = await prayFor(prayer.id);
+        if (typeof count === 'number') setPrayers(list => list.map(p => (p.id === prayer.id ? { ...p, prayed_count: count } : p)));
+      } catch (err) {
+        setPrayers(list => list.map(p => (p.id === prayer.id ? prayer : p)));
+        showToast(err instanceof Error ? err.message : 'Could not record your prayer', 'error');
+      }
+    },
+    [token, router, showToast],
+  );
+
+  const reportPrayer = useCallback(
+    (p: Prayer) => report.open({ type: 'prayer', id: p.id, authorId: p.author_id, authorName: p.author_name }),
+    [report],
+  );
 
   const unblock = async () => {
     if (!id) return;
@@ -215,6 +245,19 @@ export default function PublicProfileScreen() {
         ) : null}
 
         {profile.prayer_request ? <PinnedPrayerCard text={profile.prayer_request} /> : null}
+
+        <ProfileDetails profile={profile} />
+
+        {prayers.length > 0 ? (
+          <View>
+            <SectionHeader title="Prayers" />
+            <View style={{ paddingHorizontal: t.space.md }}>
+              {prayers.slice(0, 5).map(p => (
+                <PrayerCard key={p.id} prayer={p} onPray={pray} onMarkAnswered={() => undefined} onMenu={reportPrayer} />
+              ))}
+            </View>
+          </View>
+        ) : null}
 
         <View>
           <SectionHeader title="Upcoming events" />

@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Pa
 import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CurrentUser } from '../../common/auth.decorators';
 import { PRAYER_FILTERS, PrayersService } from './prayers.service';
+import { isUuid } from '../events/event-helpers';
 
 class PrayerDto {
   @IsString() body: string;
@@ -22,12 +23,14 @@ export class PrayersController {
     @Query('filter') filter = 'all',
     @Query('before') before?: string,
     @Query('limit') limit?: string,
+    @Query('author') author?: string,
   ) {
     if (!PRAYER_FILTERS.includes(filter)) throw new BadRequestException('Unknown filter.');
+    if (author && !isUuid(author)) throw new BadRequestException('Invalid author.');
     const beforeDate = before ? new Date(before) : null;
     if (beforeDate && isNaN(beforeDate.getTime())) throw new BadRequestException('Invalid before date.');
     const n = Math.min(Math.max(parseInt(limit ?? '30', 10) || 30, 1), 100);
-    return this.prayers.wall(uid, filter, n, beforeDate);
+    return this.prayers.wall(uid, filter, n, beforeDate, author ?? null);
   }
 
   @Post('prayers')

@@ -16,6 +16,7 @@ import { EditProfileSheet } from '../../components/profile/EditProfileSheet';
 import { ProfileHero } from '../../components/profile/ProfileHero';
 import { StatsRow } from '../../components/profile/StatsRow';
 import { PinnedPrayerCard, ProfileVerseCard } from '../../components/profile/VerseCard';
+import { ProfileDetails } from '../../components/profile/ProfileDetails';
 import { pickImageDataUrl } from '../../components/profile/pickImage';
 import { useTabBarClearance } from '../../components/TabBar';
 
@@ -165,6 +166,8 @@ export default function MyProfileScreen() {
         ) : null}
 
         {profile?.prayer_request ? <PinnedPrayerCard text={profile.prayer_request} /> : null}
+
+        {profile ? <ProfileDetails profile={profile} /> : null}
 
         <View style={{ paddingHorizontal: t.space.md }}>
           <ListGroup title="Home Church">

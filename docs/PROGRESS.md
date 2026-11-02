@@ -586,3 +586,11 @@ and its app.json plugin. Current Android APK uses the Google Calendar fallback.
 - Serif title tracking tightened slightly at 24/20 pt.
 - Test on a phone: drag a sheet down slowly (follows, backdrop lightens) vs. a quick flick (closes at your speed);
   pull a sheet up (resists); press and hold an event card (shrinks immediately); save an event (heart pops).
+
+## 2026-11-02 (night) — Profiles show what people shared
+
+- Other people's profiles (and your own) now show "Open to" (connect tags), Hobbies, Testimony, Hot takes and social
+  links from Edit Profile (`components/profile/ProfileDetails.tsx`; empty sections are hidden), plus a "Prayers" list of
+  their Prayer Wall prayers with "I prayed" and report.
+- Backend: `GET /api/prayers?author=<id>` (never that person's anonymous prayers, except to themselves); the app also
+  filters by author so an older API can't show other people's prayers there.

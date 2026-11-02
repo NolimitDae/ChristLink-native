@@ -18,8 +18,11 @@ export class PrayersService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  /** get_prayer_wall(): author fields are null on other people's anonymous prayers; blocked authors are hidden. */
-  wall(uid: string, filter: string, limit: number, before: Date | null) {
+  /**
+   * get_prayer_wall(): author fields are null on other people's anonymous prayers; blocked authors are hidden.
+   * `author` (a profile's prayers) never includes that person's anonymous prayers unless it's the viewer's own.
+   */
+  wall(uid: string, filter: string, limit: number, before: Date | null, author: string | null = null) {
     return this.prisma.$queryRaw`
       with me as (select ${uid}::uuid as uid),
       home as (select home_church_id from public.user_settings where user_id = ${uid}::uuid)
@@ -36,6 +39,7 @@ export class PrayersService {
         join public.profiles pr on pr.id = p.author_id
        where not p.hidden
          and (${before}::timestamptz is null or p.created_at < ${before}::timestamptz)
+         and (${author}::uuid is null or (p.author_id = ${author}::uuid and (not p.is_anonymous or p.author_id = (select uid from me))))
          and not exists (select 1 from public.blocks b where b.blocker_id = (select uid from me) and b.blocked_id = p.author_id)
          and (
            ${filter}::text = 'all'

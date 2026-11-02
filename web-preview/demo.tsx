@@ -126,6 +126,8 @@ const routes: [string, RegExp, Handler][] = [
   })],
   ['GET', /^\/prayers$/, (_m, _b, q) => {
     const f = q.get('filter') ?? 'all';
+    const author = q.get('author');
+    if (author) return state.prayers.filter(p => p.author_id === author && (!p.is_anonymous || p.is_mine));
     return state.prayers.filter(p => (f === 'answered' ? p.answered_at : f === 'mine' ? p.is_mine : f === 'friends' ? p.is_friend : f === 'church' ? false : true));
   }],
   ['POST', /^\/prayers$/, (_m, body) => {
@@ -189,6 +191,27 @@ const BIOS: Record<string, string> = {
   [D.people.hope.id]: 'A church for the city. Sundays at 9 and 11.',
 };
 
+const DETAILS: Record<string, { hobbies: string; connect: string[]; testimony?: string; hotTakes?: string; prayerRequest?: string }> = {
+  [D.people.grace.id]: {
+    hobbies: 'Reading, Praying, Cooking, Fellowship',
+    connect: ['prayer', 'bible', 'family'],
+    testimony: 'Two years ago our church plant had twelve people and no building. Every Wednesday we prayed for a home. Last month we signed a lease in East Atlanta. God is faithful in the waiting.',
+    hotTakes: 'Potlucks are a spiritual gift.',
+    prayerRequest: 'Wisdom as we set up our new space and welcome new families.',
+  },
+  [D.people.daniel.id]: {
+    hobbies: 'Hiking, Fitness, Music',
+    connect: ['meetup', 'new-friends', 'volunteer'],
+    hotTakes: 'Sunrise prayer walks beat coffee. (Coffee after is fine.)',
+  },
+  [D.people.ruth.id]: { hobbies: 'Worship, Swimming, Resting', connect: ['worship', 'prayer'] },
+  [D.people.samuel.id]: {
+    hobbies: 'Photography, Content Creation, Serving',
+    connect: ['mentorship', 'new-friends'],
+    testimony: 'A friend invited me to a Night of Worship. I almost didn’t go. This year I was baptized with my whole family watching.',
+  },
+};
+
 function publicProfile(id: string) {
   const p = Object.values(D.people).find(x => x.id === id) ?? D.people.grace;
   return {
@@ -199,9 +222,14 @@ function publicProfile(id: string) {
     following_count: 180,
     is_following: state.following.has(p.id),
     created_at: new Date(2025, 0, 1).toISOString(),
-    favorite_verse: 'The Lord is my shepherd; I shall not want.',
-    favorite_verse_ref: 'Psalm 23:1',
-    hobbies: 'Worship, Reading, Hiking',
+    bible_verse: 'The Lord is my shepherd; I shall not want.',
+    bible_verse_reference: 'Psalm 23:1',
+    hobbies: DETAILS[p.id]?.hobbies ?? 'Worship, Reading, Hiking',
+    connect_tags: DETAILS[p.id]?.connect ?? ['prayer', 'meetup'],
+    testimony: DETAILS[p.id]?.testimony ?? null,
+    hot_takes: DETAILS[p.id]?.hotTakes ?? null,
+    prayer_request: DETAILS[p.id]?.prayerRequest ?? null,
+    instagram_url: 'https://instagram.com/christlinksocial',
   };
 }
 

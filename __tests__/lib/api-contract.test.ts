@@ -96,6 +96,7 @@ const cases: Case[] = [
   ['getFriendsThisWeek', () => f.getFriendsThisWeek(), 'GET', '/api/friends/this-week'],
   ['getMyFriends', () => f.getMyFriends(), 'GET', '/api/friends'],
   ['getPrayerWall', () => f.getPrayerWall('friends', '2026-10-01T00:00:00Z'), 'GET', '/api/prayers?filter=friends&limit=30&before=2026-10-01T00%3A00%3A00Z'],
+  ['getUserPrayers', () => f.getUserPrayers('u1'), 'GET', '/api/prayers?filter=all&limit=30&author=u1'],
   ['createPrayer', () => f.createPrayer(' Pray ', true, 'c1'), 'POST', '/api/prayers', { body: 'Pray', is_anonymous: true, church_id: 'c1' }],
   ['deletePrayer', () => f.deletePrayer('p1'), 'DELETE', '/api/prayers/p1'],
   ['prayFor', () => f.prayFor('p1'), 'POST', '/api/prayers/p1/pray'],
