@@ -71,7 +71,7 @@ export function FriendsWeek({ refreshKey }: { refreshKey: number }) {
                   {names}
                 </AppText>
                 <AppText variant="callout" tone="muted">
-                  {' → '}
+                  {` ${a.friends.length > 1 || /\+/.test(names) ? 'are' : 'is'} going to `}
                   {a.event_name}, {day}
                 </AppText>
               </AppText>

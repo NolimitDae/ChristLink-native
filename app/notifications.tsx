@@ -19,7 +19,7 @@ const ICONS: Record<string, IconName> = {
   refund_denied: 'close-circle-outline',
   event_invite: 'mail-open-outline',
   friend_rsvp: 'people-outline',
-  prayer_answered: 'sparkles-outline',
+  prayer_answered: 'checkmark-done-outline',
   prayer_summary: 'pray-outline',
   prayer_prayed: 'pray-outline',
   waitlist_promoted: 'ticket-outline',

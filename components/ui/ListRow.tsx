@@ -27,8 +27,8 @@ export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggl
   const content = (
     <View style={[styles.row, { borderBottomColor: t.c.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, opacity: disabled ? 0.5 : 1 }]}>
       {icon ? (
-        <View style={[styles.icon, { backgroundColor: destructive ? t.c.dangerDim : t.c.goldDim }]}>
-          <AppIcon name={icon} size={17} color={destructive ? t.c.danger : t.c.goldText} />
+        <View style={styles.icon}>
+          <AppIcon name={icon} size={20} color={destructive ? t.c.danger : t.c.textMuted} />
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
@@ -89,5 +89,6 @@ export function ListGroup({ children, title }: { children: React.ReactNode; titl
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10 },
-  icon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  // Plain line icon in a fixed column so titles align; no tinted tile (gold stays for the few real accents)
+  icon: { width: 28, alignItems: 'center', justifyContent: 'center' },
 });

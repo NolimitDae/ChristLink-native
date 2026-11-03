@@ -657,3 +657,19 @@ for real-user crash and speed data (the app already samples 20% of sessions when
   **Instrument Sans** 400/500/600/700 instead of Montserrat. Both SIL OFL, bundled via @expo-google-fonts; the old
   font packages were removed. One place to change: `fonts` in lib/theme.ts (+ the loader in app/_layout.tsx).
 - Checked on Home, event, Prayer Wall, a profile, Tickets and onboarding in light and dark: no clipping or layout breaks.
+
+## 2026-11-03 (later) — Design pass: remove template/"AI" tells
+
+Checked the app against published lists of AI-design tells (avoid-ai-design catalog, Anthropic's frontend guidance)
+and changed what applied, within the existing design system:
+- Section titles: no decorative gold rule after them; serif titles at 24 pt carry the hierarchy.
+- All-caps tracked labels only where they're a convention (event type kicker, calendar month, ticket stub, badges,
+  settings groups). Card and section labels are a new sentence-case `label` style ("Verse of the day", "Who's going",
+  "Pinned prayer", testimony, event info tiles, Home Church). Dropped redundant eyebrows ("Soon", "1 gathering").
+- No icons in tinted squares: event info tiles, onboarding promises, menus and Settings rows use plain line icons;
+  gold is kept for real accents.
+- Sparkles (reads as "AI") replaced by a checkmark for answered prayers/testimonies (ICONS.md updated).
+- No arrows on buttons or links ("Next", "Explore events", "Browse churches"); "→" in Friends this week became words.
+  Onboarding's last button says "Go to Discover" instead of "Get started".
+- Home sections no longer all fade up the same way (kept only for list rows replacing skeletons).
+- Faint text raised to WCAG AA (4.5:1+) in both themes: dark #8F8574, light #726858.

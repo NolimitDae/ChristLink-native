@@ -387,7 +387,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         onClose={() => setAnswering(null)}
         title="Prayer answered"
         subtitle="Tell the community how God answered."
-        footer={<Button title="Share testimony" icon="sparkles-outline" onPress={saveAnswered} loading={savingAnswer} disabled={!testimony.trim()} fullWidth />}
+        footer={<Button title="Share testimony" icon="checkmark-done-outline" onPress={saveAnswered} loading={savingAnswer} disabled={!testimony.trim()} fullWidth />}
       >
         <Field value={testimony} onChangeText={setTestimony} placeholder="Share your testimony…" multiline maxLength={MAX} accessibilityLabel="Testimony" />
       </BottomSheet>

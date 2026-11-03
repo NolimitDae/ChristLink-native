@@ -61,6 +61,9 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - Use the design system only: `useTheme()` tokens (`t.c.*`, `t.type`, `t.space`, `t.radius`), components in
   `components/ui`. No hardcoded colors outside brand art. Preview everything at `/styleguide`.
 - Warm black + ivory, gold sparingly. Gold text uses `t.c.goldText` (darker gold on light). Gold buttons use dark text.
+- Not template-looking: no decorative rules after section titles; sentence-case `label` text for card/section labels
+  (all-caps `overline` only for event-type kickers, calendar months, ticket stubs, badges, settings groups); plain line
+  icons in rows and tiles (no tinted icon squares); no sparkle icons, no arrows on buttons; text at least 4.5:1.
 - Newsreader (serif) for titles and verses, Instrument Sans for text and UI (`lib/theme.ts`). Avoid default/"AI" faces
   (Inter, Roboto, Montserrat, Geist, Space Grotesk, Satoshi). Loew Next needs a license; swap the text face in `lib/theme.ts`.
 - No bare spinners for loading screens — skeletons. Every empty state: line illustration + one action.

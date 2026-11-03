@@ -32,14 +32,14 @@ export function InfoTile({ icon, label, value, sub, subTone = 'muted', onPress, 
   return (
     <Card style={s.tile} onPress={onPress} accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}${hint ? `. ${hint}` : ''}`}>
       <View style={s.tileTop}>
-        <View style={[s.tileIcon, { backgroundColor: t.c.goldDim }]}>
-          <AppIcon name={icon} size={16} color={t.c.goldText} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+          <AppIcon name={icon} size={15} color={t.c.goldText} />
+          <AppText variant="label" tone="muted">
+            {label}
+          </AppText>
         </View>
-        {onPress ? <Ionicons name="arrow-forward" size={14} color={t.c.textFaint} /> : null}
+        {onPress ? <Ionicons name="chevron-forward" size={14} color={t.c.textFaint} /> : null}
       </View>
-      <AppText variant="overline" tone="muted" style={{ fontSize: 10, marginTop: t.space.sm }}>
-        {label}
-      </AppText>
       <AppText variant="headline" numberOfLines={2} style={{ marginTop: 2 }}>
         {value}
       </AppText>
@@ -87,7 +87,7 @@ export function WhoGoingRow({
         </View>
       )}
       <View style={{ flex: 1 }}>
-        <AppText variant="overline" tone="muted" style={{ fontSize: 10 }}>
+        <AppText variant="label" tone="muted">
           Who’s going
         </AppText>
         <AppText variant="bodyStrong" tone={hasFriends ? 'gold' : 'default'} numberOfLines={1}>

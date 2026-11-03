@@ -161,10 +161,9 @@ export default function OnboardingScreen() {
           ))}
         </View>
         <Button
-          title={last ? 'Get started' : (index === CHURCH_STEP && !churchId) || (index === 1 && interests.length === 0) ? 'Not now' : 'Next'}
+          title={last ? 'Go to Discover' : (index === CHURCH_STEP && !churchId) || (index === 1 && interests.length === 0) ? 'Not now' : 'Next'}
           variant={(index === CHURCH_STEP && !churchId) || (index === 1 && interests.length === 0) ? 'secondary' : 'primary'}
           size="lg"
-          iconRight={last ? undefined : 'arrow-forward'}
           onPress={() => (last ? finish() : goTo(index + 1))}
           loading={finishing}
           fullWidth

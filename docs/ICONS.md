@@ -11,7 +11,7 @@ One concept = one icon everywhere. Preview: `/styleguide` → Faith icons.
 | Church, Home Church, church claims | `church-outline` / `church` | not `business-outline` (office) |
 | Serve, volunteer shifts, volunteers | `serve-outline` / `serve` | hand holding a heart |
 | Bible, verse of the day, Bible study | `bible-outline` | book with a cross; plain reading = `book-outline` |
-| Answered prayer, testimony moment | `sparkles-outline` | |
+| Answered prayer, testimony moment | `checkmark-done-outline` (filled `checkmark-done` on the gold ribbon) | sparkles read as "AI"; not used |
 | Events, dates | `calendar-outline` | tab bar: Events |
 | Discover | `compass-outline` | tab bar |
 | Tickets | `TicketIcon` (tab bar), `ticket-outline` (inline) | QR / check-in = `qr-code-outline` |

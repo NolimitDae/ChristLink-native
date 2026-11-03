@@ -44,7 +44,7 @@ export const PrayerCard = memo(function PrayerCard({ prayer, onPray, onMarkAnswe
       <View style={[s.card, answered && s.cardAnswered]}>
         {answered ? (
           <View style={s.ribbon} accessibilityLabel="Answered">
-            <Ionicons name="sparkles" size={11} color={t.c.onGold} />
+            <Ionicons name="checkmark-done" size={12} color={t.c.onGold} />
             <AppText variant="overline" tone="onGold" style={{ fontSize: 9 }}>
               Answered
             </AppText>
@@ -76,7 +76,7 @@ export const PrayerCard = memo(function PrayerCard({ prayer, onPray, onMarkAnswe
 
           {answered && prayer.testimony ? (
             <View style={s.testimony}>
-              <AppText variant="overline" tone="gold" style={{ fontSize: 9 }}>
+              <AppText variant="label" tone="gold" style={{ fontSize: 12, lineHeight: 16 }}>
                 Testimony
               </AppText>
               <AppText variant="caption" tone="muted" numberOfLines={4} style={{ marginTop: 2 }}>
@@ -106,7 +106,7 @@ export const PrayerCard = memo(function PrayerCard({ prayer, onPray, onMarkAnswe
           </View>
 
           {prayer.is_mine && !answered ? (
-            <Button title="Mark answered" variant="ghost" size="sm" icon="sparkles-outline" onPress={() => onMarkAnswered(prayer)} style={{ marginTop: 4, alignSelf: 'flex-start' }} />
+            <Button title="Mark answered" variant="ghost" size="sm" icon="checkmark-done-outline" onPress={() => onMarkAnswered(prayer)} style={{ marginTop: 4, alignSelf: 'flex-start' }} />
           ) : null}
         </View>
         <LightBurst play={burst} size={140} />

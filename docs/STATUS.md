@@ -39,7 +39,7 @@ must be applied (development project first).
 | Components: buttons, chips, cards (standard/featured/ticket notches), avatar stack, badges (FREE/LIVE/Starts in), date block, bottom sheet, skeletons, empty states | Done | components/ui/* |
 | /styleguide | Done | app/styleguide.tsx |
 | Floating frosted tab bar, raised gold Host, sliding dot | Done | components/TabBar.tsx |
-| Home: greeting + ring, verse card, Your week, Happening tonight (snap + parallax), Home Church, Pray row, categories with gold hairline | Done | app/(tabs)/index.tsx, components/home/* |
+| Home: greeting + ring, verse card, Your week, Happening tonight (snap + parallax), Home Church, Pray row, category rails | Done | app/(tabs)/index.tsx, components/home/* |
 | Event cards: date block, price chip, meta, friends row, bookmark heart | Done | components/EventCard.tsx |
 | Event detail: stretchy header → frosted bar, 2×2 tiles, who's going, gallery, forum preview, sticky bar | Done | app/event/[id]/index.tsx |
 | Tickets: notched cards, wallet stacking, auto-brightness QR, countdown chip, memory cards | Done | app/(tabs)/tickets.tsx, app/ticket/[id].tsx |

@@ -70,7 +70,7 @@ export const palettes: Record<Scheme, Palette> = {
     borderStrong: 'rgba(246,239,227,0.16)',
     text: '#F6EFE3',
     textMuted: '#B3A895',
-    textFaint: '#7C7263',
+    textFaint: '#8F8574',
     gold: '#C9A84C',
     goldPressed: '#B39238',
     goldText: '#D9BC6A',
@@ -99,7 +99,7 @@ export const palettes: Record<Scheme, Palette> = {
     borderStrong: 'rgba(28,22,14,0.18)',
     text: '#1C160E',
     textMuted: '#5F5546',
-    textFaint: '#958A78',
+    textFaint: '#726858',
     gold: '#C9A84C',
     goldPressed: '#B39238',
     goldText: '#8A6A1F',
@@ -144,6 +144,7 @@ export type TypeVariant =
   | 'callout'
   | 'caption'
   | 'overline'
+  | 'label'
   | 'button'
   | 'numeral';
 
@@ -157,7 +158,10 @@ export const type: Record<TypeVariant, TextStyle> = {
   bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },
   callout: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
   caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
+  /** All caps: conventions only (event type kicker, calendar month, ticket stub, badges, settings groups). */
   overline: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, letterSpacing: 1.4, textTransform: 'uppercase' },
+  /** Sentence-case card and section labels ("Verse of the day", "Who's going"); the default over `overline`. */
+  label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
   button: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20, letterSpacing: 0.2 },
   numeral: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32 },
 };

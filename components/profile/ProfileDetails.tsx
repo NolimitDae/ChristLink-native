@@ -31,7 +31,7 @@ function StoryCard({ icon, title, text }: { icon: AppIconName; title: string; te
     <Card style={{ marginHorizontal: t.space.md, gap: 6 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <AppIcon name={icon} size={14} color={t.c.goldText} />
-        <AppText variant="overline" tone="gold">
+        <AppText variant="label" tone="gold">
           {title}
         </AppText>
       </View>
@@ -81,7 +81,7 @@ export function ProfileDetails({ profile }: { profile: Profile }) {
         </View>
       ) : null}
 
-      {profile.testimony?.trim() ? <StoryCard icon="sparkles-outline" title={`${name}’s testimony`} text={profile.testimony.trim()} /> : null}
+      {profile.testimony?.trim() ? <StoryCard icon="checkmark-done-outline" title={`${name}’s testimony`} text={profile.testimony.trim()} /> : null}
       {profile.hot_takes?.trim() ? <StoryCard icon="chatbubble-ellipses-outline" title="Hot takes" text={profile.hot_takes.trim()} /> : null}
 
       {socials.length > 0 ? (

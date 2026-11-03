@@ -73,7 +73,7 @@ export function HomeChurchCard({ churchId, nextEvent, refreshKey }: HomeChurchCa
             See service times, gatherings and church events right here every week.
           </AppText>
           <AppText variant="caption" tone="gold" style={{ marginTop: 4 }}>
-            Browse churches →
+            Browse churches
           </AppText>
         </View>
       </Card>
@@ -89,7 +89,7 @@ export function HomeChurchCard({ churchId, nextEvent, refreshKey }: HomeChurchCa
       <View style={styles.head}>
         <ChurchLogo church={church} />
         <View style={{ flex: 1 }}>
-          <AppText variant="overline" tone="gold">
+          <AppText variant="label" tone="gold">
             Your Home Church
           </AppText>
           <View style={styles.nameRow}>

@@ -20,7 +20,7 @@ export function VerseCard({ verse, theme, onShare, streak }: VerseCardProps) {
     <Card variant="featured" style={{ gap: t.space.sm }}>
       <View style={styles.eyebrow}>
         <AppIcon name="bible-outline" size={15} color={t.c.goldText} />
-        <AppText variant="overline" tone="gold" numberOfLines={1} style={{ flexShrink: 1 }}>
+        <AppText variant="label" tone="gold" numberOfLines={1} style={{ flexShrink: 1 }}>
           {theme ? `Verse of the day · for your ${theme.toLowerCase()} gathering` : 'Verse of the day'}
         </AppText>
       </View>

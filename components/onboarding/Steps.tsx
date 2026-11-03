@@ -30,7 +30,7 @@ export function WelcomeStep() {
         {VALUES.map(v => (
           <View key={v.title} style={s.value}>
             <View style={s.valueIcon}>
-              <AppIcon name={v.icon} size={20} color={t.c.goldText} />
+              <AppIcon name={v.icon} size={22} color={t.c.goldText} />
             </View>
             <View style={{ flex: 1 }}>
               <AppText variant="bodyStrong">{v.title}</AppText>
@@ -144,15 +144,7 @@ function PermissionCard({
 }
 
 const useStyles = makeStyles(t => ({
-  value: { flexDirection: 'row', alignItems: 'center', gap: t.space.sm },
-  valueIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: t.c.goldDim,
-    borderWidth: 1,
-    borderColor: t.c.goldHairline,
-  },
+  value: { flexDirection: 'row', alignItems: 'flex-start', gap: t.space.sm },
+  // A plain line icon beside each promise, aligned to its first line; no tinted tile behind it
+  valueIcon: { width: 28, alignItems: 'center', paddingTop: 2 },
 }));

@@ -385,7 +385,7 @@ export default function CreateEventScreen() {
           {step < 3 ? (
             <>
               {step > 0 ? <Button title="Back" variant="secondary" onPress={() => goTo(step - 1)} /> : null}
-              <Button title={`Next: ${STEPS[step + 1]}`} iconRight="arrow-forward" onPress={next} style={{ flex: 1 }} fullWidth />
+              <Button title={`Next: ${STEPS[step + 1]}`} onPress={next} style={{ flex: 1 }} fullWidth />
             </>
           ) : (
             <>
@@ -401,7 +401,7 @@ export default function CreateEventScreen() {
               {canPublish ? (
                 <Button
                   title={draft.schedule ? 'Schedule' : needsFee && finalCents > 0 ? 'Pay & publish' : 'Publish'}
-                  icon="sparkles"
+                  icon="checkmark-circle-outline"
                   onPress={publish}
                   loading={busy === 'publish'}
                   disabled={busy !== null}

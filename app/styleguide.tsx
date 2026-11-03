@@ -209,7 +209,7 @@ export default function StyleguideScreen() {
             {(['primary', 'secondary', 'ghost', 'danger'] as const).map(v => (
               <View key={v} style={[s.row, { flexWrap: 'wrap' }]}>
                 <Button title={v} variant={v} size="sm" />
-                <Button title={v} variant={v} icon="sparkles" />
+                <Button title={v} variant={v} icon="checkmark" />
                 <Button title={v} variant={v} size="lg" />
               </View>
             ))}
@@ -218,7 +218,7 @@ export default function StyleguideScreen() {
               <Button title="Disabled" disabled />
               <Button title="Disabled" variant="secondary" disabled />
             </View>
-            <Button title="Full width" fullWidth iconRight="arrow-forward" />
+            <Button title="Full width" fullWidth />
             <View style={s.row}>
               <IconButton icon="share-outline" label="Default" />
               <IconButton icon="add" label="Gold" tone="gold" />
@@ -413,7 +413,7 @@ export default function StyleguideScreen() {
 
         <Block title="Motion" note={t.reduceMotion ? 'Reduce Motion is on: LightBurst fades only, sheets skip the slide.' : 'With Reduce Motion on, LightBurst fades without scaling.'}>
           <View style={s.row}>
-            <Button title="Play LightBurst" icon="sparkles" onPress={() => setBurst(n => n + 1)} />
+            <Button title="Play LightBurst" icon="play-outline" onPress={() => setBurst(n => n + 1)} />
             <Button title="Open BottomSheet" variant="secondary" onPress={() => setSheet(true)} />
           </View>
           <View style={s.burstStage}>

@@ -168,9 +168,7 @@ export default function TicketsScreen() {
               <View style={s.section}>
                 <SectionHeader title="Upcoming" />
                 <View style={{ paddingHorizontal: t.space.md }}>
-                  <Appear>
-                    <WalletStack items={upcoming} onOpen={open} />
-                  </Appear>
+                  <WalletStack items={upcoming} onOpen={open} />
                 </View>
               </View>
             ) : (
@@ -179,13 +177,13 @@ export default function TicketsScreen() {
                 <AppText variant="callout" tone="muted" style={{ marginTop: 2 }}>
                   Find your next gathering in Explore.
                 </AppText>
-                <Button title="Explore events" variant="ghost" size="sm" iconRight="arrow-forward" onPress={() => router.push('/(tabs)/explore')} style={{ alignSelf: 'flex-start', marginTop: t.space.xs, marginLeft: -t.space.sm }} />
+                <Button title="Explore events" variant="ghost" size="sm" onPress={() => router.push('/(tabs)/explore')} style={{ alignSelf: 'flex-start', marginTop: t.space.xs, marginLeft: -t.space.sm }} />
               </View>
             )}
 
             {past.length > 0 ? (
               <View style={s.section}>
-                <SectionHeader eyebrow={pluralize(past.length, 'gathering')} title="Memories" />
+                <SectionHeader title="Memories" />
                 <View style={s.grid}>
                   {past.map((item, i) => (
                     <Appear key={item.key} index={i + 1}>

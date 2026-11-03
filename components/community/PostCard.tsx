@@ -75,7 +75,7 @@ export const PostCard = memo(function PostCard({ post, onAmen, onMenu, onShare, 
     <Card padded={false} variant={answered ? 'featured' : 'standard'} style={s.card}>
       {answered ? (
         <View style={s.ribbon} accessibilityRole="text" accessibilityLabel="Answered prayer">
-          <Ionicons name="sparkles" size={13} color={t.c.onGold} />
+          <Ionicons name="checkmark-done" size={14} color={t.c.onGold} />
           <AppText variant="overline" tone="onGold" style={{ fontSize: 10 }}>
             Answered prayer
           </AppText>

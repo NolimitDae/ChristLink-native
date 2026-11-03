@@ -16,7 +16,7 @@ export function ProfileVerseCard({ verse, reference, onShare }: { verse: string;
             {verse}
           </AppText>
           {reference ? (
-            <AppText variant="overline" tone="gold" style={{ marginTop: t.space.xs }}>
+            <AppText variant="label" tone="gold" style={{ marginTop: t.space.xs }}>
               {reference}
             </AppText>
           ) : null}
@@ -31,7 +31,7 @@ export function PinnedPrayerCard({ text }: { text: string }) {
   const t = useTheme();
   return (
     <Card style={{ marginHorizontal: t.space.md, gap: 6 }}>
-      <AppText variant="overline" tone="gold">
+      <AppText variant="label" tone="gold">
         Pinned prayer
       </AppText>
       <AppText variant="body">{text}</AppText>
