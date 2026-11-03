@@ -230,8 +230,16 @@ export default function PublicProfileScreen() {
 
         <StatsRow
           stats={[
-            { label: 'Followers', value: String(followers) },
-            { label: 'Following', value: String(profile.following_count ?? 0) },
+            {
+              label: 'Followers',
+              value: String(followers),
+              onPress: () => router.push(`/connections?userId=${profile.id}&tab=followers&name=${encodeURIComponent(profile.full_name ?? '')}`),
+            },
+            {
+              label: 'Following',
+              value: String(profile.following_count ?? 0),
+              onPress: () => router.push(`/connections?userId=${profile.id}&tab=following&name=${encodeURIComponent(profile.full_name ?? '')}`),
+            },
           ]}
         />
 

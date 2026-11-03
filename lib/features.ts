@@ -372,6 +372,23 @@ export async function messageVolunteers(shiftId: string, message: string): Promi
   return (await call<{ count: number }>('messageVolunteers', `/api/serve/shifts/${id(shiftId)}/message`, body({ message }))).count;
 }
 
+export interface ServeHistoryItem {
+  signup_id: string;
+  role_name: string;
+  starts_at: string;
+  ends_at: string;
+  hours: number;
+  event_id: string | null;
+  event_name: string | null;
+  church_id: string | null;
+  church_name: string | null;
+}
+
+/** The signed-in volunteer's completed shifts, newest first (what "Hours served" adds up). */
+export async function getServeHistory(): Promise<ServeHistoryItem[]> {
+  return (await call<ServeHistoryItem[] | null>('getServeHistory', '/api/serve/history')) ?? [];
+}
+
 export async function getHoursServed(): Promise<number> {
   try {
     return Number((await call<{ hours: number }>('getHoursServed', '/api/serve/hours')).hours) || 0;

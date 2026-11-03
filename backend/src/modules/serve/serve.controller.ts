@@ -85,6 +85,11 @@ export class ServeController {
     return { count: await this.serve.message(uid, id, b.message) };
   }
 
+  @Get('history')
+  history(@CurrentUser('id') uid: string) {
+    return this.serve.history(uid);
+  }
+
   @Get('hours')
   async hours(@CurrentUser('id') uid: string) {
     return { hours: await this.serve.hours(uid) };

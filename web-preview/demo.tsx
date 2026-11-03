@@ -153,6 +153,13 @@ const routes: [string, RegExp, Handler][] = [
   ['GET', /^\/friends$/, () => [D.people.grace, D.people.daniel, D.people.ruth]],
   ['GET', /^\/friends\/this-week$/, () => D.FRIENDS_THIS_WEEK],
   ['POST', /^\/friends\/going$/, () => D.FRIENDS_GOING],
+  ['GET', /^\/followers\/([^/]+)$/, () => ({ users: [D.people.grace, D.people.daniel, D.people.ruth, D.people.samuel].map(p => ({ ...p, city: p.city })) })],
+  ['GET', /^\/following\/([^/]+)$/, () => ({ users: [D.people.hope, D.people.grace, D.people.daniel] })],
+  ['GET', /^\/serve\/history$/, () => [
+    { signup_id: 'h1', role_name: 'Greeter', starts_at: new Date(Date.now() - 6 * 86_400_000).toISOString(), ends_at: new Date(Date.now() - 6 * 86_400_000 + 3 * 3_600_000).toISOString(), hours: 3, event_id: null, event_name: null, church_id: D.CHURCHES[0].id, church_name: 'Hope Church Atlanta' },
+    { signup_id: 'h2', role_name: 'Lunch service', starts_at: new Date(Date.now() - 20 * 86_400_000).toISOString(), ends_at: new Date(Date.now() - 20 * 86_400_000 + 4 * 3_600_000).toISOString(), hours: 4, event_id: D.EVENTS[3].id, event_name: 'City Outreach Saturday', church_id: null, church_name: null },
+    { signup_id: 'h3', role_name: 'Worship team', starts_at: new Date(Date.now() - 34 * 86_400_000).toISOString(), ends_at: new Date(Date.now() - 34 * 86_400_000 + 5 * 3_600_000).toISOString(), hours: 5, event_id: null, event_name: null, church_id: D.CHURCHES[0].id, church_name: 'Hope Church Atlanta' },
+  ]],
   ['GET', /^\/followers$/, () => ({ followers: [D.people.grace, D.people.daniel, D.people.ruth, D.people.samuel] })],
   ['GET', /^\/notifications$/, () => ({ notifications: D.NOTIFICATIONS })],
   ['GET', /^\/settings$/, () => state.settings],

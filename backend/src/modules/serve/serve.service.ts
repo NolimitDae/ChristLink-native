@@ -161,6 +161,24 @@ export class ServeService {
     return volunteers.length;
   }
 
+  /** The caller's completed shifts, newest first, with hours per shift (what "Hours served" adds up). */
+  history(uid: string) {
+    return this.prisma.$queryRaw<
+      { signup_id: string; role_name: string; starts_at: Date; ends_at: Date; hours: number; event_id: string | null; event_name: string | null; church_id: string | null; church_name: string | null }[]
+    >`
+      select su.id as signup_id, r.name as role_name, sh.starts_at, sh.ends_at,
+             round((extract(epoch from (sh.ends_at - sh.starts_at)) / 3600.0)::numeric, 1)::float8 as hours,
+             r.event_id, e.name as event_name, r.church_id, c.name as church_name
+        from public.serve_signups su
+        join public.serve_shifts sh on sh.id = su.shift_id
+        join public.serve_roles r on r.id = sh.role_id
+        left join public.events e on e.id = r.event_id
+        left join public.churches c on c.id = r.church_id
+       where su.user_id = ${uid}::uuid and su.status = 'completed'
+       order by sh.starts_at desc
+       limit 200`;
+  }
+
   /** my_hours_served(): completed shift hours, 1 decimal. */
   async hours(uid: string): Promise<number> {
     const [r] = await this.prisma.$queryRaw<{ hours: number }[]>`

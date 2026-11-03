@@ -357,6 +357,9 @@ describe('Native features (e2e)', () => {
     expect((await http.post(`/api/serve/shifts/${shift.shift_id}/complete`).set(auth(ann)).expect(200)).body).toEqual({ count: 1 });
     expect((await http.get('/api/serve/hours').set(auth(ben)).expect(200)).body).toEqual({ hours: 2.5 });
     expect((await http.get('/api/serve/hours').set(auth(cat)).expect(200)).body).toEqual({ hours: 0 });
+    const history = await http.get('/api/serve/history').set(auth(ben)).expect(200);
+    expect(history.body).toEqual([expect.objectContaining({ role_name: 'Ushers', hours: 2.5 })]);
+    expect((await http.get('/api/serve/history').set(auth(cat)).expect(200)).body).toEqual([]);
   });
 
   it('DELETE /account: blocked with sold upcoming tickets, otherwise removes the user and keeps tickets', async () => {

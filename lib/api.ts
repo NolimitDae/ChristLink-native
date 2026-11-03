@@ -542,6 +542,18 @@ export async function getFollowers(accessToken: string): Promise<PersonSummary[]
   return res.followers ?? [];
 }
 
+/** People who follow `userId` (public, newest first, up to 200). */
+export async function getFollowersOf(userId: string): Promise<PersonSummary[]> {
+  const res = await apiFetch<{ users?: PersonSummary[] }>(`/api/followers/${encodeURIComponent(userId)}`);
+  return res.users ?? [];
+}
+
+/** People `userId` follows (public, newest first, up to 200). */
+export async function getFollowingOf(userId: string): Promise<PersonSummary[]> {
+  const res = await apiFetch<{ users?: PersonSummary[] }>(`/api/following/${encodeURIComponent(userId)}`);
+  return res.users ?? [];
+}
+
 export function followUser(userId: string, accessToken: string): Promise<{ following: boolean }> {
   return apiFetch(`/api/follow/${userId}`, { method: 'POST' }, accessToken);
 }

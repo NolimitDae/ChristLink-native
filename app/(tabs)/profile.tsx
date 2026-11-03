@@ -122,6 +122,11 @@ export default function MyProfileScreen() {
   const isHost = (hosted?.length ?? 0) > 0;
   const list = tab === 'saved' ? saved : hosted;
 
+  const openConnections = (which: 'followers' | 'following') => {
+    if (!profile) return;
+    router.push(`/connections?userId=${profile.id}&tab=${which}&name=${encodeURIComponent(profile.full_name ?? '')}`);
+  };
+
   return (
     <Screen title="Profile">
       <ScrollView
@@ -150,10 +155,10 @@ export default function MyProfileScreen() {
 
         <StatsRow
           stats={[
-            { label: 'Followers', value: String(profile?.followers_count ?? 0) },
-            { label: 'Following', value: String(profile?.following_count ?? 0) },
-            { label: 'Events hosted', value: String(hosted?.length ?? 0), onPress: isHost ? () => setTab('hosting') : undefined },
-            { label: 'Hours served', value: formatHours(hours), hint: 'Only you can see this', onPress: () => router.push('/serve') },
+            { label: 'Followers', value: String(profile?.followers_count ?? 0), onPress: profile ? () => openConnections('followers') : undefined },
+            { label: 'Following', value: String(profile?.following_count ?? 0), onPress: profile ? () => openConnections('following') : undefined },
+            { label: 'Events hosted', value: String(hosted?.length ?? 0), onPress: profile ? () => router.push(`/hosted?userId=${profile.id}`) : undefined },
+            { label: 'Hours served', value: formatHours(hours), hint: 'Only you can see this', onPress: () => router.push('/serve/history') },
           ]}
         />
 

@@ -673,3 +673,13 @@ and changed what applied, within the existing design system:
   Onboarding's last button says "Go to Discover" instead of "Get started".
 - Home sections no longer all fade up the same way (kept only for list rows replacing skeletons).
 - Faint text raised to WCAG AA (4.5:1+) in both themes: dark #8F8574, light #726858.
+
+## 2026-11-03 (evening) — Tappable profile numbers
+
+- Your profile: Followers / Following → `app/connections.tsx` (one screen, Followers · N / Following · N switch, both
+  lists fetched together, tap a person → their profile); Events hosted → `app/hosted.tsx` (your drafts marked; other
+  people's published events); Hours served → `app/serve/history.tsx` (total + each completed shift with its hours).
+- Other people's profiles: Followers / Following open the same lists for them.
+- Backend: `GET /api/serve/history` (your completed shifts with hours; e2e tested). Followers/following used the
+  existing public `/api/followers/:id` and `/api/following/:id` (newest 200).
+- Stats now give press feedback (PressScale) and tell screen readers they open a list.

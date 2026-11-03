@@ -77,6 +77,8 @@ const cases: Case[] = [
   ['adminVerificationDocUrl', () => api.adminVerificationDocUrl('v1', T), 'GET', '/api/admin/verifications/v1/id-doc'],
   ['adminDeletePost', () => api.adminDeletePost('p1', T), 'DELETE', '/api/admin/posts/p1'],
   ['getWalletLink', () => api.getWalletLink('t1', T), 'GET', '/api/tickets/t1/wallet-link'],
+  ['getFollowersOf', () => api.getFollowersOf('u1'), 'GET', '/api/followers/u1'],
+  ['getFollowingOf', () => api.getFollowingOf('u1'), 'GET', '/api/following/u1'],
   ['getGoogleWalletLink', () => api.getGoogleWalletLink('t1', T), 'GET', '/api/tickets/t1/google-wallet-link'],
   // Auth (email one-time code)
   ['requestSignInCode', () => api.requestSignInCode('a@b.co'), 'POST', '/api/auth/signin', { email: 'a@b.co' }],
@@ -96,6 +98,7 @@ const cases: Case[] = [
   ['getFriendsThisWeek', () => f.getFriendsThisWeek(), 'GET', '/api/friends/this-week'],
   ['getMyFriends', () => f.getMyFriends(), 'GET', '/api/friends'],
   ['getPrayerWall', () => f.getPrayerWall('friends', '2026-10-01T00:00:00Z'), 'GET', '/api/prayers?filter=friends&limit=30&before=2026-10-01T00%3A00%3A00Z'],
+  ['getServeHistory', () => f.getServeHistory(), 'GET', '/api/serve/history'],
   ['getUserPrayers', () => f.getUserPrayers('u1'), 'GET', '/api/prayers?filter=all&limit=30&author=u1'],
   ['createPrayer', () => f.createPrayer(' Pray ', true, 'c1'), 'POST', '/api/prayers', { body: 'Pray', is_anonymous: true, church_id: 'c1' }],
   ['deletePrayer', () => f.deletePrayer('p1'), 'DELETE', '/api/prayers/p1'],
