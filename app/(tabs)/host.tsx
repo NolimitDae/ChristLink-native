@@ -256,8 +256,8 @@ export default function HostTab() {
             <View style={s.tiles}>
               <StatTile label="Upcoming events" value={String(buckets.upcoming.length)} onPress={() => setTab('upcoming')} />
               <StatTile label="Total going" value={String(totalGoing)} />
-              <StatTile label="Tickets · 14 days" value={sales ? String(sales.sold14) : '–'} trend={sales?.trend} tone="gold" />
-              <StatTile label="Net earnings" value={sales ? formatCents(sales.net) : '–'} tone="success" />
+              <StatTile label="Tickets · 14 days" value={sales ? String(sales.sold14) : '–'} trend={sales?.trend} tone={sales && sales.sold14 > 0 ? 'gold' : 'default'} />
+              <StatTile label="Net earnings" value={sales ? formatCents(sales.net) : '–'} tone={sales && sales.net > 0 ? 'success' : 'default'} />
             </View>
           )}
         </View>

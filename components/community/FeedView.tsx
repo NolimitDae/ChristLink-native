@@ -13,6 +13,7 @@ import { EmptyState, PostSkeleton, SkeletonGroup } from '../ui';
 import { ActionMenu, type MenuAction } from './ActionMenu';
 import { Composer } from './Composer';
 import { PostCard } from './PostCard';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 export function FeedView({ bottomPad }: { bottomPad: number }) {
   const t = useTheme();
@@ -189,6 +190,8 @@ export function FeedView({ bottomPad }: { bottomPad: number }) {
     <>
       <FlatList
         data={visible}
+        onScroll={onScrollTabBar}
+        scrollEventThrottle={32}
         keyExtractor={p => p.id}
         renderItem={({ item }) => (
           <PostCard

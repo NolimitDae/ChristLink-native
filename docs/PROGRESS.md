@@ -702,8 +702,17 @@ and changed what applied, within the existing design system:
 - Removed the last template tells: tinted icon squares in Notifications, church sections, onboarding church step and
   payouts; section hairlines on the church page.
 
+- Explore (events, churches, serve) and Community (feed, Prayer Wall) lists minimize the tab bar too.
+- Long-press any event card → quick actions sheet (Save, Share, Add to calendar, Directions, Open event) with a medium
+  impact haptic, like an iOS context menu; screen readers get it as a "Quick actions" custom action. One shared sheet
+  (`components/EventQuickActions.tsx`, mounted in app/_layout.tsx), so long lists stay light.
+- Menu sheets drop the navigation chevron on their rows (ListRow inside a BottomSheet = menu item).
+- Composer shows a character count only in the last 200 characters ("38 left"), not a permanent 0/1000.
+- Host: zero stats are no longer gold/green (color only when there's real money or sales); the setup checklist uses
+  plain line icons.
+
 **Not finished**
-- Explore and Community keep their own headers (search bar and segmented feed); they don't minimize the tab bar yet.
+- Explore and Community keep their own headers (search bar and segmented feed) instead of large titles.
 
 **Test on your phone**
 1. Scroll Discover, Tickets, Profile and Host: the big title slides away, the compact title fades in with a hairline;
@@ -711,3 +720,4 @@ and changed what applied, within the existing design system:
 2. Scroll down → the tab bar's labels fade and it shrinks; scroll up a little → it comes back. Switch tabs → full bar.
 3. Turn on Reduce Motion: no title growth, the tab bar only fades its labels.
 4. Taps on buttons/icon buttons are silent; RSVP, saving an event, toggles and tab switches still give haptics.
+5. Long-press an event card anywhere (Discover, Events, Profile) → the quick actions sheet; try Save and Add to calendar.

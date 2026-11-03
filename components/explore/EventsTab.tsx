@@ -11,6 +11,7 @@ import { EventCard } from '../EventCard';
 import { Appear, Chip, ChipRow, EmptyState, Field, ListSkeleton } from '../ui';
 import { errorMessage } from '../church/churchFormat';
 import { useUserLocation, type Coords } from './useUserLocation';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 type Price = 'any' | 'free' | 'paid';
 
@@ -133,6 +134,8 @@ export function EventsTab({ initialType, bottomInset }: { initialType?: string; 
       ) : (
         <FlatList
           data={visible}
+          onScroll={onScrollTabBar}
+          scrollEventThrottle={32}
           keyExtractor={e => e.id}
           contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}
           ItemSeparatorComponent={Separator}

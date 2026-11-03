@@ -22,6 +22,7 @@ import { OfflineBanner } from '../components/OfflineBanner';
 import { STRIPE_PK, SENTRY_DSN, STRIPE_MERCHANT_ID } from '../lib/constants';
 import { storage } from '../lib/storage';
 import { registerForPushNotifications, routeForNotification, useLastNotificationResponse } from '../lib/notifications';
+import { EventQuickActionsHost } from '../components/EventQuickActions';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -110,6 +111,7 @@ function RootNavigator() {
         <Stack.Screen name="host/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
       </Stack>
       <OfflineBanner />
+      <EventQuickActionsHost />
     </>
   );
 }

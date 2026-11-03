@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { createContext, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -28,6 +28,9 @@ interface BottomSheetProps {
   scroll?: boolean;
   maxHeightRatio?: number;
 }
+
+/** True inside a sheet: rows there are menu items, so ListRow drops its navigation chevron (HIG menus have none). */
+export const InSheetContext = createContext(false);
 
 const SCREEN_H = Dimensions.get('window').height;
 /** Extra sheet below the screen edge, so pulling up (rubber-band) never shows a gap under it. */
@@ -168,7 +171,9 @@ export function BottomSheet({ visible, onClose, title, subtitle, children, foote
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {scroll ? children : <View style={{ paddingHorizontal: t.space.md, paddingBottom: footer ? t.space.md : insets.bottom + t.space.lg }}>{children}</View>}
+            <InSheetContext.Provider value={true}>
+              {scroll ? children : <View style={{ paddingHorizontal: t.space.md, paddingBottom: footer ? t.space.md : insets.bottom + t.space.lg }}>{children}</View>}
+            </InSheetContext.Provider>
           </Body>
           {footer ? (
             <View style={[styles.footer, { borderTopColor: t.c.border, paddingBottom: insets.bottom + t.space.sm }]}>{footer}</View>

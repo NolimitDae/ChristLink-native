@@ -9,6 +9,7 @@ import type { Church } from '../../lib/types';
 import { Button, EmptyState, Field, SkeletonGroup } from '../ui';
 import { ChurchRow, ChurchRowSkeleton } from '../church/ChurchRow';
 import { errorMessage, isNotSetUp } from '../church/churchFormat';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 type Load = { kind: 'loading' } | { kind: 'ready'; churches: Church[] } | { kind: 'error'; message: string } | { kind: 'notSetUp' };
 
@@ -92,6 +93,8 @@ export function ChurchesTab({ bottomInset }: { bottomInset: number }) {
       ) : (
         <FlatList
           data={state.churches}
+          onScroll={onScrollTabBar}
+          scrollEventThrottle={32}
           keyExtractor={c => c.id}
           contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}
           ItemSeparatorComponent={Separator}

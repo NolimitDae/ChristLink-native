@@ -12,6 +12,7 @@ import { ShiftCard, shiftPlace } from '../serve/ShiftCard';
 import { SpotsBar } from '../serve/SpotsBar';
 import { useShiftActions } from '../serve/useShiftActions';
 import { AppIcon } from '../icons/AppIcon';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 type Load = { kind: 'loading' } | { kind: 'ready' } | { kind: 'error'; message: string } | { kind: 'notSetUp' };
 
@@ -79,6 +80,8 @@ export function ServeTab({ bottomInset, onFindChurch }: { bottomInset: number; o
     <View style={{ flex: 1 }}>
       <SectionList
         sections={sections}
+        onScroll={onScrollTabBar}
+        scrollEventThrottle={32}
         keyExtractor={s => s.shift_id}
         contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}
         ItemSeparatorComponent={Separator}

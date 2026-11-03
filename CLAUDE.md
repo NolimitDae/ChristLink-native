@@ -80,7 +80,8 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
   the bar's hairline shows only while content is under it, tapping it scrolls to top, and the same scroll handler
   minimizes the tab bar (`lib/tabBarMotion.ts`). Nested corners are concentric: `concentric(outer, inset)` from
   `lib/theme.ts`. Haptics mark outcomes (success/error) and value changes (selection), never plain navigation:
-  `Button` and `IconButton` stay silent by default.
+  `Button` and `IconButton` stay silent by default. Rows in a sheet are menu items (no chevron). Event cards open
+  `openEventActions` on long press (components/EventQuickActions.tsx).
 
 ## Store compliance (keep working)
 - In-app account deletion (Settings → Delete account → `DELETE /api/account`), keeps ticket/payment records.

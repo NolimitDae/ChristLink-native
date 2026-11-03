@@ -1,4 +1,4 @@
-import { Animated } from 'react-native';
+import { Animated, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SPRING } from './motion';
 
 /**
@@ -51,4 +51,9 @@ export function resetTabBarScroll() {
   lastY = null;
   direction = 0;
   setTabBarCompact(false);
+}
+
+/** `onScroll` for lists that don't use a collapsing title: only minimizes the tab bar. Pair with scrollEventThrottle={32}. */
+export function onScrollTabBar(e: NativeSyntheticEvent<NativeScrollEvent>) {
+  trackTabBarScroll(e.nativeEvent.contentOffset.y);
 }

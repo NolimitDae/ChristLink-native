@@ -99,9 +99,14 @@ export function Composer({ onPosted }: { onPosted: (post: CommunityPost) => void
         accessibilityLabel="Post text"
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <AppText variant="caption" tone={remaining < 50 ? 'danger' : 'faint'} accessibilityLabel={`${remaining} characters left`}>
-          {content.length}/{MAX}
-        </AppText>
+        {/* The count only matters near the limit; an always-on 0/1000 is noise */}
+        {remaining <= 200 ? (
+          <AppText variant="caption" tone={remaining < 50 ? 'danger' : 'faint'} accessibilityLabel={`${remaining} characters left`}>
+            {remaining} left
+          </AppText>
+        ) : (
+          <View />
+        )}
         <Button title="Post" size="sm" onPress={submit} loading={busy} disabled={!type || !content.trim()} />
       </View>
     </Card>

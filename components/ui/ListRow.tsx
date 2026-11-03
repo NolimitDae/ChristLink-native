@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
 import { AppIcon, type AppIconName } from '../icons/AppIcon';
+import { InSheetContext } from './BottomSheet';
 
 type IconName = AppIconName;
 
@@ -19,10 +20,15 @@ interface ListRowProps {
   destructive?: boolean;
   last?: boolean;
   disabled?: boolean;
+  /** An action in a menu (Share, Duplicate, Report…) rather than a link to another screen: no chevron.
+   *  Defaults to true inside a BottomSheet. */
+  action?: boolean;
 }
 
-export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggle, destructive, last, disabled }: ListRowProps) {
+export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggle, destructive, last, disabled, action }: ListRowProps) {
   const t = useTheme();
+  const inSheet = useContext(InSheetContext);
+  const isAction = action ?? inSheet;
   const fg = destructive ? t.c.danger : t.c.text;
   const content = (
     <View style={[styles.row, { borderBottomColor: t.c.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, opacity: disabled ? 0.5 : 1 }]}>
@@ -58,7 +64,7 @@ export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggl
           thumbColor="#FFFFFF"
           accessibilityLabel={title}
         />
-      ) : onPress ? (
+      ) : onPress && !isAction ? (
         <Ionicons name="chevron-forward" size={18} color={t.c.textFaint} />
       ) : null}
     </View>

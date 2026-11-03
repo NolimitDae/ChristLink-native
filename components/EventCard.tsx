@@ -16,6 +16,7 @@ import { DateBlock } from './ui/DateBlock';
 import { TimingBadge } from './ui/Badge';
 import { PressScale } from './ui/PressScale';
 import { SPRING } from '../lib/motion';
+import { openEventActions } from './EventQuickActions';
 
 export type EventCardVariant = 'carousel' | 'row' | 'grid';
 
@@ -106,10 +107,16 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
   const open = onPress ?? (() => router.push(`/event/${event.id}`));
   const meta = `${formatDateShort(event.start_date)}${event.start_date ? ` · ${formatTime(event.start_date)}` : ''} · ${locationLabel(event)}`;
   const a11y = `${event.name}. ${meta}. ${priceLabel(event)}.`;
+  // Long press = quick actions sheet (iOS context-menu pattern); also offered to screen readers as a custom action
+  const actions = {
+    onLongPress: () => openEventActions(event),
+    accessibilityActions: [{ name: 'longpress' as const, label: 'Quick actions' }],
+    onAccessibilityAction: () => openEventActions(event),
+  };
 
   if (variant === 'carousel') {
     return (
-      <PressScale onPress={open} accessibilityRole="button" accessibilityLabel={a11y} scaleTo={0.98} style={{ width }}>
+      <PressScale onPress={open} {...actions} accessibilityRole="button" accessibilityLabel={a11y} scaleTo={0.98} style={{ width }}>
         <View style={[{ borderRadius: t.radius.lg }, shadow(2, t.c.shadow)]}>
           <Cover event={event} height={Math.round(width * 0.62)} radius={t.radius.lg} />
           <LinearGradient colors={['transparent', t.c.scrimStrong]} style={[StyleSheet.absoluteFill, { borderRadius: t.radius.lg }]} />
@@ -141,6 +148,7 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
     return (
       <PressScale
         onPress={open}
+        {...actions}
         accessibilityRole="button"
         accessibilityLabel={a11y}
         scaleTo={0.97}
@@ -163,6 +171,7 @@ function EventCardInner({ event, variant = 'row', friends, width = 280, onPress 
   return (
     <PressScale
       onPress={open}
+      {...actions}
       accessibilityRole="button"
       accessibilityLabel={a11y}
       scaleTo={0.98}

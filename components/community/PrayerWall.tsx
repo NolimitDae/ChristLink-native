@@ -16,6 +16,7 @@ import { distributeColumns, estimatePrayerHeight } from './masonry';
 import { PrayerCard } from './PrayerCard';
 import { confirmKindness } from './kindnessCheck';
 import { useTabBarClearance } from '../TabBar';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 const FILTERS: readonly PrayerFilter[] = ['all', 'church', 'friends', 'answered', 'mine'];
 const FILTER_LABELS: Record<PrayerFilter, string> = {
@@ -339,9 +340,10 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
-        scrollEventThrottle={200}
+        scrollEventThrottle={32}
         onScroll={e => {
           const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+          onScrollTabBar(e);
           if (contentOffset.y + layoutMeasurement.height > contentSize.height - LOAD_AHEAD) loadMore();
         }}
         contentContainerStyle={{ paddingBottom: bottomPad + 56 }}
