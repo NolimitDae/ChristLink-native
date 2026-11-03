@@ -3,6 +3,7 @@ export { Button } from './Button';
 export { PressScale } from './PressScale';
 export { Appear } from './Appear';
 export { CompactTitleBar, LargeTitle, useCollapsingTitle } from './LargeTitle';
+export { CollapsingHeader, useFloatingOffset } from './CollapsingHeader';
 export { IconButton } from './IconButton';
 export { Chip, ChipRow } from './Chip';
 export { Card, TicketPerforation, TicketShell } from './Card';

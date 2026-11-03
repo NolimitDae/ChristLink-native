@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { Alert, Animated, RefreshControl, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
@@ -10,7 +10,7 @@ import { prayerReminderKey } from '../../lib/reminderTimes';
 import { FeatureError, createPrayer, deletePrayer, getPrayerWall, markPrayerAnswered, prayFor } from '../../lib/features';
 import type { Prayer, PrayerFilter } from '../../lib/types';
 import { useReport } from '../ReportSheet';
-import { AppText, BottomSheet, Button, ChipRow, EmptyState, Field, ListGroup, ListRow, Skeleton, SkeletonGroup } from '../ui';
+import { AppText, BottomSheet, Button, ChipRow, EmptyState, Field, ListGroup, ListRow, Skeleton, SkeletonGroup, useFloatingOffset } from '../ui';
 import { ActionMenu, type MenuAction } from './ActionMenu';
 import { distributeColumns, estimatePrayerHeight } from './masonry';
 import { PrayerCard } from './PrayerCard';
@@ -36,9 +36,10 @@ function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
 
-export function PrayerWall({ bottomPad }: { bottomPad: number }) {
+export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const barClearance = useTabBarClearance();
+  const floatingOffset = useFloatingOffset();
   const s = useStyles();
   const router = useRouter();
   const { session } = useAuth();
@@ -343,7 +344,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         scrollEventThrottle={32}
         onScroll={e => {
           const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
-          onScrollTabBar(e);
+          onScroll(e);
           if (contentOffset.y + layoutMeasurement.height > contentSize.height - LOAD_AHEAD) loadMore();
         }}
         contentContainerStyle={{ paddingBottom: bottomPad + 56 }}
@@ -354,9 +355,9 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         {renderBody()}
       </ScrollView>
 
-      <View style={[s.fab, { bottom: barClearance }]} pointerEvents="box-none">
+      <Animated.View style={[s.fab, { bottom: barClearance, transform: [{ translateY: floatingOffset }] }]} pointerEvents="box-none">
         <Button title="Share a prayer" icon="add" onPress={openCompose} style={s.fabShadow} />
-      </View>
+      </Animated.View>
 
       <BottomSheet
         visible={composeOpen}

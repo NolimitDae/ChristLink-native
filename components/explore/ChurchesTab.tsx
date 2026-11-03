@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, View, type ListRenderItemInfo } from 'react-native';
+import { FlatList, RefreshControl, View, type ListRenderItemInfo, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -17,7 +17,7 @@ function Separator() {
   return <View style={{ height: 10 }} />;
 }
 
-export function ChurchesTab({ bottomInset }: { bottomInset: number }) {
+export function ChurchesTab({ bottomInset, onScroll = onScrollTabBar }: { bottomInset: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const router = useRouter();
   const { session } = useAuth();
@@ -93,7 +93,7 @@ export function ChurchesTab({ bottomInset }: { bottomInset: number }) {
       ) : (
         <FlatList
           data={state.churches}
-          onScroll={onScrollTabBar}
+          onScroll={onScroll}
           scrollEventThrottle={32}
           keyExtractor={c => c.id}
           contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}

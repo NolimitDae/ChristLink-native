@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
@@ -15,7 +15,7 @@ import { Composer } from './Composer';
 import { PostCard } from './PostCard';
 import { onScrollTabBar } from '../../lib/tabBarMotion';
 
-export function FeedView({ bottomPad }: { bottomPad: number }) {
+export function FeedView({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const router = useRouter();
   const { session } = useAuth();
@@ -190,7 +190,7 @@ export function FeedView({ bottomPad }: { bottomPad: number }) {
     <>
       <FlatList
         data={visible}
-        onScroll={onScrollTabBar}
+        onScroll={onScroll}
         scrollEventThrottle={32}
         keyExtractor={p => p.id}
         renderItem={({ item }) => (

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, View, type ListRenderItemInfo } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, View, type ListRenderItemInfo, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useFriendsGoing } from '../../hooks/useFriendsGoing';
@@ -24,7 +24,7 @@ function toEventType(v?: string): EventType {
   return match ?? 'All';
 }
 
-export function EventsTab({ initialType, bottomInset }: { initialType?: string; bottomInset: number }) {
+export function EventsTab({ initialType, bottomInset, onScroll = onScrollTabBar }: { initialType?: string; bottomInset: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const location = useUserLocation('Turn on location to see worship nights, studies and gatherings within about 50 miles of you.');
   const [query, setQuery] = useState('');
@@ -134,7 +134,7 @@ export function EventsTab({ initialType, bottomInset }: { initialType?: string; 
       ) : (
         <FlatList
           data={visible}
-          onScroll={onScrollTabBar}
+          onScroll={onScroll}
           scrollEventThrottle={32}
           keyExtractor={e => e.id}
           contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}

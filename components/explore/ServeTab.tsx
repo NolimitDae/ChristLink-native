@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, SectionList, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -20,7 +20,7 @@ function Separator() {
   return <View style={{ height: 12 }} />;
 }
 
-export function ServeTab({ bottomInset, onFindChurch }: { bottomInset: number; onFindChurch: () => void }) {
+export function ServeTab({ bottomInset, onFindChurch, onScroll = onScrollTabBar }: { bottomInset: number; onFindChurch: () => void; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const router = useRouter();
   const [shifts, setShifts] = useState<ServeShift[]>([]);
@@ -80,7 +80,7 @@ export function ServeTab({ bottomInset, onFindChurch }: { bottomInset: number; o
     <View style={{ flex: 1 }}>
       <SectionList
         sections={sections}
-        onScroll={onScrollTabBar}
+        onScroll={onScroll}
         scrollEventThrottle={32}
         keyExtractor={s => s.shift_id}
         contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}

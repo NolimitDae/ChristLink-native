@@ -721,3 +721,25 @@ and changed what applied, within the existing design system:
 3. Turn on Reduce Motion: no title growth, the tab bar only fades its labels.
 4. Taps on buttons/icon buttons are silent; RSVP, saving an event, toggles and tab switches still give haptics.
 5. Long-press an event card anywhere (Discover, Events, Profile) → the quick actions sheet; try Save and Add to calendar.
+
+## 2026-11-03 (late) — Large titles on Events and Community
+
+**Changed**
+- Events and Community now use the same 34 pt serif large title as the other tabs (`components/ui/CollapsingHeader.tsx`).
+  Their controls (Events/Map/Churches/Serve, Feed/Prayer Wall) stay pinned, so the title isn't part of the list:
+  scrolling 40 pt into a list tucks the title away with a spring and the controls slide up under the status bar,
+  giving the list ~49 pt more room; a hairline appears under the controls while content runs beneath them. Back near
+  the top (or switching segment) the title returns. Reduce Motion: the title stays put.
+- Bottom-pinned elements (Share a prayer, the map's event preview card) stay exactly in place in both states
+  (`useFloatingOffset`).
+- The same scroll handler still minimizes the tab bar.
+- Web preview: the map stand-in accepts camera calls (no more `animateToRegion` error on the Map tab).
+
+**Not finished**
+- Nothing open from the HIG pass.
+
+**Test on your phone**
+1. Events: scroll the list → "Events" slides away, the switch and search move up; scroll back to the top → it returns.
+   Same on Churches and Serve; switching to Map brings the title back.
+2. Community: same on Feed and Prayer Wall; the Share a prayer button never moves.
+3. With Reduce Motion on, the titles never move.

@@ -78,7 +78,8 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - Apple HIG basics: type sizes follow the HIG Large ramp in `lib/theme.ts` (body 17, callout 15, caption 12, display 34).
   Top-level scroll screens use `useCollapsingTitle` + `LargeTitle` + `CompactTitleBar` (components/ui/LargeTitle.tsx):
   the bar's hairline shows only while content is under it, tapping it scrolls to top, and the same scroll handler
-  minimizes the tab bar (`lib/tabBarMotion.ts`). Nested corners are concentric: `concentric(outer, inset)` from
+  minimizes the tab bar (`lib/tabBarMotion.ts`). Tabs with pinned controls (Events, Community) use `CollapsingHeader`
+  (components/ui/CollapsingHeader.tsx); bottom-pinned buttons inside it apply `useFloatingOffset()`. Nested corners are concentric: `concentric(outer, inset)` from
   `lib/theme.ts`. Haptics mark outcomes (success/error) and value changes (selection), never plain navigation:
   `Button` and `IconButton` stay silent by default. Rows in a sheet are menu items (no chevron). Event cards open
   `openEventActions` on long press (components/EventQuickActions.tsx).
