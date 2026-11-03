@@ -100,7 +100,7 @@ export default function NotificationsScreen() {
               style={({ pressed }) => [s.row, !item.read && s.unreadRow, { opacity: pressed ? 0.7 : 1 }]}
             >
               <View style={s.icon}>
-                <AppIcon name={ICONS[item.type] ?? 'notifications-outline'} size={19} color={t.c.goldText} />
+                <AppIcon name={ICONS[item.type] ?? 'notifications-outline'} size={22} color={item.read ? t.c.textMuted : t.c.goldText} />
               </View>
               <View style={{ flex: 1 }}>
                 <AppText variant="bodyStrong" numberOfLines={2}>
@@ -135,15 +135,7 @@ const useStyles = makeStyles(t => ({
     borderBottomColor: t.c.border,
   },
   unreadRow: { backgroundColor: t.c.goldDim },
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: t.c.surface2,
-    borderWidth: 1,
-    borderColor: t.c.goldHairline,
-  },
+  // Plain line icon in a fixed column; unread rows are marked by their tint and dot
+  icon: { width: 28, alignItems: 'center', paddingTop: 2 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: t.c.gold, marginTop: 6 },
 }));

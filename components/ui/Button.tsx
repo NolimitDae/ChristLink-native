@@ -41,7 +41,8 @@ export function Button({
   style,
   accessibilityHint,
   testID,
-  haptics = true,
+  // HIG: haptics accompany meaningful outcomes, not every press; screens add success/selection feedback themselves
+  haptics = false,
 }: ButtonProps) {
   const t = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
@@ -93,7 +94,7 @@ export function Button({
         ) : (
           <View style={styles.row}>
             {icon ? <AppIcon name={icon} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
-            <AppText variant="button" color={fg} style={size === 'sm' ? { fontSize: 13 } : null} numberOfLines={1}>
+            <AppText variant="button" color={fg} style={size === 'sm' ? { fontSize: 15, lineHeight: 20 } : null} numberOfLines={1}>
               {title}
             </AppText>
             {iconRight ? <AppIcon name={iconRight} size={size === 'sm' ? 16 : 18} color={fg} /> : null}

@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Animated, RefreshControl, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFriendsGoing } from '../../hooks/useFriendsGoing';
 import { useShareCard } from '../../components/ShareCard';
-import { EmptyState, SectionHeader } from '../../components/ui';
+import { CompactTitleBar, EmptyState, SectionHeader, useCollapsingTitle } from '../../components/ui';
 import { HomeHeader } from '../../components/home/HomeHeader';
 import { VerseCard } from '../../components/home/VerseCard';
 import { WeekStrip } from '../../components/home/WeekStrip';
@@ -37,6 +37,7 @@ function startMs(e: Event): number {
 export default function HomeScreen() {
   const t = useTheme();
   const barClearance = useTabBarClearance();
+  const { scrollY, onScroll, scrollRef, scrollToTop } = useCollapsingTitle();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { session } = useAuth();
@@ -104,7 +105,10 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg }}>
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: insets.top + t.space.sm, paddingBottom: barClearance + t.space.md, gap: t.space.xl }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
@@ -166,7 +170,8 @@ export default function HomeScreen() {
             />
           ))
         )}
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactTitleBar title="Discover" scrollY={scrollY} onPress={scrollToTop} collapseAt={56} />
       {share.sheet}
     </View>
   );

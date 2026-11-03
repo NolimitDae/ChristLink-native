@@ -129,7 +129,7 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
                 style={({ pressed }) => [s.row, selected && s.rowSelected, { opacity: pressed ? 0.75 : 1 }]}
               >
                 <View style={s.rowIcon}>
-                  <AppIcon name="church-outline" size={18} color={t.c.goldText} />
+                  <AppIcon name="church-outline" size={22} color={selected ? t.c.goldText : t.c.textMuted} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -186,5 +186,5 @@ const useStyles = makeStyles(t => ({
   },
   rowSelected: { borderColor: t.c.gold, backgroundColor: t.c.goldDim },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, minHeight: 48, paddingHorizontal: t.space.sm },
-  rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.goldDim },
+  rowIcon: { width: 28, alignItems: 'center', justifyContent: 'center' },
 }));

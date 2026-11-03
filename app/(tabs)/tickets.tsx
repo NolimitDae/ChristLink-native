@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Animated, RefreshControl, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,7 @@ import { storage } from '../../lib/storage';
 import { logger } from '../../lib/logger';
 import { pluralize } from '../../lib/format';
 import type { RSVP, Ticket } from '../../lib/types';
-import { Appear, AppText, Button, EmptyState, SectionHeader, Skeleton, SkeletonGroup } from '../../components/ui';
+import { Appear, AppText, Button, CompactTitleBar, EmptyState, LargeTitle, SectionHeader, Skeleton, SkeletonGroup, useCollapsingTitle } from '../../components/ui';
 import { WalletStack } from '../../components/tickets/WalletStack';
 import { MemoryCard } from '../../components/tickets/MemoryCard';
 import { WALLET_CARD_HEIGHT } from '../../components/tickets/WalletTicketCard';
@@ -105,15 +105,16 @@ export default function TicketsScreen() {
     else router.push(`/event/${item.eventId}`);
   };
 
+  const { scrollY, onScroll, scrollRef, scrollToTop } = useCollapsingTitle();
+
   const header = (
-    <View style={[s.header, { paddingTop: insets.top + t.space.sm }]}>
-      <AppText variant="display">Tickets</AppText>
+    <LargeTitle title="Tickets" scrollY={scrollY} style={[s.header, { paddingTop: insets.top + t.space.sm }]}>
       {token && !loading && upcoming.length > 0 ? (
         <AppText variant="callout" tone="muted">
           {pluralize(upcoming.length, 'upcoming event')}
         </AppText>
       ) : null}
-    </View>
+    </LargeTitle>
   );
 
   if (!token) {
@@ -137,7 +138,10 @@ export default function TicketsScreen() {
 
   return (
     <View style={s.root}>
-      <ScrollView
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: barClearance + 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} />}
         showsVerticalScrollIndicator={false}
@@ -195,7 +199,8 @@ export default function TicketsScreen() {
             ) : null}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactTitleBar title="Tickets" scrollY={scrollY} onPress={scrollToTop} />
     </View>
   );
 }

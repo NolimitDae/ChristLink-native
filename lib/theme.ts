@@ -148,22 +148,28 @@ export type TypeVariant =
   | 'button'
   | 'numeral';
 
+/**
+ * Sizes follow the iOS Human Interface Guidelines' default (Large) Dynamic Type ramp: Large Title 34/41,
+ * Title 1 28/34, Title 2 22/28, Title 3 20/25, Headline + Body 17/22, Subhead 15/20, Footnote 13/18, Caption 12/16.
+ * Serif titles get slightly negative tracking as they grow; text sizes stay at 0. AppText scales them with Dynamic Type.
+ */
 export const type: Record<TypeVariant, TextStyle> = {
-  display: { fontFamily: fonts.display, fontSize: 36, lineHeight: 42, letterSpacing: -0.3 },
-  title1: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, letterSpacing: -0.2 },
-  title2: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30, letterSpacing: -0.15 },
-  title3: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26, letterSpacing: -0.1 },
-  headline: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22 },
-  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
-  bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },
-  callout: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
+  display: { fontFamily: fonts.display, fontSize: 34, lineHeight: 41, letterSpacing: -0.4 },
+  title1: { fontFamily: fonts.display, fontSize: 28, lineHeight: 34, letterSpacing: -0.3 },
+  title2: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.2 },
+  title3: { fontFamily: fonts.display, fontSize: 20, lineHeight: 25, letterSpacing: -0.1 },
+  headline: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22 },
+  body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 22 },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22 },
+  /** Subhead: secondary lines, card text. */
+  callout: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20 },
   caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
   /** All caps: conventions only (event type kicker, calendar month, ticket stub, badges, settings groups). */
-  overline: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, letterSpacing: 1.4, textTransform: 'uppercase' },
-  /** Sentence-case card and section labels ("Verse of the day", "Who's going"); the default over `overline`. */
+  overline: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
+  /** Footnote-size, sentence-case card and section labels ("Verse of the day", "Who's going"); the default over `overline`. */
   label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
-  button: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20, letterSpacing: 0.2 },
-  numeral: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32 },
+  button: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22 },
+  numeral: { fontFamily: fonts.display, fontSize: 28, lineHeight: 34, letterSpacing: -0.3 },
 };
 
 /** 8-point spacing scale (with a 4pt half step). */
@@ -186,6 +192,14 @@ export const radius = {
   xl: 28,
   pill: 999,
 } as const;
+
+/**
+ * Concentric corners (HIG): a shape nested inside another, inset by `inset`, takes the outer radius minus the inset,
+ * so both curves share one center. A small floor keeps deep insets from turning into sharp corners.
+ */
+export function concentric(outer: number, inset: number, min = 4): number {
+  return Math.max(outer - inset, min);
+}
 
 export const motion = {
   fast: 150,

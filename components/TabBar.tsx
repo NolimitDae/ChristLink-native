@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useTheme } from '../contexts/ThemeContext';
 import { haptic } from '../lib/haptics';
+import { resetTabBarScroll, tabBarCompact } from '../lib/tabBarMotion';
 import { fonts, shadow } from '../lib/theme';
 import { AppText } from './ui/AppText';
 import { Glass } from './ui/Glass';
@@ -69,9 +70,20 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
     }
   }, [activeIdx, slot, capsuleX, t.reduceMotion]);
 
+  // Every tab starts with the full bar; scrolling down through content minimizes it (iOS 26 behaviour)
+  useEffect(() => {
+    resetTabBarScroll();
+  }, [activeIdx]);
+
+  const labelOpacity = tabBarCompact.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0], extrapolate: 'clamp' });
+  // Reduce Motion: labels cross-fade only, nothing moves
+  const iconDrop = t.reduceMotion ? 0 : tabBarCompact.interpolate({ inputRange: [0, 1], outputRange: [0, 7] });
+  const barScale = t.reduceMotion ? 1 : tabBarCompact.interpolate({ inputRange: [0, 1], outputRange: [1, 0.94] });
+  const barDrop = t.reduceMotion ? 0 : tabBarCompact.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
+
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: barOffset(insets.bottom) }]}>
-      <View style={[shadow(3, t.c.shadow), { borderRadius: RADIUS }]}>
+      <Animated.View style={[shadow(3, t.c.shadow), { borderRadius: RADIUS, transform: [{ translateY: barDrop }, { scale: barScale }] }]}>
         <Glass
           style={[
             styles.bar,
@@ -113,23 +125,25 @@ export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
                     scaleTo={0.9}
                     style={styles.item}
                   >
-                    <View style={styles.icon}>
+                    <Animated.View style={[styles.icon, { transform: [{ translateY: iconDrop }] }]}>
                       {meta.icon === 'ticket' ? (
                         <TicketIcon size={25} color={color} />
                       ) : (
                         <Ionicons name={meta.icon} size={23} color={color} />
                       )}
-                    </View>
-                    <AppText variant="caption" color={color} numberOfLines={1} style={styles.label}>
-                      {meta.label}
-                    </AppText>
+                    </Animated.View>
+                    <Animated.View style={{ opacity: labelOpacity }}>
+                      <AppText variant="caption" color={color} numberOfLines={1} style={styles.label}>
+                        {meta.label}
+                      </AppText>
+                    </Animated.View>
                   </PressScale>
                 );
               })}
             </View>
           </View>
         </Glass>
-      </View>
+      </Animated.View>
     </View>
   );
 }

@@ -20,7 +20,7 @@ function FeeItem({ icon, title, body }: { icon: React.ComponentProps<typeof Ioni
   return (
     <View style={s.feeRow}>
       <View style={s.feeIcon}>
-        <Ionicons name={icon} size={18} color={t.c.goldText} />
+        <Ionicons name={icon} size={20} color={t.c.textMuted} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <AppText variant="bodyStrong">{title}</AppText>
@@ -187,5 +187,5 @@ const useStyles = makeStyles(t => ({
   statusTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statusIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   feeRow: { flexDirection: 'row', gap: t.space.sm, alignItems: 'flex-start' },
-  feeIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.goldDim },
+  feeIcon: { width: 28, alignItems: 'center', paddingTop: 2 },
 }));

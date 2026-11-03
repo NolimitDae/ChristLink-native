@@ -1,7 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { haptic } from '../../lib/haptics';
 import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
 type IconName = AppIconName;
@@ -25,10 +24,8 @@ export function IconButton({ icon, label, onPress, size = 40, tone = 'default', 
   const fg = color ?? (tone === 'gold' ? t.c.onGold : tone === 'glass' ? t.c.onImage : t.c.text);
   return (
     <Pressable
-      onPress={() => {
-        haptic.tap();
-        onPress?.();
-      }}
+      // No haptic: most icon buttons navigate or open a sheet. Screens add feedback where a press changes state.
+      onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}

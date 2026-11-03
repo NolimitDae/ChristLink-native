@@ -3,6 +3,7 @@ import { Animated, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { timeAgo } from '../../lib/format';
+import { concentric } from '../../lib/theme';
 import { haptic } from '../../lib/haptics';
 import type { Prayer } from '../../lib/types';
 import { Avatar } from '../Avatar';
@@ -161,7 +162,8 @@ const useStyles = makeStyles(t => ({
   testimony: {
     marginTop: t.space.xs,
     padding: t.space.xs,
-    borderRadius: t.radius.sm,
+    // Nested inside the card body, so its corners follow the card's (radius minus the body padding)
+    borderRadius: concentric(t.radius.lg, t.space.sm),
     backgroundColor: t.c.goldDim,
   },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: t.space.sm },

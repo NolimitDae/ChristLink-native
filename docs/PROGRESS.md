@@ -683,3 +683,31 @@ and changed what applied, within the existing design system:
 - Backend: `GET /api/serve/history` (your completed shifts with hours; e2e tested). Followers/following used the
   existing public `/api/followers/:id` and `/api/following/:id` (newest 200).
 - Stats now give press feedback (PressScale) and tell screen readers they open a list.
+
+## 2026-11-03 (night) — Apple HIG pass: large titles, minimizing tab bar, quieter haptics
+
+**Changed**
+- Type ramp now matches the HIG Large defaults (body/headline/button 17, callout 15, caption 12, label 13,
+  display 34, titles 28/22/20) with tighter tracking on the serif titles.
+- Discover, Tickets, Profile and Host have iOS large titles: the serif title scrolls away and a frosted compact bar with a
+  centered 17 pt title fades in; its hairline appears only while content is underneath (scroll edge effect). Pulling
+  down grows the large title slightly. Tapping the compact bar scrolls back to the top. On Android/web the bar is solid
+  (no real blur there), so scrolled text never ghosts through it.
+- The floating tab bar minimizes while you scroll down through content (labels fade, icons settle to the middle, the
+  bar shrinks a touch) and comes back when you scroll up, reach the top or switch tabs. Reduce Motion: labels fade only.
+- Haptics follow the HIG: `Button` and `IconButton` no longer buzz on every press; success/error/selection feedback
+  stays where something actually happened (RSVP, payment, publish, toggles, segmented controls, tab switches).
+- Concentric corners: `concentric()` helper in lib/theme.ts (used by the prayer testimony box; the tab bar capsule and
+  segmented control were already concentric).
+- Removed the last template tells: tinted icon squares in Notifications, church sections, onboarding church step and
+  payouts; section hairlines on the church page.
+
+**Not finished**
+- Explore and Community keep their own headers (search bar and segmented feed); they don't minimize the tab bar yet.
+
+**Test on your phone**
+1. Scroll Discover, Tickets, Profile and Host: the big title slides away, the compact title fades in with a hairline;
+   tap the compact bar → back to the top. Pull down at the top → the title grows slightly and pull-to-refresh still works.
+2. Scroll down → the tab bar's labels fade and it shrinks; scroll up a little → it comes back. Switch tabs → full bar.
+3. Turn on Reduce Motion: no title growth, the tab bar only fades its labels.
+4. Taps on buttons/icon buttons are silent; RSVP, saving an event, toggles and tab switches still give haptics.

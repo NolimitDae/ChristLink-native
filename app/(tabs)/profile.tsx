@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Animated, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
@@ -11,7 +11,7 @@ import { logger } from '../../lib/logger';
 import type { Event } from '../../lib/types';
 import { EventCard } from '../../components/EventCard';
 import { useShareCard } from '../../components/ShareCard';
-import { Button, EmptyState, EventCardSkeleton, ListGroup, ListRow, Screen, Segmented } from '../../components/ui';
+import { Button, CompactTitleBar, EmptyState, EventCardSkeleton, LargeTitle, ListGroup, ListRow, Screen, Segmented, useCollapsingTitle } from '../../components/ui';
 import { EditProfileSheet } from '../../components/profile/EditProfileSheet';
 import { ProfileHero } from '../../components/profile/ProfileHero';
 import { StatsRow } from '../../components/profile/StatsRow';
@@ -30,6 +30,7 @@ function formatHours(h: number): string {
 export default function MyProfileScreen() {
   const t = useTheme();
   const barClearance = useTabBarClearance();
+  const { scrollY, onScroll, scrollRef, scrollToTop } = useCollapsingTitle();
   const router = useRouter();
   const { session, profile, refreshProfile } = useAuth();
   const { savedIds, settings } = useAppData();
@@ -128,11 +129,15 @@ export default function MyProfileScreen() {
   };
 
   return (
-    <Screen title="Profile">
-      <ScrollView
+    <Screen>
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={{ paddingBottom: barClearance + 16, gap: t.space.md }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
+        <LargeTitle title="Profile" scrollY={scrollY} style={{ paddingHorizontal: t.space.md, paddingTop: t.space.xs }} />
         {profile ? (
           <ProfileHero profile={profile} editable onPickBanner={() => pick('banner')} onPickAvatar={() => pick('avatar')} uploading={uploading} />
         ) : (
@@ -237,7 +242,8 @@ export default function MyProfileScreen() {
             list.map(e => <EventCard key={e.id} event={e} variant="row" />)
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactTitleBar title="Profile" scrollY={scrollY} onPress={scrollToTop} />
 
       <EditProfileSheet visible={editing} onClose={() => setEditing(false)} profile={profile} token={token} onSaved={refreshProfile} />
       {shareSheet}
