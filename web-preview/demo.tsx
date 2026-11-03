@@ -311,12 +311,12 @@ export function PhoneFrame() {
   const src = w ? w.location.pathname + w.location.search : '/';
   return React.createElement(
     'div',
-    { style: { minHeight: '100vh', background: 'radial-gradient(circle at 30% 20%, #2a2418, #0e0c0a 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 64, padding: 32, boxSizing: 'border-box', fontFamily: 'Montserrat, system-ui, sans-serif', color: '#F0EBE0', flexWrap: 'wrap' } },
+    { style: { minHeight: '100vh', background: 'radial-gradient(circle at 30% 20%, #2a2418, #0e0c0a 60%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 64, padding: 32, boxSizing: 'border-box', fontFamily: '"Instrument Sans", system-ui, sans-serif', color: '#F0EBE0', flexWrap: 'wrap' } },
     React.createElement(
       'div',
       { style: { maxWidth: 340 } },
       React.createElement('div', { style: { color: '#C9A84C', letterSpacing: 2, fontSize: 12, fontWeight: 700, textTransform: 'uppercase' } }, 'Preview'),
-      React.createElement('h1', { style: { fontFamily: '"DM Serif Display", Georgia, serif', fontWeight: 400, fontSize: 40, lineHeight: 1.1, margin: '12px 0' } }, 'Christ Link Social'),
+      React.createElement('h1', { style: { fontFamily: 'Newsreader, Georgia, serif', fontWeight: 500, fontSize: 40, lineHeight: 1.1, margin: '12px 0' } }, 'Christ Link Social'),
       React.createElement('p', { style: { color: '#B8B0A0', lineHeight: 1.6, fontSize: 15 } }, 'The iPhone and Android app, running in your browser with sample data. Tap around: RSVP, pray, join a waitlist, plan a church visit. Nothing here is saved or sent anywhere.'),
       React.createElement('p', { style: { color: '#8A8272', lineHeight: 1.6, fontSize: 13 } }, 'Payments, push notifications, maps and the camera only work in the phone app. On a phone, open this page directly for the full-screen version.'),
     ),

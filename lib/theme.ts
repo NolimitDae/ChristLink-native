@@ -121,15 +121,16 @@ export const palettes: Record<Scheme, Palette> = {
 };
 
 /**
- * Display serif: DM Serif Display. Text: Loew Next is licensed separately; the brand kit
- * only ships a demo, so the app uses Montserrat until a licensed font file is added.
+ * Titles and verses: Newsreader (Production Type for Google Fonts; a screen-first editorial serif).
+ * Text and UI: Instrument Sans (narrow, quiet grotesque that stays legible at caption sizes).
+ * Both are SIL OFL, bundled with the app. A licensed Loew Next could replace the text face here later.
  */
 export const fonts = {
-  display: 'DMSerifDisplay_400Regular',
-  regular: 'Montserrat_400Regular',
-  medium: 'Montserrat_500Medium',
-  semibold: 'Montserrat_600SemiBold',
-  bold: 'Montserrat_700Bold',
+  display: 'Newsreader_500Medium',
+  regular: 'InstrumentSans_400Regular',
+  medium: 'InstrumentSans_500Medium',
+  semibold: 'InstrumentSans_600SemiBold',
+  bold: 'InstrumentSans_700Bold',
 } as const;
 
 export type TypeVariant =

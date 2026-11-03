@@ -6,13 +6,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Sentry from '@sentry/react-native';
-import { useFonts, DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
+import { useFonts, Newsreader_500Medium } from '@expo-google-fonts/newsreader';
 import {
-  Montserrat_400Regular,
-  Montserrat_500Medium,
-  Montserrat_600SemiBold,
-  Montserrat_700Bold,
-} from '@expo-google-fonts/montserrat';
+  InstrumentSans_400Regular,
+  InstrumentSans_500Medium,
+  InstrumentSans_600SemiBold,
+  InstrumentSans_700Bold,
+} from '@expo-google-fonts/instrument-sans';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { ToastProvider } from '../contexts/ToastContext';
@@ -116,11 +116,11 @@ function RootNavigator() {
 
 function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    DMSerifDisplay_400Regular,
-    Montserrat_400Regular,
-    Montserrat_500Medium,
-    Montserrat_600SemiBold,
-    Montserrat_700Bold,
+    Newsreader_500Medium,
+    InstrumentSans_400Regular,
+    InstrumentSans_500Medium,
+    InstrumentSans_600SemiBold,
+    InstrumentSans_700Bold,
   });
   if (!fontsLoaded && !fontError) return null;
 

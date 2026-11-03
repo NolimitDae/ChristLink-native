@@ -132,7 +132,7 @@ export default function StyleguideScreen() {
           </View>
         </Block>
 
-        <Block title="Type scale" note="DM Serif Display for titles, Montserrat for text.">
+        <Block title="Type scale" note="Newsreader for titles and verses, Instrument Sans for text.">
           <View style={{ gap: t.space.sm }}>
             {TYPE_VARIANTS.map(v => (
               <View key={v} style={s.typeRow}>

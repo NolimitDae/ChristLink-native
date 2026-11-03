@@ -647,3 +647,13 @@ for real-user crash and speed data (the app already samples 20% of sessions when
   in-memory flag was still "not done", so it redirected straight back to onboarding (reproduced on the web preview:
   onboarding reappeared after both "Get started" and "Skip"). The redirect now re-reads storage first
   (app/_layout.tsx). Verified: both paths land on Discover and stay there; a fresh install still starts onboarding.
+
+## 2026-11-03 — New typefaces: Newsreader + Instrument Sans
+
+- Researched type that doesn't read as AI/template-made: avoid defaults (Inter, Roboto, Open Sans, Lato, Arial) and
+  the faces AI tools now reach for instead (Space Grotesk, Satoshi, Clash Display, Geist, Plus Jakarta Sans);
+  Montserrat is a template staple and wide at small sizes.
+- Titles and verses: **Newsreader Medium** (screen-first editorial serif) instead of DM Serif Display. Text and UI:
+  **Instrument Sans** 400/500/600/700 instead of Montserrat. Both SIL OFL, bundled via @expo-google-fonts; the old
+  font packages were removed. One place to change: `fonts` in lib/theme.ts (+ the loader in app/_layout.tsx).
+- Checked on Home, event, Prayer Wall, a profile, Tickets and onboarding in light and dark: no clipping or layout breaks.

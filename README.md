@@ -6,7 +6,7 @@ Built with Expo (React Native) on top of the Christ Link Social API (Railway) an
 | Layer | Technology |
 |---|---|
 | App | Expo SDK 51, expo-router, React Native 0.74, TypeScript strict |
-| Design | Custom design system (`lib/theme.ts`, `components/ui`), DM Serif Display + Montserrat, light/dark |
+| Design | Custom design system (`lib/theme.ts`, `components/ui`), Newsreader + Instrument Sans, light/dark |
 | Auth | Supabase email one-time code, session in Keychain/Keystore |
 | Data | Railway REST API (`lib/api.ts`) + Supabase tables/RPCs with RLS (`lib/features.ts`) |
 | Payments | Stripe PaymentSheet (Apple Pay, Google Pay), Stripe Connect Express payouts |

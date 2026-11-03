@@ -61,7 +61,8 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - Use the design system only: `useTheme()` tokens (`t.c.*`, `t.type`, `t.space`, `t.radius`), components in
   `components/ui`. No hardcoded colors outside brand art. Preview everything at `/styleguide`.
 - Warm black + ivory, gold sparingly. Gold text uses `t.c.goldText` (darker gold on light). Gold buttons use dark text.
-- Serif (DM Serif Display) for titles, Montserrat for text (Loew Next needs a license; swap in `lib/theme.ts`).
+- Newsreader (serif) for titles and verses, Instrument Sans for text and UI (`lib/theme.ts`). Avoid default/"AI" faces
+  (Inter, Roboto, Montserrat, Geist, Space Grotesk, Satoshi). Loew Next needs a license; swap the text face in `lib/theme.ts`.
 - No bare spinners for loading screens — skeletons. Every empty state: line illustration + one action.
 - Respect Reduce Motion (`t.reduceMotion`) and Dynamic Type; 44pt touch targets; accessibility labels on custom controls.
 - Motion: springs from `lib/motion.ts` (`SPRING.*`: damping ratio + response, critically damped by default; bounce only
