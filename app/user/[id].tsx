@@ -6,9 +6,10 @@ import { useAppData } from '../../contexts/AppDataContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
 import { followUser, getEvents, getPublicProfile, unfollowUser } from '../../lib/api';
-import { unblockUser } from '../../lib/features';
+import { getUserPrayers, prayFor, unblockUser } from '../../lib/features';
 import { haptic } from '../../lib/haptics';
-import type { Event, Profile } from '../../lib/types';
+import { firstName } from '../../lib/format';
+import type { Event, Prayer, Profile } from '../../lib/types';
 import { EventCard } from '../../components/EventCard';
 import { useReport } from '../../components/ReportSheet';
 import { useShareCard } from '../../components/ShareCard';
@@ -27,6 +28,8 @@ import {
 import { ProfileHero } from '../../components/profile/ProfileHero';
 import { StatsRow } from '../../components/profile/StatsRow';
 import { PinnedPrayerCard, ProfileVerseCard } from '../../components/profile/VerseCard';
+import { ProfileDetails } from '../../components/profile/ProfileDetails';
+import { PrayerCard } from '../../components/community/PrayerCard';
 
 export default function PublicProfileScreen() {
   const t = useTheme();
@@ -44,6 +47,7 @@ export default function PublicProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [failed, setFailed] = useState(false);
   const [events, setEvents] = useState<Event[] | null>(null);
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
   const [following, setFollowing] = useState(false);
   const [followers, setFollowers] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -55,8 +59,17 @@ export default function PublicProfileScreen() {
 
   const load = useCallback(async () => {
     if (!id || isMe) return;
+    // Profile, their events and their prayers are independent: fetch all three at once
+    const profileReq = getPublicProfile(id, token);
+    // Settled up front so a failure while the profile is still loading isn't an unhandled rejection
+    const eventsReq = getEvents({ host_id: id }).catch(() => null);
+    getUserPrayers(id)
+      .then(setPrayers)
+      .catch(() => setPrayers([]));
     try {
-      const p = await getPublicProfile(id, token);
+      const p = await profileReq;
+      // A missing or malformed profile shows the "couldn't load" state instead of crashing the screen
+      if (!p?.id) throw new Error('Profile not found');
       setProfile(p);
       setFollowing(!!p.is_following);
       setFollowers(p.followers_count ?? 0);
@@ -64,12 +77,8 @@ export default function PublicProfileScreen() {
     } catch {
       setFailed(true);
     }
-    try {
-      const res = await getEvents({ host_id: id });
-      setEvents(res.events.filter(e => e.host_id === id));
-    } catch {
-      setEvents([]);
-    }
+    const res = await eventsReq;
+    setEvents(res ? res.events.filter(e => e.host_id === id) : []);
   }, [id, isMe, token]);
 
   useEffect(() => {
@@ -106,6 +115,29 @@ export default function PublicProfileScreen() {
       setBusy(false);
     }
   };
+
+  const pray = useCallback(
+    async (prayer: Prayer) => {
+      if (!token) {
+        router.push('/auth');
+        return;
+      }
+      setPrayers(list => list.map(p => (p.id === prayer.id ? { ...p, has_prayed: true, prayed_count: p.prayed_count + 1 } : p)));
+      try {
+        const count = await prayFor(prayer.id);
+        if (typeof count === 'number') setPrayers(list => list.map(p => (p.id === prayer.id ? { ...p, prayed_count: count } : p)));
+      } catch (err) {
+        setPrayers(list => list.map(p => (p.id === prayer.id ? prayer : p)));
+        showToast(err instanceof Error ? err.message : 'Could not record your prayer', 'error');
+      }
+    },
+    [token, router, showToast],
+  );
+
+  const reportPrayer = useCallback(
+    (p: Prayer) => report.open({ type: 'prayer', id: p.id, authorId: p.author_id, authorName: p.author_name }),
+    [report],
+  );
 
   const unblock = async () => {
     if (!id) return;
@@ -198,8 +230,16 @@ export default function PublicProfileScreen() {
 
         <StatsRow
           stats={[
-            { label: 'Followers', value: String(followers) },
-            { label: 'Following', value: String(profile.following_count ?? 0) },
+            {
+              label: 'Followers',
+              value: String(followers),
+              onPress: () => router.push(`/connections?userId=${profile.id}&tab=followers&name=${encodeURIComponent(profile.full_name ?? '')}`),
+            },
+            {
+              label: 'Following',
+              value: String(profile.following_count ?? 0),
+              onPress: () => router.push(`/connections?userId=${profile.id}&tab=following&name=${encodeURIComponent(profile.full_name ?? '')}`),
+            },
           ]}
         />
 
@@ -213,13 +253,26 @@ export default function PublicProfileScreen() {
 
         {profile.prayer_request ? <PinnedPrayerCard text={profile.prayer_request} /> : null}
 
+        <ProfileDetails profile={profile} />
+
+        {prayers.length > 0 ? (
+          <View>
+            <SectionHeader title="Prayers" />
+            <View style={{ paddingHorizontal: t.space.md }}>
+              {prayers.slice(0, 5).map(p => (
+                <PrayerCard key={p.id} prayer={p} onPray={pray} onMarkAnswered={() => undefined} onMenu={reportPrayer} />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         <View>
           <SectionHeader title="Upcoming events" />
           <View style={{ paddingHorizontal: t.space.md, gap: t.space.sm }}>
             {events === null ? (
               <EventCardSkeleton variant="row" />
             ) : events.length === 0 ? (
-              <EmptyState compact art="calendar" title="No upcoming events" body={`${profile.full_name.split(' ')[0] || 'They'} isn't hosting anything right now.`} />
+              <EmptyState compact art="calendar" title="No upcoming events" body={`${firstName(profile.full_name) || 'They'} isn't hosting anything right now.`} />
             ) : (
               events.map(e => <EventCard key={e.id} event={e} variant="row" />)
             )}

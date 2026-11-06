@@ -1,32 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../contexts/ThemeContext';
-import { AppText, Segmented } from '../../components/ui';
-import { TAB_BAR_HEIGHT } from '../../components/TabBar';
+import { CollapsingHeader, Segmented } from '../../components/ui';
 import { EventsTab } from '../../components/explore/EventsTab';
 import { MapTab } from '../../components/explore/MapTab';
 import { ChurchesTab } from '../../components/explore/ChurchesTab';
 import { ServeTab } from '../../components/explore/ServeTab';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'events' | 'map' | 'churches' | 'serve';
 
-const TABS: { value: Tab; label: string }[] = [
+const ALL_TABS: { value: Tab; label: string }[] = [
   { value: 'events', label: 'Events' },
   { value: 'map', label: 'Map' },
   { value: 'churches', label: 'Churches' },
   { value: 'serve', label: 'Serve' },
 ];
+// Maps need the phone app (react-native-maps has no web version)
+const TABS = Platform.OS === 'web' ? ALL_TABS.filter(x => x.value !== 'map') : ALL_TABS;
 
 function asTab(v?: string): Tab | null {
   return TABS.some(x => x.value === v) ? (v as Tab) : null;
 }
 
 export default function ExploreScreen() {
-  const t = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tab?: string; type?: string }>();
   const [tab, setTab] = useState<Tab>(asTab(params.tab) ?? 'events');
 
@@ -40,22 +38,20 @@ export default function ExploreScreen() {
     router.setParams({ tab: next });
   };
 
-  const tabBarTop = Math.max(insets.bottom, 10) + TAB_BAR_HEIGHT;
-  const listBottom = tabBarTop + 48;
-  const mapPreviewBottom = tabBarTop + 12;
+  const barClearance = useTabBarClearance();
+  const listBottom = barClearance + 36;
+  const mapPreviewBottom = barClearance;
 
   return (
-    <View style={{ flex: 1, backgroundColor: t.c.bg, paddingTop: insets.top }}>
-      <View style={{ paddingHorizontal: t.space.md, paddingTop: t.space.xs, paddingBottom: t.space.sm, gap: t.space.sm }}>
-        <AppText variant="title1">Explore</AppText>
-        <Segmented options={TABS} value={tab} onChange={change} />
-      </View>
-      <View style={{ flex: 1 }}>
-        {tab === 'events' ? <EventsTab initialType={params.type} bottomInset={listBottom} /> : null}
-        {tab === 'map' ? <MapTab bottomInset={mapPreviewBottom} /> : null}
-        {tab === 'churches' ? <ChurchesTab bottomInset={listBottom} /> : null}
-        {tab === 'serve' ? <ServeTab bottomInset={listBottom} onFindChurch={() => change('churches')} /> : null}
-      </View>
-    </View>
+    <CollapsingHeader title="Events" resetKey={tab} controls={<Segmented options={TABS} value={tab} onChange={change} />}>
+      {onScroll => (
+        <>
+          {tab === 'events' ? <EventsTab initialType={params.type} bottomInset={listBottom} onScroll={onScroll} /> : null}
+          {tab === 'map' ? <MapTab bottomInset={mapPreviewBottom} /> : null}
+          {tab === 'churches' ? <ChurchesTab bottomInset={listBottom} onScroll={onScroll} /> : null}
+          {tab === 'serve' ? <ServeTab bottomInset={listBottom} onFindChurch={() => change('churches')} onScroll={onScroll} /> : null}
+        </>
+      )}
+    </CollapsingHeader>
   );
 }

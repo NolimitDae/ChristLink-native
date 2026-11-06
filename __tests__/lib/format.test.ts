@@ -7,6 +7,7 @@ import {
   isTonight,
   isWithinDays,
   timeAgo,
+  weekDays,
 } from '../../lib/format';
 
 const H = 3_600_000;
@@ -67,6 +68,12 @@ describe('dates', () => {
     expect(timeAgo(new Date(now - 10_000).toISOString(), now)).toBe('just now');
     expect(timeAgo(new Date(now - 5 * 60_000).toISOString(), now)).toBe('5m');
     expect(timeAgo(new Date(now - 3 * H).toISOString(), now)).toBe('3h');
+  });
+  it('weekDays gives seven distinct calendar days across a clock change', () => {
+    // 2026-11-01 is the day US clocks fall back (tests run in America/New_York); 24h steps would repeat Nov 1.
+    const days = weekDays(new Date(2026, 10, 1, 10));
+    expect(days.map(d => d.getDate())).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(days.every(d => d.getHours() === 0)).toBe(true);
   });
   it('firstName', () => {
     expect(firstName('  Elizabeth  Awokoya ')).toBe('Elizabeth');

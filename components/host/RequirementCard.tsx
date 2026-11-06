@@ -3,8 +3,9 @@ import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { AppText } from '../ui';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface RequirementRowProps {
   icon: IconName;
@@ -21,7 +22,6 @@ export function RequirementRow({ icon, title, body, done, onPress, tone = 'gold'
   const t = useTheme();
   const s = useStyles();
   const fg = done ? t.c.success : tone === 'danger' ? t.c.danger : t.c.goldText;
-  const bg = done ? t.c.successDim : tone === 'danger' ? t.c.dangerDim : t.c.goldDim;
   return (
     <Pressable
       onPress={onPress}
@@ -31,8 +31,8 @@ export function RequirementRow({ icon, title, body, done, onPress, tone = 'gold'
       accessibilityHint={body}
       style={({ pressed }) => [s.row, !last && s.divider, { opacity: pressed ? 0.7 : 1 }]}
     >
-      <View style={[s.icon, { backgroundColor: bg }]}>
-        <Ionicons name={done ? 'checkmark' : icon} size={18} color={fg} />
+      <View style={s.icon}>
+        <AppIcon name={done ? 'checkmark-circle-outline' : icon} size={22} color={fg} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <AppText variant="bodyStrong">{title}</AppText>
@@ -50,5 +50,5 @@ export function RequirementRow({ icon, title, body, done, onPress, tone = 'gold'
 const useStyles = makeStyles(t => ({
   row: { flexDirection: 'row', alignItems: 'center', gap: t.space.sm, minHeight: 60, paddingVertical: t.space.sm },
   divider: { borderBottomWidth: 1, borderBottomColor: t.c.border },
-  icon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 28, alignItems: 'center' },
 }));

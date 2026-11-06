@@ -1,12 +1,13 @@
 import React, { useRef } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
+import { SPRING } from '../../lib/motion';
 import { AppText } from './AppText';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface ButtonProps {
   title: string;
@@ -40,7 +41,8 @@ export function Button({
   style,
   accessibilityHint,
   testID,
-  haptics = true,
+  // HIG: haptics accompany meaningful outcomes, not every press; screens add success/selection feedback themselves
+  haptics = false,
 }: ButtonProps) {
   const t = useTheme();
   const scale = useRef(new Animated.Value(1)).current;
@@ -51,9 +53,11 @@ export function Button({
   const border = variant === 'secondary' ? t.c.borderStrong : variant === 'danger' ? t.c.danger : 'transparent';
   const fg = variant === 'primary' ? t.c.onGold : variant === 'danger' ? t.c.danger : variant === 'ghost' ? t.c.goldText : t.c.text;
 
+  // Shrinks the instant it's touched, settles back without overshoot (a tap has no momentum to bounce with)
   const animate = (to: number) => {
     if (t.reduceMotion) return;
-    Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 6 }).start();
+    if (to < 1) Animated.timing(scale, { toValue: to, duration: 90, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
+    else Animated.spring(scale, { toValue: to, ...SPRING.press, useNativeDriver: true }).start();
   };
 
   return (
@@ -89,11 +93,11 @@ export function Button({
           <ActivityIndicator color={fg} accessibilityLabel="Loading" />
         ) : (
           <View style={styles.row}>
-            {icon ? <Ionicons name={icon} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
-            <AppText variant="button" color={fg} style={size === 'sm' ? { fontSize: 13 } : null} numberOfLines={1}>
+            {icon ? <AppIcon name={icon} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
+            <AppText variant="button" color={fg} style={size === 'sm' ? { fontSize: 15, lineHeight: 20 } : null} numberOfLines={1}>
               {title}
             </AppText>
-            {iconRight ? <Ionicons name={iconRight} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
+            {iconRight ? <AppIcon name={iconRight} size={size === 'sm' ? 16 : 18} color={fg} /> : null}
           </View>
         )}
       </Pressable>

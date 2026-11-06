@@ -1,0 +1,14 @@
+{
+  "name": "Christ Link Social",
+  "short_name": "Christ Link",
+  "description": "Find faith events, get tickets, pray with your community and serve at your church.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0C0A",
+  "theme_color": "#0E0C0A",
+  "icons": [
+    { "src": "/brand/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/mark.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

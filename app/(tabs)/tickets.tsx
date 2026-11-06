@@ -1,24 +1,26 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, RefreshControl, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
-import { getMyRsvps, getMyTickets } from '../../lib/api';
+import { confirmTicketByIntent, getMyRsvps, getMyTickets } from '../../lib/api';
 import { storage } from '../../lib/storage';
 import { logger } from '../../lib/logger';
 import { pluralize } from '../../lib/format';
 import type { RSVP, Ticket } from '../../lib/types';
-import { AppText, Button, EmptyState, SectionHeader, Skeleton, SkeletonGroup } from '../../components/ui';
+import { Appear, AppText, Button, CompactTitleBar, EmptyState, LargeTitle, SectionHeader, Skeleton, SkeletonGroup, useCollapsingTitle } from '../../components/ui';
 import { WalletStack } from '../../components/tickets/WalletStack';
 import { MemoryCard } from '../../components/tickets/MemoryCard';
 import { WALLET_CARD_HEIGHT } from '../../components/tickets/WalletTicketCard';
 import { buildWallet, type WalletItem } from '../../components/tickets/walletItems';
+import { useTabBarClearance } from '../../components/TabBar';
 
 export default function TicketsScreen() {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
   const s = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -33,6 +35,16 @@ export default function TicketsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [fromCache, setFromCache] = useState(false);
   const hasData = useRef(false);
+  const userId = session?.user.id;
+
+  // Never show the previous user's tickets after a sign-out or account switch.
+  useEffect(() => {
+    hasData.current = false;
+    setTickets([]);
+    setRsvps([]);
+    setFromCache(false);
+    setLoading(true);
+  }, [userId]);
 
   const load = useCallback(async () => {
     if (!token) {
@@ -79,6 +91,22 @@ export default function TicketsScreen() {
     }, [load]),
   );
 
+  // Web checkout: payment methods that leave for the bank return here (?payment_intent=…&redirect_status=…).
+  // Confirm like the in-app sheet does after a payment (the webhook stays the source of truth), then reload.
+  const params = useLocalSearchParams<{ payment_intent?: string; redirect_status?: string }>();
+  useEffect(() => {
+    const intent = params.payment_intent;
+    if (!token || !intent || !/^pi_[A-Za-z0-9]+$/.test(intent)) return;
+    const ok = params.redirect_status === 'succeeded' || params.redirect_status === 'processing';
+    (ok ? confirmTicketByIntent(intent, token) : Promise.resolve())
+      .catch(err => logger.warn('confirm-by-intent after redirect failed', { error: String(err) }))
+      .finally(() => {
+        router.setParams({ payment_intent: undefined, payment_intent_client_secret: undefined, redirect_status: undefined } as never);
+        load();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, params.payment_intent]);
+
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
@@ -93,15 +121,16 @@ export default function TicketsScreen() {
     else router.push(`/event/${item.eventId}`);
   };
 
+  const { scrollY, onScroll, scrollRef, scrollToTop } = useCollapsingTitle();
+
   const header = (
-    <View style={[s.header, { paddingTop: insets.top + t.space.sm }]}>
-      <AppText variant="display">Tickets</AppText>
+    <LargeTitle title="Tickets" scrollY={scrollY} style={[s.header, { paddingTop: insets.top + t.space.sm }]}>
       {token && !loading && upcoming.length > 0 ? (
         <AppText variant="callout" tone="muted">
           {pluralize(upcoming.length, 'upcoming event')}
         </AppText>
       ) : null}
-    </View>
+    </LargeTitle>
   );
 
   if (!token) {
@@ -114,7 +143,7 @@ export default function TicketsScreen() {
           body="Sign in to RSVP and buy tickets. They’ll be saved here, even offline."
           actionLabel="Sign in"
           onAction={() => router.push('/auth')}
-          style={{ flex: 1, paddingBottom: 140 }}
+          style={{ flex: 1, paddingBottom: barClearance + 16 }}
         />
       </View>
     );
@@ -125,8 +154,11 @@ export default function TicketsScreen() {
 
   return (
     <View style={s.root}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 140 }}
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: barClearance + 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} />}
         showsVerticalScrollIndicator={false}
       >
@@ -165,23 +197,26 @@ export default function TicketsScreen() {
                 <AppText variant="callout" tone="muted" style={{ marginTop: 2 }}>
                   Find your next gathering in Explore.
                 </AppText>
-                <Button title="Explore events" variant="ghost" size="sm" iconRight="arrow-forward" onPress={() => router.push('/(tabs)/explore')} style={{ alignSelf: 'flex-start', marginTop: t.space.xs, marginLeft: -t.space.sm }} />
+                <Button title="Explore events" variant="ghost" size="sm" onPress={() => router.push('/(tabs)/explore')} style={{ alignSelf: 'flex-start', marginTop: t.space.xs, marginLeft: -t.space.sm }} />
               </View>
             )}
 
             {past.length > 0 ? (
               <View style={s.section}>
-                <SectionHeader eyebrow={pluralize(past.length, 'gathering')} title="Memories" />
+                <SectionHeader title="Memories" />
                 <View style={s.grid}>
-                  {past.map(item => (
-                    <MemoryCard key={item.key} item={item} width={memoryWidth} onPress={() => router.push(`/event/${item.eventId}`)} />
+                  {past.map((item, i) => (
+                    <Appear key={item.key} index={i + 1}>
+                      <MemoryCard item={item} width={memoryWidth} onPress={() => router.push(`/event/${item.eventId}`)} />
+                    </Appear>
                   ))}
                 </View>
               </View>
             ) : null}
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactTitleBar title="Tickets" scrollY={scrollY} onPress={scrollToTop} />
     </View>
   );
 }

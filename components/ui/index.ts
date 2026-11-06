@@ -1,8 +1,12 @@
 export { AppText } from './AppText';
 export { Button } from './Button';
+export { PressScale } from './PressScale';
+export { Appear } from './Appear';
+export { CompactTitleBar, LargeTitle, useCollapsingTitle } from './LargeTitle';
+export { CollapsingHeader, useFloatingOffset } from './CollapsingHeader';
 export { IconButton } from './IconButton';
 export { Chip, ChipRow } from './Chip';
-export { Card, TicketShell } from './Card';
+export { Card, TicketPerforation, TicketShell } from './Card';
 export { Badge, TimingBadge } from './Badge';
 export { DateBlock } from './DateBlock';
 export { AvatarStack } from './AvatarStack';

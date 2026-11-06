@@ -36,7 +36,9 @@ import {
   TimingBadge,
 } from '../components/ui';
 import type { LineArtName } from '../components/ui/LineArt';
+import { AppIcon } from '../components/icons/AppIcon';
 import type { ThemePreference } from '../lib/theme';
+import { Logo, LogoMark } from '../components/brand/Logo';
 
 const TYPE_VARIANTS: TypeVariant[] = ['display', 'title1', 'title2', 'title3', 'headline', 'body', 'bodyStrong', 'callout', 'caption', 'overline', 'button', 'numeral'];
 const ART: LineArtName[] = ['cross', 'calendar', 'ticket', 'prayer', 'people', 'church', 'serve', 'search', 'bell', 'map', 'offline'];
@@ -131,7 +133,7 @@ export default function StyleguideScreen() {
           </View>
         </Block>
 
-        <Block title="Type scale" note="DM Serif Display for titles, Montserrat for text.">
+        <Block title="Type scale" note="Newsreader for titles and verses, Instrument Sans for text.">
           <View style={{ gap: t.space.sm }}>
             {TYPE_VARIANTS.map(v => (
               <View key={v} style={s.typeRow}>
@@ -208,7 +210,7 @@ export default function StyleguideScreen() {
             {(['primary', 'secondary', 'ghost', 'danger'] as const).map(v => (
               <View key={v} style={[s.row, { flexWrap: 'wrap' }]}>
                 <Button title={v} variant={v} size="sm" />
-                <Button title={v} variant={v} icon="sparkles" />
+                <Button title={v} variant={v} icon="checkmark" />
                 <Button title={v} variant={v} size="lg" />
               </View>
             ))}
@@ -217,7 +219,7 @@ export default function StyleguideScreen() {
               <Button title="Disabled" disabled />
               <Button title="Disabled" variant="secondary" disabled />
             </View>
-            <Button title="Full width" fullWidth iconRight="arrow-forward" />
+            <Button title="Full width" fullWidth />
             <View style={s.row}>
               <IconButton icon="share-outline" label="Default" />
               <IconButton icon="add" label="Gold" tone="gold" />
@@ -236,6 +238,30 @@ export default function StyleguideScreen() {
           </View>
           <View style={{ marginHorizontal: -t.space.md }}>
             <ChipRow options={['All', 'Worship', 'Youth', 'Prayer'] as const} value={chip} onChange={setChip} />
+          </View>
+        </Block>
+
+        <Block title="Faith icons" note="Custom glyphs (AppIcon) for ideas Ionicons lacks. Outline when idle, solid when active.">
+          <View style={[s.row, { flexWrap: 'wrap', gap: t.space.md }]}>
+            {(
+              [
+                ['pray-outline', 'pray', 'Prayer · Amen'],
+                ['church-outline', 'church', 'Church'],
+                ['serve-outline', 'serve', 'Serve'],
+                ['bible-outline', null, 'Bible'],
+                ['skate-outline', null, 'Skating'],
+              ] as const
+            ).map(([outline, solid, label]) => (
+              <View key={outline} style={{ alignItems: 'center', gap: 4, width: 72 }}>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <AppIcon name={outline} size={24} color={t.c.text} />
+                  {solid ? <AppIcon name={solid} size={24} color={t.c.goldText} /> : null}
+                </View>
+                <AppText variant="caption" tone="muted" align="center">
+                  {label}
+                </AppText>
+              </View>
+            ))}
           </View>
         </Block>
 
@@ -367,6 +393,17 @@ export default function StyleguideScreen() {
           </Card>
         </Block>
 
+        <Block title="Logo" note="assets/brand holds the masters; scripts/brand/build-brand.mjs regenerates icons and splash.">
+          <View style={{ gap: t.space.md }}>
+            <Logo layout="horizontal" width={260} />
+            <View style={[s.row, { alignItems: 'flex-end' }]}>
+              <Logo layout="stacked" width={150} />
+              <LogoMark size={64} />
+              <LogoMark size={28} />
+            </View>
+          </View>
+        </Block>
+
         <Block title="Line art">
           <View style={s.wrap}>
             {ART.map(a => (
@@ -388,7 +425,7 @@ export default function StyleguideScreen() {
 
         <Block title="Motion" note={t.reduceMotion ? 'Reduce Motion is on: LightBurst fades only, sheets skip the slide.' : 'With Reduce Motion on, LightBurst fades without scaling.'}>
           <View style={s.row}>
-            <Button title="Play LightBurst" icon="sparkles" onPress={() => setBurst(n => n + 1)} />
+            <Button title="Play LightBurst" icon="play-outline" onPress={() => setBurst(n => n + 1)} />
             <Button title="Open BottomSheet" variant="secondary" onPress={() => setSheet(true)} />
           </View>
           <View style={s.burstStage}>

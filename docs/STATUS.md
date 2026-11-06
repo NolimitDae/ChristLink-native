@@ -1,5 +1,10 @@
 # Feature status — native app (2026-10-15)
 
+> **Update 2026-10-20:** the app no longer uses Supabase or server.js. Every "migration" / RPC / Edge Function /
+> `/api/...` backend entry below is now served by the NestJS backend in `backend/` (contract: docs/BACKEND.md),
+> deployed to Railway staging. The "Needs backend" rows for the wallet link, hidden RSVPs, server pushes and the
+> `price=0` fee bug are done there. Still open: universal links on the website, demo reviewer account, live keys.
+
 Done = built and wired to a real backend route or table. Partial = works with a stated gap. Needs backend = app
 side is done; the server / database step is listed. "Migration" = `supabase/migrations/20261015000000_native_features.sql`
 must be applied (development project first).
@@ -34,7 +39,7 @@ must be applied (development project first).
 | Components: buttons, chips, cards (standard/featured/ticket notches), avatar stack, badges (FREE/LIVE/Starts in), date block, bottom sheet, skeletons, empty states | Done | components/ui/* |
 | /styleguide | Done | app/styleguide.tsx |
 | Floating frosted tab bar, raised gold Host, sliding dot | Done | components/TabBar.tsx |
-| Home: greeting + ring, verse card, Your week, Happening tonight (snap + parallax), Home Church, Pray row, categories with gold hairline | Done | app/(tabs)/index.tsx, components/home/* |
+| Home: greeting + ring, verse card, Your week, Happening tonight (snap + parallax), Home Church, Pray row, category rails | Done | app/(tabs)/index.tsx, components/home/* |
 | Event cards: date block, price chip, meta, friends row, bookmark heart | Done | components/EventCard.tsx |
 | Event detail: stretchy header → frosted bar, 2×2 tiles, who's going, gallery, forum preview, sticky bar | Done | app/event/[id]/index.tsx |
 | Tickets: notched cards, wallet stacking, auto-brightness QR, countdown chip, memory cards | Done | app/(tabs)/tickets.tsx, app/ticket/[id].tsx |
@@ -57,6 +62,9 @@ must be applied (development project first).
 | Prayer Wall (anonymous, filters, I prayed glow + count roll + haptic, answered → testimony post + notify, report/hide) | Done | components/community/* | migration |
 | Daily "N people prayed for you" | Done | — | `queue_prayer_summaries()` + pg_cron |
 | Church pages, Home Church, claims + admin verification, recurring events | Done | app/church/*, components/church/* | migration |
+| Add to calendar (event, ticket, church visit), directions, ticket keep-awake | Done (native sheet needs new build; Google Calendar fallback) | lib/calendar.ts, lib/maps.ts | — |
+| Waitlist (auto-RSVP free, notify paid), instant prayed-for-you push, church visit cards, Google Wallet link | Done (backend on this branch; deploy to staging) | app/event/[id]/index.tsx, components/church/PlanVisitSheet.tsx, PlannedVisits.tsx, app/ticket/[id].tsx | backend/src/modules/waitlist, prayers, churches, payments/google-wallet.ts |
+| Prayer reminders, verse habit dots, kindness nudge, Plan a visit, interests | Done (on device) | components/community/PrayerWall.tsx, lib/streak.ts, lib/kindness.ts, components/church/PlanVisitSheet.tsx, lib/interests.ts | — |
 | Serve: roles, shifts, two-tap sign-up, reminders 24h/2h, QR check-in, roster, message, complete, hours served | Done | app/serve, components/serve/*, app/host/serve.tsx | migration |
 
 ## Phase 4 — native

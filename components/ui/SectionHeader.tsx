@@ -11,21 +11,20 @@ interface SectionHeaderProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** Serif section title with the gold hairline rule. */
+/** Serif section title. Hierarchy comes from type and spacing; an optional action sits at the right edge. */
 export function SectionHeader({ title, eyebrow, actionLabel, onAction, style }: SectionHeaderProps) {
   const t = useTheme();
   return (
     <View style={[styles.wrap, { paddingHorizontal: t.space.md }, style]}>
       {eyebrow ? (
-        <AppText variant="overline" tone="gold" style={{ marginBottom: 2 }}>
+        <AppText variant="label" tone="muted" style={{ marginBottom: 2 }}>
           {eyebrow}
         </AppText>
       ) : null}
       <View style={styles.row}>
-        <AppText variant="title3" numberOfLines={1} style={{ flexShrink: 1 }}>
+        <AppText variant="title2" numberOfLines={1} style={{ flex: 1 }}>
           {title}
         </AppText>
-        <View style={[styles.hairline, { backgroundColor: t.c.goldHairline }]} />
         {actionLabel && onAction ? (
           <Pressable onPress={onAction} hitSlop={10} accessibilityRole="button" accessibilityLabel={`${actionLabel}: ${title}`}>
             <AppText variant="caption" tone="gold">
@@ -41,5 +40,4 @@ export function SectionHeader({ title, eyebrow, actionLabel, onAction, style }: 
 const styles = StyleSheet.create({
   wrap: { marginBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  hairline: { flex: 1, height: StyleSheet.hairlineWidth * 2, opacity: 0.9 },
 });

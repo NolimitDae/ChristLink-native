@@ -274,7 +274,7 @@ export default function ServeManageScreen() {
                   <SectionHeader title="Your churches" style={{ paddingHorizontal: 0, marginTop: t.space.lg }} />
                   <View style={s.group}>
                     {pickChurches.map((c, i) => (
-                      <ListRow key={c.id} icon="business-outline" title={c.name} subtitle={c.city ?? undefined} onPress={() => setTarget({ kind: 'church', id: c.id, name: c.name })} last={i === pickChurches.length - 1} />
+                      <ListRow key={c.id} icon="church-outline" title={c.name} subtitle={c.city ?? undefined} onPress={() => setTarget({ kind: 'church', id: c.id, name: c.name })} last={i === pickChurches.length - 1} />
                     ))}
                   </View>
                 </>

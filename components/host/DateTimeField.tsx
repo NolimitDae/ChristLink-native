@@ -59,7 +59,8 @@ export function DateTimeField({ label, value, onChange, minimumDate, suggested, 
       <AppText variant="caption" tone="muted" style={{ fontSize: 13 }}>
         {label}
       </AppText>
-      {Platform.OS === 'ios' && value ? (
+      {/* iOS and web pick inline (the web uses the browser's date-time input); Android opens its dialogs */}
+      {Platform.OS !== 'android' && value ? (
         <View style={[s.box, error ? { borderColor: t.c.danger } : null]}>
           <Ionicons name="calendar-outline" size={18} color={t.c.goldText} />
           <View style={{ flex: 1 }} />
@@ -77,7 +78,7 @@ export function DateTimeField({ label, value, onChange, minimumDate, suggested, 
         </View>
       ) : (
         <Pressable
-          onPress={() => (Platform.OS === 'ios' ? onChange(base()) : openAndroid())}
+          onPress={() => (Platform.OS !== 'android' ? onChange(base()) : openAndroid())}
           accessibilityRole="button"
           accessibilityLabel={`${label}: ${display}`}
           style={({ pressed }) => [s.box, error ? { borderColor: t.c.danger } : null, { opacity: pressed ? 0.75 : 1 }]}

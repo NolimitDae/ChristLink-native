@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, RefreshControl, View } from 'react-native';
+import { Alert, FlatList, RefreshControl, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
-import { amenPost, deleteCommunityPost, getCommunityPosts } from '../../lib/api';
+import { amenPost, deleteCommunityPost, FEED_PAGE, getCommunityPosts } from '../../lib/api';
 import type { CommunityPost, CommunityReply } from '../../lib/types';
 import { useReport } from '../ReportSheet';
 import { useShareCard } from '../ShareCard';
@@ -13,8 +13,9 @@ import { EmptyState, PostSkeleton, SkeletonGroup } from '../ui';
 import { ActionMenu, type MenuAction } from './ActionMenu';
 import { Composer } from './Composer';
 import { PostCard } from './PostCard';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
-export function FeedView({ bottomPad }: { bottomPad: number }) {
+export function FeedView({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const router = useRouter();
   const { session } = useAuth();
@@ -27,6 +28,8 @@ export function FeedView({ bottomPad }: { bottomPad: number }) {
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [menuPost, setMenuPost] = useState<CommunityPost | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const token = session?.access_token;
   const myId = session?.user.id;
 
@@ -34,6 +37,7 @@ export function FeedView({ bottomPad }: { bottomPad: number }) {
     try {
       const res = await getCommunityPosts(token);
       setPosts(res.posts);
+      setHasMore(res.posts.length >= FEED_PAGE);
       setFailed(false);
     } catch {
       setFailed(true);
@@ -43,6 +47,23 @@ export function FeedView({ bottomPad }: { bottomPad: number }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Next page when the list nears its end; duplicates (posts that shifted since) are dropped
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || !posts) return;
+    setLoadingMore(true);
+    try {
+      const res = await getCommunityPosts(token, undefined, posts.length);
+      const seen = new Set(posts.map(p => p.id));
+      const fresh = res.posts.filter(p => !seen.has(p.id));
+      setPosts(prev => [...(prev ?? []), ...fresh]);
+      setHasMore(fresh.length > 0 && res.posts.length >= FEED_PAGE);
+    } catch {
+      // Keep what's shown; scrolling again retries
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, posts, token]);
 
   const refresh = async () => {
     setRefreshing(true);
@@ -169,6 +190,8 @@ export function FeedView({ bottomPad }: { bottomPad: number }) {
     <>
       <FlatList
         data={visible}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
         keyExtractor={p => p.id}
         renderItem={({ item }) => (
           <PostCard
@@ -183,6 +206,15 @@ export function FeedView({ bottomPad }: { bottomPad: number }) {
         ItemSeparatorComponent={() => <View style={{ height: t.space.sm }} />}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.6}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={{ paddingHorizontal: t.space.md, paddingTop: t.space.sm }}>
+              <PostSkeleton />
+            </View>
+          ) : undefined
+        }
         contentContainerStyle={{ paddingBottom: bottomPad }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"

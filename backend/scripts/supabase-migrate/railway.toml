@@ -1,0 +1,10 @@
+# Temporary Railway service for the one-time data copy (docs/CUTOVER.md). Root directory: /backend/scripts/supabase-migrate
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["/backend/scripts/supabase-migrate/**"]
+
+[deploy]
+startCommand = "node migrate.mjs"
+# Runs once; a failure must not retry by itself
+restartPolicyType = "never"

@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from 'react';
-import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle, type TextInputInstance } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppText } from './AppText';
 
@@ -13,7 +13,7 @@ interface FieldProps extends TextInputProps {
   minHeight?: number;
 }
 
-export const Field = forwardRef<TextInput, FieldProps>(function Field(
+export const Field = forwardRef<TextInputInstance, FieldProps>(function Field(
   { label, hint, error, containerStyle, left, style, multiline, onFocus, onBlur, minHeight, ...rest },
   ref,
 ) {

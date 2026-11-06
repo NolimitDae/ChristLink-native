@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
+import { InSheetContext } from './BottomSheet';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface ListRowProps {
   icon?: IconName;
@@ -18,16 +20,21 @@ interface ListRowProps {
   destructive?: boolean;
   last?: boolean;
   disabled?: boolean;
+  /** An action in a menu (Share, Duplicate, Report…) rather than a link to another screen: no chevron.
+   *  Defaults to true inside a BottomSheet. */
+  action?: boolean;
 }
 
-export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggle, destructive, last, disabled }: ListRowProps) {
+export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggle, destructive, last, disabled, action }: ListRowProps) {
   const t = useTheme();
+  const inSheet = useContext(InSheetContext);
+  const isAction = action ?? inSheet;
   const fg = destructive ? t.c.danger : t.c.text;
   const content = (
     <View style={[styles.row, { borderBottomColor: t.c.border, borderBottomWidth: last ? 0 : StyleSheet.hairlineWidth, opacity: disabled ? 0.5 : 1 }]}>
       {icon ? (
-        <View style={[styles.icon, { backgroundColor: destructive ? t.c.dangerDim : t.c.goldDim }]}>
-          <Ionicons name={icon} size={17} color={destructive ? t.c.danger : t.c.goldText} />
+        <View style={styles.icon}>
+          <AppIcon name={icon} size={20} color={destructive ? t.c.danger : t.c.textMuted} />
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
@@ -57,7 +64,7 @@ export function ListRow({ icon, title, subtitle, value, onPress, toggle, onToggl
           thumbColor="#FFFFFF"
           accessibilityLabel={title}
         />
-      ) : onPress ? (
+      ) : onPress && !isAction ? (
         <Ionicons name="chevron-forward" size={18} color={t.c.textFaint} />
       ) : null}
     </View>
@@ -88,5 +95,6 @@ export function ListGroup({ children, title }: { children: React.ReactNode; titl
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10 },
-  icon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  // Plain line icon in a fixed column so titles align; no tinted tile (gold stays for the few real accents)
+  icon: { width: 28, alignItems: 'center', justifyContent: 'center' },
 });

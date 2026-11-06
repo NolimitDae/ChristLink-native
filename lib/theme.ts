@@ -32,7 +32,32 @@ export interface Palette {
   shadow: string;
   skeleton: string;
   skeletonHighlight: string;
+  /** Over photos, video and the camera: identical in both themes because the backdrop is always dark. */
+  onImage: string;
+  onImageMuted: string;
+  onImageGold: string;
+  onImageHairline: string;
+  onImageBorder: string;
+  /** Dark glass behind chips/buttons on images; `scrimStrong` for panels and gradient ends. */
+  scrim: string;
+  scrimStrong: string;
+  /** Black stage behind the camera and the fullscreen photo viewer. */
+  stage: string;
+  /** Text/icons on live, success and danger fills. */
+  onStatus: string;
 }
+
+const onImage = {
+  onImage: '#F6EFE3',
+  onImageMuted: 'rgba(246,239,227,0.6)',
+  onImageGold: '#D9BC6A',
+  onImageHairline: 'rgba(201,168,76,0.5)',
+  onImageBorder: 'rgba(246,239,227,0.12)',
+  scrim: 'rgba(14,12,10,0.6)',
+  scrimStrong: 'rgba(14,12,10,0.85)',
+  stage: '#000000',
+  onStatus: '#FFFFFF',
+} as const;
 
 export const palettes: Record<Scheme, Palette> = {
   dark: {
@@ -45,7 +70,7 @@ export const palettes: Record<Scheme, Palette> = {
     borderStrong: 'rgba(246,239,227,0.16)',
     text: '#F6EFE3',
     textMuted: '#B3A895',
-    textFaint: '#7C7263',
+    textFaint: '#8F8574',
     gold: '#C9A84C',
     goldPressed: '#B39238',
     goldText: '#D9BC6A',
@@ -62,6 +87,7 @@ export const palettes: Record<Scheme, Palette> = {
     shadow: '#000000',
     skeleton: '#221D18',
     skeletonHighlight: '#2C261F',
+    ...onImage,
   },
   light: {
     bg: '#F7F2E8',
@@ -73,7 +99,7 @@ export const palettes: Record<Scheme, Palette> = {
     borderStrong: 'rgba(28,22,14,0.18)',
     text: '#1C160E',
     textMuted: '#5F5546',
-    textFaint: '#958A78',
+    textFaint: '#726858',
     gold: '#C9A84C',
     goldPressed: '#B39238',
     goldText: '#8A6A1F',
@@ -90,19 +116,21 @@ export const palettes: Record<Scheme, Palette> = {
     shadow: '#5A4A2A',
     skeleton: '#EDE5D6',
     skeletonHighlight: '#F6F0E4',
+    ...onImage,
   },
 };
 
 /**
- * Display serif: DM Serif Display. Text: Loew Next is licensed separately; the brand kit
- * only ships a demo, so the app uses Montserrat until a licensed font file is added.
+ * Titles and verses: Newsreader (Production Type for Google Fonts; a screen-first editorial serif).
+ * Text and UI: Instrument Sans (narrow, quiet grotesque that stays legible at caption sizes).
+ * Both are SIL OFL, bundled with the app. A licensed Loew Next could replace the text face here later.
  */
 export const fonts = {
-  display: 'DMSerifDisplay_400Regular',
-  regular: 'Montserrat_400Regular',
-  medium: 'Montserrat_500Medium',
-  semibold: 'Montserrat_600SemiBold',
-  bold: 'Montserrat_700Bold',
+  display: 'Newsreader_500Medium',
+  regular: 'InstrumentSans_400Regular',
+  medium: 'InstrumentSans_500Medium',
+  semibold: 'InstrumentSans_600SemiBold',
+  bold: 'InstrumentSans_700Bold',
 } as const;
 
 export type TypeVariant =
@@ -116,22 +144,32 @@ export type TypeVariant =
   | 'callout'
   | 'caption'
   | 'overline'
+  | 'label'
   | 'button'
   | 'numeral';
 
+/**
+ * Sizes follow the iOS Human Interface Guidelines' default (Large) Dynamic Type ramp: Large Title 34/41,
+ * Title 1 28/34, Title 2 22/28, Title 3 20/25, Headline + Body 17/22, Subhead 15/20, Footnote 13/18, Caption 12/16.
+ * Serif titles get slightly negative tracking as they grow; text sizes stay at 0. AppText scales them with Dynamic Type.
+ */
 export const type: Record<TypeVariant, TextStyle> = {
-  display: { fontFamily: fonts.display, fontSize: 36, lineHeight: 42, letterSpacing: -0.3 },
-  title1: { fontFamily: fonts.display, fontSize: 30, lineHeight: 36, letterSpacing: -0.2 },
-  title2: { fontFamily: fonts.display, fontSize: 24, lineHeight: 30 },
-  title3: { fontFamily: fonts.display, fontSize: 20, lineHeight: 26 },
-  headline: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 22 },
-  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
-  bodyStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 22 },
-  callout: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 20 },
+  display: { fontFamily: fonts.display, fontSize: 34, lineHeight: 41, letterSpacing: -0.4 },
+  title1: { fontFamily: fonts.display, fontSize: 28, lineHeight: 34, letterSpacing: -0.3 },
+  title2: { fontFamily: fonts.display, fontSize: 22, lineHeight: 28, letterSpacing: -0.2 },
+  title3: { fontFamily: fonts.display, fontSize: 20, lineHeight: 25, letterSpacing: -0.1 },
+  headline: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22 },
+  body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 22 },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22 },
+  /** Subhead: secondary lines, card text. */
+  callout: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 20 },
   caption: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
-  overline: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, letterSpacing: 1.4, textTransform: 'uppercase' },
-  button: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20, letterSpacing: 0.2 },
-  numeral: { fontFamily: fonts.display, fontSize: 28, lineHeight: 32 },
+  /** All caps: conventions only (event type kicker, calendar month, ticket stub, badges, settings groups). */
+  overline: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, letterSpacing: 1.2, textTransform: 'uppercase' },
+  /** Footnote-size, sentence-case card and section labels ("Verse of the day", "Who's going"); the default over `overline`. */
+  label: { fontFamily: fonts.semibold, fontSize: 13, lineHeight: 18 },
+  button: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22 },
+  numeral: { fontFamily: fonts.display, fontSize: 28, lineHeight: 34, letterSpacing: -0.3 },
 };
 
 /** 8-point spacing scale (with a 4pt half step). */
@@ -154,6 +192,14 @@ export const radius = {
   xl: 28,
   pill: 999,
 } as const;
+
+/**
+ * Concentric corners (HIG): a shape nested inside another, inset by `inset`, takes the outer radius minus the inset,
+ * so both curves share one center. A small floor keeps deep insets from turning into sharp corners.
+ */
+export function concentric(outer: number, inset: number, min = 4): number {
+  return Math.max(outer - inset, min);
+}
 
 export const motion = {
   fast: 150,
@@ -186,7 +232,7 @@ export function buildTheme(scheme: Scheme, reduceMotion: boolean): Theme {
   return { scheme, c: palettes[scheme], type, space, radius, motion, fonts, reduceMotion };
 }
 
-export function resolveScheme(preference: ThemePreference, system: Scheme | null | undefined): Scheme {
+export function resolveScheme(preference: ThemePreference, system: string | null | undefined): Scheme {
   if (preference === 'system') return system === 'light' ? 'light' : 'dark';
   return preference;
 }

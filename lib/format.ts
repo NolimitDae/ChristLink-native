@@ -117,8 +117,8 @@ export function eventFormatLabel(format?: string | null): string {
 }
 
 export function weekDays(now = new Date()): Date[] {
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Array.from({ length: 7 }, (_, i) => new Date(start.getTime() + i * DAY));
+  // Calendar days, not 24h steps: a 24h step lands on the same date on the day clocks fall back.
+  return Array.from({ length: 7 }, (_, i) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + i));
 }
 
 export function sameDay(a: Date, iso?: string | null): boolean {

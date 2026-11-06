@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, View, type ListRenderItemInfo } from 'react-native';
+import { FlatList, RefreshControl, View, type ListRenderItemInfo, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -9,6 +9,7 @@ import type { Church } from '../../lib/types';
 import { Button, EmptyState, Field, SkeletonGroup } from '../ui';
 import { ChurchRow, ChurchRowSkeleton } from '../church/ChurchRow';
 import { errorMessage, isNotSetUp } from '../church/churchFormat';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 type Load = { kind: 'loading' } | { kind: 'ready'; churches: Church[] } | { kind: 'error'; message: string } | { kind: 'notSetUp' };
 
@@ -16,7 +17,7 @@ function Separator() {
   return <View style={{ height: 10 }} />;
 }
 
-export function ChurchesTab({ bottomInset }: { bottomInset: number }) {
+export function ChurchesTab({ bottomInset, onScroll = onScrollTabBar }: { bottomInset: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const router = useRouter();
   const { session } = useAuth();
@@ -92,6 +93,8 @@ export function ChurchesTab({ bottomInset }: { bottomInset: number }) {
       ) : (
         <FlatList
           data={state.churches}
+          onScroll={onScroll}
+          scrollEventThrottle={32}
           keyExtractor={c => c.id}
           contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}
           ItemSeparatorComponent={Separator}

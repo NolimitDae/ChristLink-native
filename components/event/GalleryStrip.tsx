@@ -31,13 +31,14 @@ export function GalleryStrip({ urls }: { urls: string[] }) {
 }
 
 function GalleryViewer({ urls, index, onClose }: { urls: string[]; index: number | null; onClose: () => void }) {
+  const t = useTheme();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState(0);
   return (
     <Modal visible={index !== null} animationType="fade" onRequestClose={onClose} statusBarTranslucent onShow={() => setPage(index ?? 0)}>
       <StatusBar style="light" />
-      <View style={styles.viewer}>
+      <View style={[styles.viewer, { backgroundColor: t.c.stage }]}>
         {index !== null ? (
           <FlatList
             data={urls}
@@ -62,7 +63,7 @@ function GalleryViewer({ urls, index, onClose }: { urls: string[]; index: number
           />
         ) : null}
         <View style={[styles.viewerTop, { top: insets.top + 8 }]}>
-          <AppText variant="callout" color="#F6EFE3">
+          <AppText variant="callout" color={t.c.onImage}>
             {page + 1} / {urls.length}
           </AppText>
           <IconButton icon="close" label="Close photos" tone="glass" onPress={onClose} />
@@ -74,6 +75,6 @@ function GalleryViewer({ urls, index, onClose }: { urls: string[]; index: number
 
 const styles = StyleSheet.create({
   thumb: { width: 128, height: 96, overflow: 'hidden' },
-  viewer: { flex: 1, backgroundColor: '#000000' },
+  viewer: { flex: 1 },
   viewerTop: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });

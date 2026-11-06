@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, ScrollView, StyleSheet, View, type ListRenderItemInfo } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, StyleSheet, View, type ListRenderItemInfo, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useFriendsGoing } from '../../hooks/useFriendsGoing';
@@ -8,9 +8,10 @@ import { EVENT_TYPES, type EventType } from '../../lib/constants';
 import { isWithinDays } from '../../lib/format';
 import type { Event } from '../../lib/types';
 import { EventCard } from '../EventCard';
-import { Chip, ChipRow, EmptyState, Field, ListSkeleton } from '../ui';
+import { Appear, Chip, ChipRow, EmptyState, Field, ListSkeleton } from '../ui';
 import { errorMessage } from '../church/churchFormat';
 import { useUserLocation, type Coords } from './useUserLocation';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 type Price = 'any' | 'free' | 'paid';
 
@@ -23,7 +24,7 @@ function toEventType(v?: string): EventType {
   return match ?? 'All';
 }
 
-export function EventsTab({ initialType, bottomInset }: { initialType?: string; bottomInset: number }) {
+export function EventsTab({ initialType, bottomInset, onScroll = onScrollTabBar }: { initialType?: string; bottomInset: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const location = useUserLocation('Turn on location to see worship nights, studies and gatherings within about 50 miles of you.');
   const [query, setQuery] = useState('');
@@ -133,6 +134,8 @@ export function EventsTab({ initialType, bottomInset }: { initialType?: string; 
       ) : (
         <FlatList
           data={visible}
+          onScroll={onScroll}
+          scrollEventThrottle={32}
           keyExtractor={e => e.id}
           contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}
           ItemSeparatorComponent={Separator}
@@ -149,7 +152,16 @@ export function EventsTab({ initialType, bottomInset }: { initialType?: string; 
               colors={[t.c.gold]}
             />
           }
-          renderItem={({ item }: ListRenderItemInfo<Event>) => <EventCard event={item} variant="row" friends={friends[item.id]} />}
+          renderItem={({ item, index }: ListRenderItemInfo<Event>) =>
+            // Only the first screenful settles in; rows scrolled into view later just appear
+            index < 6 ? (
+              <Appear index={index}>
+                <EventCard event={item} variant="row" friends={friends[item.id]} />
+              </Appear>
+            ) : (
+              <EventCard event={item} variant="row" friends={friends[item.id]} />
+            )
+          }
           ListEmptyComponent={
             filtersActive ? (
               <EmptyState
@@ -171,6 +183,6 @@ export function EventsTab({ initialType, bottomInset }: { initialType?: string; 
 }
 
 const styles = StyleSheet.create({
-  filterBar: { flexGrow: 0, marginTop: 12, marginBottom: 8 },
+  filterBar: { flexGrow: 0, flexShrink: 0, marginTop: 12, marginBottom: 8 },
   filters: { gap: 8, paddingHorizontal: 16 },
 });

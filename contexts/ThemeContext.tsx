@@ -51,7 +51,7 @@ export function useTheme(): Theme {
  * Theme-aware StyleSheet: define styles once at module scope with `makeStyles(t => ({...}))`
  * and call the returned hook inside the component.
  */
-export function makeStyles<T extends StyleSheet.NamedStyles<T>>(factory: (t: Theme) => T) {
+export function makeStyles<T extends Parameters<typeof StyleSheet.create>[0]>(factory: (t: Theme) => T) {
   const cache = new Map<string, T>();
   return function useStyles(): T {
     const t = useTheme();

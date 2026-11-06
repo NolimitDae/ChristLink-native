@@ -7,6 +7,7 @@ watchPatterns = ["backend/**"]
 [deploy]
 # Runs once per deploy before the new container starts; a failed migration aborts the deploy.
 preDeployCommand = ["npx prisma migrate deploy"]
+# Both the API and the worker service use this file; the worker sets ROLE=worker (see README)
 startCommand = "node dist/src/main"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300

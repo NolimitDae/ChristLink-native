@@ -1,0 +1,14 @@
+# Root build context (Dockerfile.web). The backend has its own Dockerfile and context (backend/).
+node_modules
+backend
+dist
+dist-web
+coverage
+.git
+.expo
+ios
+android
+supabase
+docs
+**/*.log
+.env*

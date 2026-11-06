@@ -1,11 +1,12 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { haptic } from '../../lib/haptics';
 import { AppText } from './AppText';
+import { PressScale } from './PressScale';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface ChipProps {
   label: string;
@@ -20,7 +21,7 @@ export function Chip({ label, selected = false, onPress, icon, style, count }: C
   const t = useTheme();
   const fg = selected ? t.c.onGold : t.c.text;
   return (
-    <Pressable
+    <PressScale
       onPress={() => {
         haptic.tap();
         onPress?.();
@@ -28,17 +29,18 @@ export function Chip({ label, selected = false, onPress, icon, style, count }: C
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
-      style={({ pressed }) => [
+      hitSlop={4}
+      scaleTo={0.95}
+      style={[
         styles.chip,
         {
           backgroundColor: selected ? t.c.gold : t.c.surface,
           borderColor: selected ? t.c.gold : t.c.border,
-          opacity: pressed ? 0.75 : 1,
         },
         style,
       ]}
     >
-      {icon ? <Ionicons name={icon} size={14} color={selected ? t.c.onGold : t.c.goldText} /> : null}
+      {icon ? <AppIcon name={icon} size={14} color={selected ? t.c.onGold : t.c.goldText} /> : null}
       <AppText variant="caption" color={fg} style={{ fontSize: 13 }}>
         {label}
       </AppText>
@@ -47,7 +49,7 @@ export function Chip({ label, selected = false, onPress, icon, style, count }: C
           {count}
         </AppText>
       ) : null}
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -61,7 +63,7 @@ interface ChipRowProps<T extends string> {
 
 export function ChipRow<T extends string>({ options, value, onChange, labels, style }: ChipRowProps<T>) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.row, style]}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.bar} contentContainerStyle={[styles.row, style]}>
       {options.map(o => (
         <Chip key={o} label={labels?.[o] ?? o} selected={o === value} onPress={() => onChange(o)} />
       ))}
@@ -71,6 +73,8 @@ export function ChipRow<T extends string>({ options, value, onChange, labels, st
 }
 
 const styles = StyleSheet.create({
+  // Never squeezed by a flex column (react-native-web shrinks scroll views by default)
+  bar: { flexGrow: 0, flexShrink: 0 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',

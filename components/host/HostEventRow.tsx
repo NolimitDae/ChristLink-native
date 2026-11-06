@@ -1,13 +1,13 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { formatDateShort, formatTime } from '../../lib/format';
 import { locationLabel, priceLabel } from '../../lib/eventHelpers';
 import type { Event } from '../../lib/types';
 import { AppText, Badge, DateBlock, IconButton, TimingBadge } from '../ui';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 export interface RowAction {
   key: string;
@@ -69,7 +69,7 @@ export function HostEventRow({ event, actions, onOpen, onMore }: HostEventRowPro
               accessibilityLabel={`${a.label}: ${event.name}`}
               style={({ pressed }) => [s.action, a.primary && { backgroundColor: t.c.gold, borderColor: t.c.gold }, { opacity: pressed ? 0.75 : 1 }]}
             >
-              <Ionicons name={a.icon} size={15} color={a.primary ? t.c.onGold : t.c.goldText} />
+              <AppIcon name={a.icon} size={15} color={a.primary ? t.c.onGold : t.c.goldText} />
               <AppText variant="caption" color={a.primary ? t.c.onGold : t.c.text}>
                 {a.label}
               </AppText>

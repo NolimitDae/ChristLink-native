@@ -4,10 +4,12 @@ import { Platform } from 'react-native';
 import { logger } from './logger';
 import { savePushToken } from './features';
 import { storage } from './storage';
+import { dailyReminderTimes, prayerReminderContent, prayerReminderKey } from './reminderTimes';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -37,8 +39,24 @@ async function ensureAndroidChannel(): Promise<void> {
   });
 }
 
+function easProjectId(): string | null {
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+  return projectId && UUID.test(projectId) ? projectId : null;
+}
+
+/** This device's Expo push token without prompting; null without permission, project id or network. */
+export async function currentPushToken(): Promise<string | null> {
+  try {
+    const projectId = easProjectId();
+    if (!projectId || (await notificationPermissionStatus()) !== 'granted') return null;
+    return (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Registers the device for remote push and stores the Expo push token in Supabase (push_tokens).
+ * Registers the device for remote push and stores the Expo push token on the API (push_tokens).
  * Only asks for permission when `prompt` is true, so the system dialog appears after we explain why.
  */
 export async function registerForPushNotifications(prompt = false): Promise<string | null> {
@@ -47,8 +65,8 @@ export async function registerForPushNotifications(prompt = false): Promise<stri
     if (!granted) return null;
     await ensureAndroidChannel();
 
-    const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
-    if (!projectId || !UUID.test(projectId)) {
+    const projectId = easProjectId();
+    if (!projectId) {
       logger.info('Remote push disabled: set extra.eas.projectId in app.json (run `eas init`).');
       return null;
     }
@@ -119,14 +137,18 @@ export function addNotificationReceivedListener(
   return Notifications.addNotificationReceivedListener(handler);
 }
 
-export function addNotificationResponseListener(
-  handler: (response: Notifications.NotificationResponse) => void,
-): Notifications.Subscription {
-  return Notifications.addNotificationResponseReceivedListener(handler);
-}
+/** Latest notification tap, including the one that cold-started the app (a listener misses that one). */
+export const useLastNotificationResponse = Notifications.useLastNotificationResponse;
 
-export function removeSubscription(subscription: Notifications.Subscription): void {
-  Notifications.removeNotificationSubscription(subscription);
+/** Admin tool: send a test push straight to this device through Expo's push service. */
+export async function sendTestPush(expoToken: string): Promise<{ ok: boolean; status: number; body: string }> {
+  const res = await fetch('https://exp.host/--/api/v2/push/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ to: expoToken, title: 'Test from Christ Link Social', body: 'Push is working ✓', data: {} }),
+  });
+  const body = await res.text();
+  return { ok: res.ok && !/"status"\s*:\s*"error"/.test(body), status: res.status, body };
 }
 
 export async function setBadgeCount(count: number): Promise<void> {
@@ -143,4 +165,43 @@ export function routeForNotification(data: Record<string, unknown> | null | unde
   if (str('churchId')) return `/church/${str('churchId')}`;
   if (str('shiftId')) return '/serve';
   return '/notifications';
+}
+
+/**
+ * Local "pray for this today" reminders at 9am for `days` days. Asks for notification permission here, right after
+ * the person tapped "Remind me", so the prompt has context. Returns 'denied' when notifications are off.
+ */
+export async function schedulePrayerReminders(
+  prayer: { id: string; body: string; author_name?: string | null; is_anonymous?: boolean },
+  days: number,
+): Promise<'scheduled' | 'denied'> {
+  if (!(await requestNotificationPermissions())) return 'denied';
+  await ensureAndroidChannel();
+  const key = prayerReminderKey(prayer.id);
+  await cancelReminders(key);
+  const content = prayerReminderContent(prayer);
+  const ids: string[] = [];
+  for (const at of dailyReminderTimes(days)) {
+    ids.push(
+      await Notifications.scheduleNotificationAsync({
+        content: { ...content, data: { prayerId: prayer.id } },
+        trigger: { date: at, channelId: 'default' } as Notifications.NotificationTriggerInput,
+      }),
+    );
+  }
+  const map = await storage.getReminderMap();
+  map[key] = ids;
+  await storage.setReminderMap(map);
+  return 'scheduled';
+}
+
+/** Keys of reminders still pending on this device (e.g. prayer:<id>); keys whose reminders all fired are dropped. */
+export async function scheduledReminderKeys(): Promise<Set<string>> {
+  try {
+    const [map, pending] = await Promise.all([storage.getReminderMap(), Notifications.getAllScheduledNotificationsAsync()]);
+    const live = new Set(pending.map(n => n.identifier));
+    return new Set(Object.keys(map).filter(k => map[k].some(id => live.has(id))));
+  } catch {
+    return new Set();
+  }
 }

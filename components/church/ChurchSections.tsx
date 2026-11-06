@@ -8,16 +8,16 @@ import type { Church, ChurchRecurringEvent, ServeShift } from '../../lib/types';
 import { Avatar } from '../Avatar';
 import { AppText } from '../ui';
 import { serviceTimeLabel } from './churchFormat';
+import { AppIcon } from '../icons/AppIcon';
 
 export function Section({ title, action, onAction, children }: { title: string; action?: string; onAction?: () => void; children: React.ReactNode }) {
   const t = useTheme();
   return (
     <View style={{ gap: t.space.sm }}>
       <View style={styles.sectionHead}>
-        <AppText variant="title3" style={{ flexShrink: 1 }}>
+        <AppText variant="title2" style={{ flex: 1 }}>
           {title}
         </AppText>
-        <View style={[styles.hairline, { backgroundColor: t.c.goldHairline }]} />
         {action && onAction ? (
           <Pressable onPress={onAction} hitSlop={12} accessibilityRole="button" accessibilityLabel={`${action}: ${title}`}>
             <AppText variant="caption" tone="gold">
@@ -70,8 +70,8 @@ export function RecurringList({ recurring }: { recurring: ChurchRecurringEvent[]
               accessible
               accessibilityLabel={`${r.name}. ${describeRule(r)}${next ? `. Next ${next.toDateString()}` : ''}`}
             >
-              <View style={[styles.icon, { backgroundColor: t.c.goldDim }]}>
-                <Ionicons name="repeat" size={16} color={t.c.goldText} />
+              <View style={styles.icon}>
+                <Ionicons name="repeat" size={20} color={t.c.textMuted} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <AppText variant="bodyStrong">{r.name}</AppText>
@@ -141,8 +141,8 @@ export function ServeHere({ shifts, onOpen }: { shifts: ServeShift[]; onOpen: ()
                 { borderBottomColor: t.c.border, borderBottomWidth: i === arr.length - 1 ? 0 : StyleSheet.hairlineWidth, opacity: pressed ? 0.7 : 1 },
               ]}
             >
-              <View style={[styles.icon, { backgroundColor: t.c.goldDim }]}>
-                <Ionicons name="hand-left-outline" size={16} color={t.c.goldText} />
+              <View style={styles.icon}>
+                <AppIcon name="serve-outline" size={20} color={t.c.textMuted} />
               </View>
               <View style={{ flex: 1, gap: 2 }}>
                 <AppText variant="bodyStrong">{s.role_name}</AppText>
@@ -163,12 +163,11 @@ export function ServeHere({ shifts, onOpen }: { shifts: ServeShift[]; onOpen: ()
 
 const styles = StyleSheet.create({
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  hairline: { flex: 1, height: StyleSheet.hairlineWidth * 2 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1 },
   group: { borderWidth: 1, paddingHorizontal: 14 },
   groupRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, minHeight: 56 },
-  icon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  icon: { width: 28, alignItems: 'center', justifyContent: 'center' },
   leaders: { gap: 8 },
   leader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderWidth: 1 },
 });

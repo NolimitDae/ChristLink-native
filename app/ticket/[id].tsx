@@ -1,23 +1,27 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Linking, Platform, ScrollView, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Brightness from 'expo-brightness';
+import { useKeepAwake } from 'expo-keep-awake';
 import QRCode from 'react-native-qrcode-svg';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
-import { getMyTickets, requestRefund } from '../../lib/api';
+import { ApiError, getGoogleWalletLink, getMyTickets, getWalletLink, requestRefund } from '../../lib/api';
 import { storage } from '../../lib/storage';
 import { logger } from '../../lib/logger';
 import { buildTicketQr, ticketShortCode } from '../../lib/qr';
 import { formatCents } from '../../lib/fees';
 import { formatDateLong, formatTimeRange } from '../../lib/format';
 import { haptic } from '../../lib/haptics';
+import { addToCalendar } from '../../lib/calendar';
+import { openInMaps } from '../../lib/maps';
+import { eventShareUrl } from '../../lib/eventHelpers';
 import { shadow } from '../../lib/theme';
 import type { Ticket } from '../../lib/types';
-import { AppText, Badge, BottomSheet, Button, EmptyState, Field, IconButton, Skeleton, SkeletonGroup } from '../../components/ui';
+import { AppText, Badge, BottomSheet, Button, EmptyState, Field, IconButton, Skeleton, SkeletonGroup, TicketPerforation } from '../../components/ui';
 import { MONO_FONT } from '../../components/tickets/WalletTicketCard';
 
 const QR_SIZE = 240;
@@ -37,7 +41,7 @@ function useFullBrightness() {
     useCallback(() => {
       let active = true;
       let previous: number | null = null;
-      (async () => {
+      const raised = (async () => {
         try {
           const current = await Brightness.getBrightnessAsync();
           if (!active) return;
@@ -49,7 +53,10 @@ function useFullBrightness() {
       })();
       return () => {
         active = false;
-        if (previous !== null) Brightness.setBrightnessAsync(previous).catch(() => undefined);
+        // Restore only after the raise settles, or a late setBrightnessAsync(1) would win.
+        raised.then(() => {
+          if (previous !== null) Brightness.setBrightnessAsync(previous).catch(() => undefined);
+        });
       };
     }, []),
   );
@@ -71,6 +78,8 @@ export default function TicketScreen() {
   const [refundBusy, setRefundBusy] = useState(false);
 
   useFullBrightness();
+  // Door lines are slow; don't let the screen lock while the QR is up.
+  useKeepAwake();
 
   useEffect(() => {
     let cancelled = false;
@@ -101,6 +110,29 @@ export default function TicketScreen() {
   }, [id, token]);
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/tickets'));
+
+  const [walletBusy, setWalletBusy] = useState(false);
+  const addToWallet = async () => {
+    if (!ticket || !token || walletBusy) return;
+    setWalletBusy(true);
+    try {
+      // Signed short-lived URL: Safari hands the .pkpass to Wallet without needing our bearer token.
+      const { url } = await (Platform.OS === 'ios' ? getWalletLink(ticket.id, token) : getGoogleWalletLink(ticket.id, token));
+      await Linking.openURL(url);
+    } catch (err) {
+      const name = Platform.OS === 'ios' ? 'Apple Wallet' : 'Google Wallet';
+      showToast(
+        err instanceof ApiError && (err.status === 503 || err.status === 404) && /not configured|Cannot GET/.test(err.message)
+          ? `${name} passes are coming soon — your QR code works at the door`
+          : err instanceof Error
+            ? err.message
+            : `Could not open ${name}`,
+        'error',
+      );
+    } finally {
+      setWalletBusy(false);
+    }
+  };
 
   const submitRefund = async () => {
     if (!ticket || !token || refundBusy) return;
@@ -167,6 +199,30 @@ export default function TicketScreen() {
   const usable = ticket.status === 'confirmed';
   const typeName = ticket.ticket_type_name ?? ticket.ticket_types?.name ?? 'General admission';
   const time = formatTimeRange(ticket.event_start_date, ticket.event_end_date);
+  const venue = [ticket.event_venue_name, ticket.event_city].filter(Boolean).join(', ');
+
+  const saveToCalendar = async () => {
+    if (!ticket.event_start_date) return;
+    try {
+      const result = await addToCalendar({
+        title: ticket.event_name ?? 'Event',
+        start: ticket.event_start_date,
+        end: ticket.event_end_date,
+        location: venue || null,
+        notes: `Ticket ${code} · ${typeName} × ${ticket.quantity}`,
+        url: eventShareUrl(ticket.event_id),
+      });
+      if (result === 'saved') {
+        haptic.success();
+        showToast('Added to your calendar', 'success');
+      }
+    } catch {
+      showToast('Could not open your calendar', 'error');
+    }
+  };
+
+  const directions = () =>
+    openInMaps({ parts: [ticket.event_venue_name, ticket.event_city] }, { directions: true }).catch(() => showToast('Could not open maps', 'error'));
 
   return (
     <View style={s.root}>
@@ -182,9 +238,9 @@ export default function TicketScreen() {
               {formatDateLong(ticket.event_start_date)}
               {time ? ` · ${time}` : ''}
             </AppText>
-            {ticket.event_venue_name || ticket.event_city ? (
+            {venue ? (
               <AppText variant="callout" tone="muted" align="center">
-                {[ticket.event_venue_name, ticket.event_city].filter(Boolean).join(', ')}
+                {venue}
               </AppText>
             ) : null}
 
@@ -213,11 +269,7 @@ export default function TicketScreen() {
             </AppText>
           </View>
 
-          <View style={s.perfRow}>
-            <View style={[s.notch, s.notchLeft, { backgroundColor: t.c.bg, borderColor: t.c.goldHairline }]} />
-            <View style={[s.dash, { borderColor: t.c.border }]} />
-            <View style={[s.notch, s.notchRight, { backgroundColor: t.c.bg, borderColor: t.c.goldHairline }]} />
-          </View>
+          <TicketPerforation size={NOTCH} />
 
           <View style={s.passBottom}>
             <View style={{ flex: 1 }}>
@@ -238,6 +290,22 @@ export default function TicketScreen() {
         </View>
 
         <View style={s.actions}>
+          {upcoming && usable ? (
+            <View style={s.quick}>
+              <Button title="Calendar" icon="calendar-outline" variant="secondary" size="md" onPress={saveToCalendar} style={{ flex: 1 }} />
+              {venue ? <Button title="Directions" icon="navigate-outline" variant="secondary" size="md" onPress={directions} style={{ flex: 1 }} /> : null}
+            </View>
+          ) : null}
+          {(Platform.OS === 'ios' || Platform.OS === 'android') && token && ticket.status === 'confirmed' ? (
+            <Button
+              title={Platform.OS === 'ios' ? 'Add to Apple Wallet' : 'Add to Google Wallet'}
+              icon="wallet-outline"
+              variant="secondary"
+              onPress={addToWallet}
+              loading={walletBusy}
+              fullWidth
+            />
+          ) : null}
           <Button title="View event" icon="calendar-outline" variant="secondary" onPress={() => router.push(`/event/${ticket.event_id}`)} fullWidth />
           {canRefund && token ? (
             <Button title="Request refund" icon="return-down-back-outline" variant="ghost" onPress={() => setRefundOpen(true)} fullWidth />
@@ -280,12 +348,8 @@ const useStyles = makeStyles(t => ({
   passTop: { paddingHorizontal: t.space.lg, paddingTop: t.space.lg, paddingBottom: t.space.md, alignItems: 'stretch' },
   qrFrame: { alignSelf: 'center', marginTop: t.space.lg, padding: 6, borderRadius: t.radius.lg + 6, borderWidth: 1 },
   qrCard: { backgroundColor: QR_WHITE, padding: t.space.md, borderRadius: t.radius.lg },
-  perfRow: { height: NOTCH, flexDirection: 'row', alignItems: 'center' },
-  notch: { width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2, borderWidth: 1 },
-  notchLeft: { marginLeft: -NOTCH / 2 - 1 },
-  notchRight: { marginRight: -NOTCH / 2 - 1 },
-  dash: { flex: 1, borderTopWidth: 1.5, borderStyle: 'dashed', marginHorizontal: 6 },
   passBottom: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: t.space.lg, paddingTop: t.space.xs, paddingBottom: t.space.lg, gap: t.space.md },
+  quick: { flexDirection: 'row', gap: t.space.xs },
   actions: { marginTop: t.space.lg, gap: t.space.xs },
   note: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: t.space.md },
 }));

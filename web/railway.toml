@@ -1,0 +1,14 @@
+# Railway service "ChristLink-Web" (the website). Settings → Source: this repo, root directory "/" (repo root),
+# Config-as-code path "web/railway.toml". Runbook: docs/CUTOVER.md.
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.web"
+# The website rebuilds on app or web changes, not on backend-only commits
+watchPatterns = ["app/**", "components/**", "contexts/**", "hooks/**", "lib/**", "assets/**", "public/**", "web/**", "web-preview/**", "package.json", "package-lock.json", "app.json", "metro.config.js", "babel.config.js", "Dockerfile.web"]
+
+[deploy]
+startCommand = "node server.mjs"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

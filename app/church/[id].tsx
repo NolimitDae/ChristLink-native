@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Image, Linking, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, Pressable, RefreshControl, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,7 +15,10 @@ import { AppText, BottomSheet, Button, EmptyState, IconButton, ListRow, Screen, 
 import { ChurchLogo, VerifiedMark } from '../../components/church/ChurchRow';
 import { Leaders, RecurringList, Section, ServeHere, ServiceTimes } from '../../components/church/ChurchSections';
 import { useChurchPage } from '../../components/church/useChurchPage';
-import { errorMessage } from '../../components/church/churchFormat';
+import { errorMessage, visitOptions } from '../../components/church/churchFormat';
+import { PlanVisitSheet } from '../../components/church/PlanVisitSheet';
+import { PlannedVisits } from '../../components/church/PlannedVisits';
+import { openInMaps } from '../../lib/maps';
 import { setFollowChurch, updateSettings } from '../../lib/features';
 import { SITE_URL } from '../../lib/constants';
 import { haptic } from '../../lib/haptics';
@@ -61,6 +64,8 @@ export default function ChurchScreen() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [followBusy, setFollowBusy] = useState(false);
   const [homeBusy, setHomeBusy] = useState(false);
+  const [visitOpen, setVisitOpen] = useState(false);
+  const visits = useMemo(() => (state.kind === 'ready' ? visitOptions(state.church, recurring) : []), [state, recurring]);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/explore?tab=churches'));
 
@@ -140,9 +145,7 @@ export default function ChurchScreen() {
   };
 
   const openMaps = () => {
-    const q = encodeURIComponent(address || church.name);
-    const url = Platform.OS === 'ios' ? `https://maps.apple.com/?q=${q}` : `geo:0,0?q=${q}`;
-    Linking.openURL(url).catch(() => showToast('Couldn’t open maps on this device', 'error'));
+    openInMaps({ parts: [address || church.name] }).catch(() => showToast('Couldn’t open maps on this device', 'error'));
   };
 
   const openWeb = (url: string) => {
@@ -226,6 +229,9 @@ export default function ChurchScreen() {
               ) : null}
               <IconButton icon="share-outline" label="Share church page" size={48} onPress={share} />
             </View>
+            {!isHome && visits.length > 0 ? (
+              <Button title="Plan a visit" icon="calendar-outline" variant="secondary" onPress={() => setVisitOpen(true)} fullWidth />
+            ) : null}
             {isHome ? (
               <View style={[styles.homeBadge, { backgroundColor: t.c.goldDim, borderColor: t.c.goldHairline, borderRadius: t.radius.pill }]} accessible accessibilityLabel="This is your Home Church">
                 <Ionicons name="home" size={16} color={t.c.goldText} />
@@ -240,6 +246,8 @@ export default function ChurchScreen() {
               <Button title="Manage page" icon="create-outline" variant="ghost" onPress={() => router.push(`/church/edit?id=${church.id}`)} fullWidth />
             ) : null}
           </View>
+
+          {canManage ? <PlannedVisits churchId={church.id} /> : null}
 
           <ServiceTimes church={church} recurring={recurring} />
           <RecurringList recurring={recurring} />
@@ -319,6 +327,9 @@ export default function ChurchScreen() {
           }}
         />
       </BottomSheet>
+      {visits.length > 0 ? (
+        <PlanVisitSheet visible={visitOpen} onClose={() => setVisitOpen(false)} church={church} address={address} options={visits} shareUrl={shareUrl} />
+      ) : null}
       {report.sheet}
     </View>
   );

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, SectionList, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, SectionList, StyleSheet, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -11,6 +11,8 @@ import { errorMessage, isNotSetUp } from '../church/churchFormat';
 import { ShiftCard, shiftPlace } from '../serve/ShiftCard';
 import { SpotsBar } from '../serve/SpotsBar';
 import { useShiftActions } from '../serve/useShiftActions';
+import { AppIcon } from '../icons/AppIcon';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 type Load = { kind: 'loading' } | { kind: 'ready' } | { kind: 'error'; message: string } | { kind: 'notSetUp' };
 
@@ -18,7 +20,7 @@ function Separator() {
   return <View style={{ height: 12 }} />;
 }
 
-export function ServeTab({ bottomInset, onFindChurch }: { bottomInset: number; onFindChurch: () => void }) {
+export function ServeTab({ bottomInset, onFindChurch, onScroll = onScrollTabBar }: { bottomInset: number; onFindChurch: () => void; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
   const router = useRouter();
   const [shifts, setShifts] = useState<ServeShift[]>([]);
@@ -78,6 +80,8 @@ export function ServeTab({ bottomInset, onFindChurch }: { bottomInset: number; o
     <View style={{ flex: 1 }}>
       <SectionList
         sections={sections}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
         keyExtractor={s => s.shift_id}
         contentContainerStyle={{ padding: t.space.md, paddingBottom: bottomInset, flexGrow: 1 }}
         ItemSeparatorComponent={Separator}
@@ -104,7 +108,7 @@ export function ServeTab({ bottomInset, onFindChurch }: { bottomInset: number; o
               { backgroundColor: t.c.goldDim, borderColor: t.c.goldHairline, borderRadius: t.radius.md, opacity: pressed ? 0.8 : 1 },
             ]}
           >
-            <Ionicons name="hand-left-outline" size={18} color={t.c.goldText} />
+            <AppIcon name="serve-outline" size={18} color={t.c.goldText} />
             <AppText variant="bodyStrong" tone="gold" style={{ flex: 1 }}>
               My shifts & hours
             </AppText>

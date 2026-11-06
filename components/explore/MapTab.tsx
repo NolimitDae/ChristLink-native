@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, type MapStyleElement, type Region } from 'react-native-maps';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useFriendsGoing } from '../../hooks/useFriendsGoing';
@@ -8,7 +8,8 @@ import { clusterPoints, regionForPoints, type GeoPoint } from '../../lib/cluster
 import { mapStyles, shadow } from '../../lib/theme';
 import type { Event } from '../../lib/types';
 import { EventCard } from '../EventCard';
-import { AppText, Glass, IconButton, PinCross } from '../ui';
+import Constants from 'expo-constants';
+import { AppText, EmptyState, Glass, IconButton, PinCross, useFloatingOffset } from '../ui';
 import { silentLocation, useUserLocation } from './useUserLocation';
 
 const US_CENTER: Region = { latitude: 39.5, longitude: -98.35, latitudeDelta: 28, longitudeDelta: 28 };
@@ -36,8 +37,19 @@ function ClusterBubble({ count }: { count: number }) {
   );
 }
 
+// Google Maps on Android crashes without an API key, so builds made without one show a message instead
+const MAPS_ENABLED = Platform.OS !== 'android' || Constants.expoConfig?.extra?.androidMapsKey === true;
+
 export function MapTab({ bottomInset }: { bottomInset: number }) {
+  if (!MAPS_ENABLED) {
+    return <EmptyState art="map" title="Map coming soon" body="The map isn’t available in this test build. Use the Events list to browse what’s nearby." />;
+  }
+  return <EventsMap bottomInset={bottomInset} />;
+}
+
+function EventsMap({ bottomInset }: { bottomInset: number }) {
   const t = useTheme();
+  const floatingOffset = useFloatingOffset();
   const mapRef = useRef<MapView>(null);
   const location = useUserLocation('Turn on location to center the map on gatherings around you.');
   const [events, setEvents] = useState<Event[] | null>(null);
@@ -120,7 +132,7 @@ export function MapTab({ bottomInset }: { bottomInset: number }) {
         onRegionChangeComplete={setRegion}
         showsUserLocation={hasLocation}
         showsMyLocationButton={false}
-        showsPointsOfInterest={false}
+        showsPointsOfInterests={false}
         toolbarEnabled={false}
         onPress={e => {
           if (e.nativeEvent.action !== 'marker-press') setSelected(null);
@@ -184,14 +196,14 @@ export function MapTab({ bottomInset }: { bottomInset: number }) {
       </View>
 
       {selected ? (
-        <View style={[styles.preview, { bottom: bottomInset }]}>
+        <Animated.View style={[styles.preview, { bottom: bottomInset, transform: [{ translateY: floatingOffset }] }]}>
           <View style={styles.previewClose}>
             <IconButton icon="close" label="Close preview" size={32} onPress={() => setSelected(null)} style={shadow(1, t.c.shadow)} />
           </View>
           <View style={[shadow(3, t.c.shadow), { borderRadius: t.radius.lg }]}>
             <EventCard event={selected} variant="row" friends={friends[selected.id]} />
           </View>
-        </View>
+        </Animated.View>
       ) : null}
       {location.sheet}
     </View>

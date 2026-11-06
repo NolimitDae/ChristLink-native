@@ -36,10 +36,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const unsub = NetInfo.addEventListener(state => {
       setOnline(state.isConnected !== false && state.isInternetReachable !== false);
     });
-    storage.getSavedEventIds().then(ids => setSavedIds(new Set(ids)));
-    storage.getHiddenPostIds().then(ids => setHidden(new Set(ids)));
     return unsub;
   }, []);
+
+  // Saved events and hidden posts are per user: reset on every user change, then reload from storage.
+  useEffect(() => {
+    let cancelled = false;
+    setSavedIds(new Set());
+    setHidden(new Set());
+    if (!userId) return; // sign-out clears storage asynchronously; don't reload the old user's data
+    storage.getSavedEventIds().then(ids => !cancelled && setSavedIds(new Set(ids)));
+    storage.getHiddenPostIds().then(ids => !cancelled && setHidden(new Set(ids)));
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
 
   const refreshBlocked = useCallback(async () => {
     setBlockedIds(new Set(await getBlockedIds()));

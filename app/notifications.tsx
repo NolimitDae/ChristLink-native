@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { makeStyles, useTheme } from '../contexts/ThemeContext';
 import { getNotifications, markAllNotificationsRead } from '../lib/api';
@@ -9,8 +8,9 @@ import { timeAgo } from '../lib/format';
 import { routeForNotification, setBadgeCount } from '../lib/notifications';
 import type { AppNotification } from '../lib/types';
 import { AppText, EmptyState, ListSkeleton, Screen } from '../components/ui';
+import { AppIcon, type AppIconName } from '../components/icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 const ICONS: Record<string, IconName> = {
   ticket_sale: 'ticket-outline',
@@ -19,10 +19,13 @@ const ICONS: Record<string, IconName> = {
   refund_denied: 'close-circle-outline',
   event_invite: 'mail-open-outline',
   friend_rsvp: 'people-outline',
-  prayer_answered: 'sparkles-outline',
-  prayer_summary: 'hand-left-outline',
-  serve_message: 'heart-circle-outline',
-  church_claim: 'business-outline',
+  prayer_answered: 'checkmark-done-outline',
+  prayer_summary: 'pray-outline',
+  prayer_prayed: 'pray-outline',
+  waitlist_promoted: 'ticket-outline',
+  waitlist_spot: 'ticket-outline',
+  serve_message: 'serve-outline',
+  church_claim: 'church-outline',
 };
 
 export default function NotificationsScreen() {
@@ -97,7 +100,7 @@ export default function NotificationsScreen() {
               style={({ pressed }) => [s.row, !item.read && s.unreadRow, { opacity: pressed ? 0.7 : 1 }]}
             >
               <View style={s.icon}>
-                <Ionicons name={ICONS[item.type] ?? 'notifications-outline'} size={19} color={t.c.goldText} />
+                <AppIcon name={ICONS[item.type] ?? 'notifications-outline'} size={22} color={item.read ? t.c.textMuted : t.c.goldText} />
               </View>
               <View style={{ flex: 1 }}>
                 <AppText variant="bodyStrong" numberOfLines={2}>
@@ -132,15 +135,7 @@ const useStyles = makeStyles(t => ({
     borderBottomColor: t.c.border,
   },
   unreadRow: { backgroundColor: t.c.goldDim },
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: t.c.surface2,
-    borderWidth: 1,
-    borderColor: t.c.goldHairline,
-  },
+  // Plain line icon in a fixed column; unread rows are marked by their tint and dot
+  icon: { width: 28, alignItems: 'center', paddingTop: 2 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: t.c.gold, marginTop: 6 },
 }));

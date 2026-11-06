@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { Alert, Animated, RefreshControl, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
@@ -15,8 +15,10 @@ import {
   BottomSheet,
   Button,
   Card,
+  CompactTitleBar,
   EmptyState,
   IconButton,
+  LargeTitle,
   LineArt,
   ListRow,
   SectionHeader,
@@ -24,10 +26,12 @@ import {
   Skeleton,
   SkeletonGroup,
   StatTile,
+  useCollapsingTitle,
 } from '../../components/ui';
 import { HostEventRow, type RowAction } from '../../components/host/HostEventRow';
 import { RequirementRow } from '../../components/host/RequirementCard';
 import { errorMessage } from '../../components/host/errors';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'upcoming' | 'drafts' | 'past';
 const HOUR = 3_600_000;
@@ -56,9 +60,11 @@ interface SalesSnapshot {
 
 export default function HostTab() {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
   const s = useStyles();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { scrollY, onScroll, scrollRef, scrollToTop } = useCollapsingTitle();
   const { session, user, profile, isAdmin, isVerifiedHost, refreshProfile } = useAuth();
   const { showToast } = useToast();
   const token = session?.access_token;
@@ -172,9 +178,7 @@ export default function HostTab() {
   if (!session || !user) {
     return (
       <View style={[s.root, { paddingTop: insets.top }]}>
-        <View style={s.header}>
-          <AppText variant="display">Host</AppText>
-        </View>
+        <LargeTitle title="Host" scrollY={scrollY} style={s.header} />
         <EmptyState
           art="calendar"
           title="Host faith events"
@@ -190,20 +194,22 @@ export default function HostTab() {
   const showChecklist = needsId || !payoutsReady;
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 140 }}
+    <View style={s.root}>
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: insets.top, paddingBottom: barClearance + 16 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
         <View style={s.header}>
-          <View style={{ flex: 1 }}>
-            <AppText variant="display">Host</AppText>
+          <LargeTitle title="Host" scrollY={scrollY} style={{ flex: 1 }}>
             {stats ? (
-              <AppText variant="caption" tone="muted">
+              <AppText variant="callout" tone="muted">
                 {pluralize(stats.eventsHosted, 'event')} hosted · {pluralize(stats.totalAttendees, 'guest')} all-time
               </AppText>
             ) : null}
-          </View>
+          </LargeTitle>
           {isAdmin ? <IconButton icon="shield-checkmark-outline" label="Admin" onPress={() => router.push('/admin')} /> : null}
           <IconButton icon="wallet-outline" label="Payouts" onPress={() => router.push('/host/payouts')} />
         </View>
@@ -211,9 +217,7 @@ export default function HostTab() {
         {showChecklist ? (
           <View style={s.section}>
             <Card>
-              <AppText variant="overline" tone="gold">
-                Setup checklist
-              </AppText>
+              <AppText variant="headline">Setup checklist</AppText>
               <AppText variant="caption" tone="muted" style={{ marginTop: 2, marginBottom: 4 }}>
                 Only needed for paid events — free events can go live right away.
               </AppText>
@@ -228,7 +232,7 @@ export default function HostTab() {
               ) : null}
               {!payoutsReady ? (
                 <RequirementRow
-                  icon="card-outline"
+                  icon="wallet-outline"
                   title={acct ? 'Finish Stripe setup' : 'Set up payouts'}
                   body={acct ? 'Stripe needs a few more details before payouts start' : 'Connect Stripe to get paid for ticket sales'}
                   onPress={() => router.push('/host/payouts')}
@@ -252,8 +256,8 @@ export default function HostTab() {
             <View style={s.tiles}>
               <StatTile label="Upcoming events" value={String(buckets.upcoming.length)} onPress={() => setTab('upcoming')} />
               <StatTile label="Total going" value={String(totalGoing)} />
-              <StatTile label="Tickets · 14 days" value={sales ? String(sales.sold14) : '–'} trend={sales?.trend} tone="gold" />
-              <StatTile label="Net earnings" value={sales ? formatCents(sales.net) : '–'} tone="success" />
+              <StatTile label="Tickets · 14 days" value={sales ? String(sales.sold14) : '–'} trend={sales?.trend} tone={sales && sales.sold14 > 0 ? 'gold' : 'default'} />
+              <StatTile label="Net earnings" value={sales ? formatCents(sales.net) : '–'} tone={sales && sales.net > 0 ? 'success' : 'default'} />
             </View>
           )}
         </View>
@@ -315,7 +319,8 @@ export default function HostTab() {
             </View>
           </Card>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactTitleBar title="Host" scrollY={scrollY} onPress={scrollToTop} />
 
       <BottomSheet visible={!!sheetEvent} onClose={() => setSheetEvent(null)} title={sheetEvent?.name} subtitle="Event actions">
         {sheetEvent ? (
@@ -328,7 +333,7 @@ export default function HostTab() {
             {sheetEvent.status === 'published' ? (
               <ListRow icon="qr-code-outline" title="Check guests in" onPress={() => { setSheetEvent(null); router.push(`/host/scan?eventId=${sheetEvent.id}`); }} />
             ) : null}
-            <ListRow icon="hand-left-outline" title="Volunteers" subtitle="Serve roles and shifts" onPress={() => { setSheetEvent(null); router.push(`/host/serve?eventId=${sheetEvent.id}`); }} />
+            <ListRow icon="serve-outline" title="Volunteers" subtitle="Serve roles and shifts" onPress={() => { setSheetEvent(null); router.push(`/host/serve?eventId=${sheetEvent.id}`); }} />
             <ListRow icon="copy-outline" title="Duplicate" subtitle="Creates a new draft" disabled={actionBusy} onPress={() => runDuplicate(sheetEvent)} last={sheetEvent.status !== 'draft'} />
             {sheetEvent.status === 'draft' ? (
               <ListRow

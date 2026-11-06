@@ -9,7 +9,7 @@ export function StatTile({ label, value, trend, tone = 'default', onPress }: { l
   const t = useTheme();
   return (
     <Card style={{ flex: 1, minWidth: 150, gap: 6 }} onPress={onPress} accessibilityLabel={`${label}: ${value}`}>
-      <AppText variant="overline" tone="muted" style={{ fontSize: 10 }}>
+      <AppText variant="label" tone="muted">
         {label}
       </AppText>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>

@@ -11,9 +11,12 @@ import { SUPPORT_EMAIL } from '../../lib/constants';
 import type { ThemePreference } from '../../lib/theme';
 import type { UserSettings } from '../../lib/types';
 import { AppText, ListGroup, ListRow, Screen, Segmented } from '../../components/ui';
+import { LogoMark } from '../../components/brand/Logo';
 import { BlockedSheet } from '../../components/settings/BlockedSheet';
 import { DELETE_EXPLANATION, DeleteAccountSheet } from '../../components/settings/DeleteAccountSheet';
 import { useSettingsStatus } from '../../components/settings/useSettingsStatus';
+import { InterestsSheet } from '../../components/settings/InterestsSheet';
+import { storage } from '../../lib/storage';
 
 const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'system', label: 'System' },
@@ -33,9 +36,15 @@ export default function SettingsScreen() {
   const { status } = useSettingsStatus();
   const [blockedOpen, setBlockedOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [interestsOpen, setInterestsOpen] = useState(false);
+  const [interestCount, setInterestCount] = useState(0);
   const [churchName, setChurchName] = useState<string | null>(null);
   const unavailable = status === 'unavailable';
   const signedIn = !!session;
+
+  useEffect(() => {
+    storage.getInterests().then(list => setInterestCount(list.length));
+  }, []);
 
   useEffect(() => {
     const id = settings?.home_church_id;
@@ -98,6 +107,16 @@ export default function SettingsScreen() {
           </View>
         </ListGroup>
 
+        <ListGroup title="Discover">
+          <ListRow
+            icon="compass-outline"
+            title="Interests"
+            subtitle={interestCount > 0 ? `${interestCount} picked · shown first on Discover` : 'Pick the events you want to see first'}
+            onPress={() => setInterestsOpen(true)}
+            last
+          />
+        </ListGroup>
+
         {signedIn ? (
           <>
             <ListGroup title="Notifications">
@@ -114,7 +133,7 @@ export default function SettingsScreen() {
                 disabled={unavailable || status === 'loading'}
               />
               <ListRow
-                icon="hand-right-outline"
+                icon="ban-outline"
                 title="Blocked accounts"
                 subtitle={unavailable ? SOON : undefined}
                 value={unavailable ? undefined : String(blockedIds.size)}
@@ -122,7 +141,7 @@ export default function SettingsScreen() {
                 disabled={unavailable}
               />
               <ListRow
-                icon="business-outline"
+                icon="church-outline"
                 title="Home Church"
                 subtitle={unavailable ? SOON : churchName ?? (settings?.home_church_id ? 'Your church' : 'Not chosen yet')}
                 onPress={() => router.push(settings?.home_church_id ? `/church/${settings.home_church_id}` : '/explore?tab=churches')}
@@ -132,7 +151,7 @@ export default function SettingsScreen() {
             </ListGroup>
 
             <ListGroup title="Hosting">
-              <ListRow icon="card-outline" title="Payouts" subtitle="Connect Stripe to get paid for tickets" onPress={() => router.push('/host/payouts')} />
+              <ListRow icon="wallet-outline" title="Payouts" subtitle="Connect Stripe to get paid for tickets" onPress={() => router.push('/host/payouts')} />
               <ListRow icon="shield-checkmark-outline" title="ID verification" subtitle="Required before selling tickets" onPress={() => router.push('/host/verify')} last />
             </ListGroup>
           </>
@@ -163,6 +182,7 @@ export default function SettingsScreen() {
           </ListGroup>
         ) : null}
 
+        <LogoMark size={30} style={{ alignSelf: 'center', marginTop: t.space.md }} />
         <AppText variant="caption" tone="faint" align="center" style={{ marginTop: t.space.xs }}>
           Christ Link Social · Version {version}
         </AppText>
@@ -170,6 +190,14 @@ export default function SettingsScreen() {
 
       <BlockedSheet visible={blockedOpen} onClose={() => setBlockedOpen(false)} />
       <DeleteAccountSheet visible={deleteOpen} onClose={() => setDeleteOpen(false)} />
+      <InterestsSheet
+        visible={interestsOpen}
+        onClose={() => setInterestsOpen(false)}
+        onSaved={n => {
+          setInterestCount(n);
+          showToast('Interests saved', 'success');
+        }}
+      />
     </Screen>
   );
 }

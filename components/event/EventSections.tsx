@@ -12,8 +12,9 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Skeleton, SkeletonGroup } from '../ui/Skeleton';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 export interface InfoTileProps {
   icon: IconName;
@@ -31,14 +32,14 @@ export function InfoTile({ icon, label, value, sub, subTone = 'muted', onPress, 
   return (
     <Card style={s.tile} onPress={onPress} accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}${hint ? `. ${hint}` : ''}`}>
       <View style={s.tileTop}>
-        <View style={[s.tileIcon, { backgroundColor: t.c.goldDim }]}>
-          <Ionicons name={icon} size={16} color={t.c.goldText} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+          <AppIcon name={icon} size={15} color={t.c.goldText} />
+          <AppText variant="label" tone="muted">
+            {label}
+          </AppText>
         </View>
-        {onPress ? <Ionicons name="arrow-forward" size={14} color={t.c.textFaint} /> : null}
+        {onPress ? <Ionicons name="chevron-forward" size={14} color={t.c.textFaint} /> : null}
       </View>
-      <AppText variant="overline" tone="muted" style={{ fontSize: 10, marginTop: t.space.sm }}>
-        {label}
-      </AppText>
       <AppText variant="headline" numberOfLines={2} style={{ marginTop: 2 }}>
         {value}
       </AppText>
@@ -86,7 +87,7 @@ export function WhoGoingRow({
         </View>
       )}
       <View style={{ flex: 1 }}>
-        <AppText variant="overline" tone="muted" style={{ fontSize: 10 }}>
+        <AppText variant="label" tone="muted">
           Who’s going
         </AppText>
         <AppText variant="bodyStrong" tone={hasFriends ? 'gold' : 'default'} numberOfLines={1}>
@@ -236,7 +237,7 @@ export function ServeCard({ shifts, onPress }: { shifts: ServeShift[]; onPress: 
     <Card variant="featured" onPress={onPress} style={{ marginHorizontal: t.space.md }} accessibilityLabel={`Volunteer at this event. ${open} spots open.`}>
       <View style={s.lockRow}>
         <View style={[s.tileIcon, { backgroundColor: t.c.gold }]}>
-          <Ionicons name="hand-left-outline" size={16} color={t.c.onGold} />
+          <AppIcon name="serve-outline" size={16} color={t.c.onGold} />
         </View>
         <View style={{ flex: 1 }}>
           <AppText variant="headline">Volunteer at this event</AppText>

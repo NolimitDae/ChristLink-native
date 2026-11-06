@@ -18,3 +18,7 @@ yarn-debug.log*
 yarn-error.log*
 coverage/
 google-service-account.json
+
+# Website build (npm run web:build --output-dir dist-web) and local Redis snapshots
+dist-web/
+dump.rdb

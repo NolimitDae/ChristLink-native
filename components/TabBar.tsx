@@ -1,104 +1,162 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
+import { SPRING } from '../lib/motion';
+import { PressScale } from './ui/PressScale';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type { BottomTabBarProps } from 'expo-router/js-tabs';
 import { useTheme } from '../contexts/ThemeContext';
 import { haptic } from '../lib/haptics';
-import { shadow } from '../lib/theme';
+import { resetTabBarScroll, tabBarCompact } from '../lib/tabBarMotion';
+import { fonts, shadow } from '../lib/theme';
 import { AppText } from './ui/AppText';
 import { Glass } from './ui/Glass';
+import { TicketIcon } from './icons/TicketIcon';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const ICONS: Record<string, { on: IconName; off: IconName; label: string }> = {
-  index: { on: 'home', off: 'home-outline', label: 'Home' },
-  explore: { on: 'compass', off: 'compass-outline', label: 'Explore' },
-  host: { on: 'add', off: 'add', label: 'Host' },
-  community: { on: 'people', off: 'people-outline', label: 'Community' },
-  tickets: { on: 'ticket', off: 'ticket-outline', label: 'Tickets' },
+/** Tabs shown in the bar, in route order. Routes not listed here (e.g. `host`) stay reachable but hidden. */
+const TABS: Record<string, { icon: IconName | 'ticket'; label: string }> = {
+  index: { icon: 'compass-outline', label: 'Discover' },
+  explore: { icon: 'calendar-outline', label: 'Events' },
+  tickets: { icon: 'ticket', label: 'Tickets' }, // custom TicketIcon
+  community: { icon: 'people-outline', label: 'Community' },
+  profile: { icon: 'person-outline', label: 'Profile' },
 };
 
-export const TAB_BAR_HEIGHT = 64;
+export const TAB_BAR_HEIGHT = 60;
+const RADIUS = TAB_BAR_HEIGHT / 2;
+const INSET = 4; // gap between the bar edge and the active capsule
+const SIDE = 10;
 
-/** Floating frosted tab bar with a raised gold Host button and a sliding active dot. */
-export function TabBar({ state, navigation }: BottomTabBarProps) {
+/** Distance from the bottom of the screen to the bar's bottom edge. */
+function barOffset(insetBottom: number) {
+  return Math.max(insetBottom, 10);
+}
+
+/**
+ * Space a tab screen must leave at its bottom so the floating bar never covers content:
+ * the bar, its offset from the screen edge and a small gap. Use it for list padding and floating buttons.
+ */
+export function useTabBarClearance(gap = 12): number {
+  const insets = useSafeAreaInsets();
+  return barOffset(insets.bottom) + TAB_BAR_HEIGHT + gap;
+}
+
+/** Floating frosted tab bar: five labelled tabs; a gold capsule slides behind the active one. */
+export function TabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   const [width, setWidth] = useState(0);
-  const dotX = useRef(new Animated.Value(0)).current;
-  const slot = width / state.routes.length;
-  const activeName = state.routes[state.index]?.name;
+  const capsuleX = useRef(new Animated.Value(0)).current;
+  const placed = useRef(false);
+
+  const visible = state.routes.filter(r => TABS[r.name]);
+  // Host is a hidden tab opened from Profile, so Profile stays highlighted there
+  const current = state.routes[state.index]?.name;
+  const activeName = current === 'host' ? 'profile' : current;
+  const activeIdx = visible.findIndex(r => r.name === activeName);
+  const slot = width / Math.max(visible.length, 1);
 
   useEffect(() => {
-    if (!slot) return;
-    const to = state.index * slot + slot / 2 - 3;
-    if (t.reduceMotion) dotX.setValue(to);
-    else Animated.spring(dotX, { toValue: to, useNativeDriver: true, damping: 18, stiffness: 220 }).start();
-  }, [state.index, slot, dotX, t.reduceMotion]);
+    if (!slot || activeIdx < 0) return;
+    const to = activeIdx * slot;
+    // First placement and Reduce Motion jump; tab changes spring like the reference
+    if (!placed.current || t.reduceMotion) {
+      capsuleX.setValue(to);
+      placed.current = true;
+    } else {
+      Animated.spring(capsuleX, { toValue: to, ...SPRING.move, useNativeDriver: true }).start();
+    }
+  }, [activeIdx, slot, capsuleX, t.reduceMotion]);
+
+  // Every tab starts with the full bar; scrolling down through content minimizes it (iOS 26 behaviour)
+  useEffect(() => {
+    resetTabBarScroll();
+  }, [activeIdx]);
+
+  const labelOpacity = tabBarCompact.interpolate({ inputRange: [0, 0.6], outputRange: [1, 0], extrapolate: 'clamp' });
+  // Reduce Motion: labels cross-fade only, nothing moves
+  const iconDrop = t.reduceMotion ? 0 : tabBarCompact.interpolate({ inputRange: [0, 1], outputRange: [0, 7] });
+  const barScale = t.reduceMotion ? 1 : tabBarCompact.interpolate({ inputRange: [0, 1], outputRange: [1, 0.94] });
+  const barDrop = t.reduceMotion ? 0 : tabBarCompact.interpolate({ inputRange: [0, 1], outputRange: [0, 4] });
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 10) }]}>
-      <View style={[styles.shadowBox, shadow(3, t.c.shadow), { borderRadius: 32 }]}>
-        <Glass style={[styles.bar, { borderColor: t.c.borderStrong }]} intensity={60}>
-          <View style={styles.row} onLayout={e => setWidth(e.nativeEvent.layout.width)} accessibilityRole="tablist">
-            {state.routes.map((route, index) => {
-              const focused = state.index === index;
-              const meta = ICONS[route.name] ?? { on: 'ellipse', off: 'ellipse-outline', label: route.name };
-              const onPress = () => {
-                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-                haptic.tap();
-                if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
-              };
-              if (route.name === 'host') {
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: barOffset(insets.bottom) }]}>
+      <Animated.View style={[shadow(3, t.c.shadow), { borderRadius: RADIUS, transform: [{ translateY: barDrop }, { scale: barScale }] }]}>
+        <Glass
+          style={[
+            styles.bar,
+            { borderColor: t.c.goldHairline },
+            // Real blur only exists on iOS; elsewhere a solid fill keeps scrolled content from ghosting through
+            Platform.OS !== 'ios' && { backgroundColor: t.c.surface },
+          ]}
+          intensity={60}
+        >
+          <View style={styles.inner} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
+            {slot > 0 && activeIdx >= 0 ? (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.capsule,
+                  { width: slot, backgroundColor: t.c.goldDim, borderColor: t.c.goldHairline, transform: [{ translateX: capsuleX }] },
+                ]}
+              />
+            ) : null}
+            <View style={styles.row} accessibilityRole="tablist">
+              {visible.map(route => {
+                const meta = TABS[route.name];
+                const focused = route.name === activeName;
+                const color = focused ? t.c.goldText : t.c.text;
+                const onPress = () => {
+                  const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                  haptic.tap();
+                  // Compare with the real current route: Profile looks active on Host but must still navigate there
+                  if (route.name !== current && !event.defaultPrevented) navigateToTab(route.key);
+                };
                 return (
-                  <Pressable
+                  <PressScale
                     key={route.key}
                     onPress={onPress}
+                    onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: focused }}
-                    accessibilityLabel="Host an event"
+                    accessibilityLabel={meta.label}
+                    scaleTo={0.9}
                     style={styles.item}
                   >
-                    <View style={[styles.host, { backgroundColor: t.c.gold, borderColor: t.c.bg }, shadow(2, '#8A6A1F')]}>
-                      <Ionicons name="add" size={30} color={t.c.onGold} />
-                    </View>
-                  </Pressable>
+                    <Animated.View style={[styles.icon, { transform: [{ translateY: iconDrop }] }]}>
+                      {meta.icon === 'ticket' ? (
+                        <TicketIcon size={25} color={color} />
+                      ) : (
+                        <Ionicons name={meta.icon} size={23} color={color} />
+                      )}
+                    </Animated.View>
+                    <Animated.View style={{ opacity: labelOpacity }}>
+                      <AppText variant="caption" color={color} numberOfLines={1} style={styles.label}>
+                        {meta.label}
+                      </AppText>
+                    </Animated.View>
+                  </PressScale>
                 );
-              }
-              return (
-                <Pressable
-                  key={route.key}
-                  onPress={onPress}
-                  onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: focused }}
-                  accessibilityLabel={meta.label}
-                  style={styles.item}
-                >
-                  <Ionicons name={focused ? meta.on : meta.off} size={23} color={focused ? t.c.goldText : t.c.textMuted} />
-                  <AppText variant="caption" color={focused ? t.c.text : t.c.textMuted} style={{ fontSize: 10, marginTop: 2 }}>
-                    {meta.label}
-                  </AppText>
-                </Pressable>
-              );
-            })}
+              })}
+            </View>
           </View>
-          {slot > 0 && activeName !== 'host' ? (
-            <Animated.View style={[styles.dot, { backgroundColor: t.c.gold, transform: [{ translateX: dotX }] }]} />
-          ) : null}
         </Glass>
-      </View>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 14, right: 14 },
-  shadowBox: { backgroundColor: 'transparent' },
-  bar: { height: TAB_BAR_HEIGHT, borderRadius: 32, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
-  row: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  item: { flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' },
-  host: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center', marginTop: -26, borderWidth: 4 },
-  dot: { position: 'absolute', bottom: 6, left: 0, width: 6, height: 6, borderRadius: 3 },
+  // Above every screen's content (cards with shadows or transforms otherwise paint over it)
+  wrap: { position: 'absolute', left: SIDE, right: SIDE, zIndex: 10, elevation: 12 },
+  bar: { height: TAB_BAR_HEIGHT, borderRadius: RADIUS, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  inner: { flex: 1, margin: INSET },
+  capsule: { position: 'absolute', top: 0, bottom: 0, left: 0, borderRadius: RADIUS - INSET, borderWidth: StyleSheet.hairlineWidth },
+  row: { flex: 1, flexDirection: 'row' },
+  item: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 2 },
+  // Same box for every glyph so all labels share one baseline
+  icon: { height: 25, justifyContent: 'center', alignItems: 'center' },
+  label: { fontFamily: fonts.bold, fontSize: 10.5, letterSpacing: 0.1 },
 });

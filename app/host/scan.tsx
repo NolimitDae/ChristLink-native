@@ -16,8 +16,6 @@ import { AppText, BottomSheet, Button, EmptyState, Field, IconButton, LineArt, L
 import { ScanFrame } from '../../components/host/ScanFrame';
 import { errorMessage, isNotSetUp } from '../../components/host/errors';
 
-const LIGHT = '#F6EFE3';
-const PANEL = 'rgba(14,12,10,0.84)';
 const DEDUPE_MS = 3000;
 
 type Outcome = 'ok' | 'fail' | 'repeat';
@@ -198,7 +196,7 @@ export default function ScanScreen() {
   }
 
   if (!permission) {
-    return <View style={{ flex: 1, backgroundColor: '#000' }} />;
+    return <View style={{ flex: 1, backgroundColor: t.c.stage }} />;
   }
 
   if (!permission.granted) {
@@ -244,7 +242,7 @@ export default function ScanScreen() {
   const resultColor = result?.outcome === 'ok' ? t.c.success : result?.outcome === 'fail' ? t.c.danger : t.c.gold;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: t.c.stage }]}>
       {focused ? (
         <CameraView
           style={StyleSheet.absoluteFill}
@@ -270,13 +268,13 @@ export default function ScanScreen() {
             </AppText>
           ) : null}
         </View>
-        <IconButton icon={torch ? 'flash' : 'flash-outline'} label={torch ? 'Turn torch off' : 'Turn torch on'} tone="glass" color={torch ? t.c.gold : LIGHT} onPress={() => setTorch(v => !v)} />
+        <IconButton icon={torch ? 'flash' : 'flash-outline'} label={torch ? 'Turn torch off' : 'Turn torch on'} tone="glass" color={torch ? t.c.gold : t.c.onImage} onPress={() => setTorch(v => !v)} />
       </View>
 
       {banner ? (
         <View style={[styles.banner, { top: insets.top + 64, backgroundColor: banner === 'ok' ? t.c.success : t.c.danger }]} accessibilityLiveRegion="assertive">
-          <Ionicons name={banner === 'ok' ? 'checkmark-circle' : 'close-circle'} size={20} color="#FFFFFF" />
-          <AppText variant="bodyStrong" color="#FFFFFF">
+          <Ionicons name={banner === 'ok' ? 'checkmark-circle' : 'close-circle'} size={20} color={t.c.onStatus} />
+          <AppText variant="bodyStrong" color={t.c.onStatus}>
             {banner === 'ok' ? 'Checked in' : 'Not valid'}
           </AppText>
         </View>
@@ -284,7 +282,7 @@ export default function ScanScreen() {
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 12 }]}>
         {result ? (
-          <View style={[styles.card, { borderColor: resultColor }]} accessibilityLiveRegion="polite" accessible accessibilityLabel={`${result.title}. ${result.detail}`}>
+          <View style={[styles.card, { backgroundColor: t.c.scrimStrong, borderColor: resultColor }]} accessibilityLiveRegion="polite" accessible accessibilityLabel={`${result.title}. ${result.detail}`}>
             <Ionicons name={result.outcome === 'ok' ? 'checkmark-circle' : result.outcome === 'fail' ? 'close-circle' : 'alert-circle'} size={30} color={resultColor} />
             <View style={{ flex: 1 }}>
               <AppText variant="headline" color={resultColor}>
@@ -296,7 +294,7 @@ export default function ScanScreen() {
             </View>
           </View>
         ) : (
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: t.c.scrimStrong, borderColor: t.c.onImageBorder }]}>
             <Ionicons name="scan-outline" size={26} color={t.c.gold} />
             <AppText variant="callout" tone="inverse" style={{ flex: 1 }}>
               {serveMode ? 'Point at a volunteer’s pass QR code.' : 'Point at a ticket QR code. Check-in happens automatically.'}
@@ -305,8 +303,8 @@ export default function ScanScreen() {
         )}
 
         {recent.length > 1 ? (
-          <View style={styles.recent}>
-            <AppText variant="overline" color="rgba(246,239,227,0.6)" style={{ marginBottom: 4 }}>
+          <View style={[styles.recent, { backgroundColor: t.c.scrimStrong }]}>
+            <AppText variant="overline" color={t.c.onImageMuted} style={{ marginBottom: 4 }}>
               Recent scans
             </AppText>
             {recent.slice(1).map(r => (
@@ -315,7 +313,7 @@ export default function ScanScreen() {
                 <AppText variant="caption" tone="inverse" numberOfLines={1} style={{ flex: 1 }}>
                   {r.title} · {r.detail}
                 </AppText>
-                <AppText variant="caption" color="rgba(246,239,227,0.55)">
+                <AppText variant="caption" color={t.c.onImageMuted}>
                   {timeAgo(new Date(r.at).toISOString())}
                 </AppText>
               </View>
@@ -407,12 +405,12 @@ function ManualSheet({ visible, code, onChange, onClose, onSubmit, busy }: { vis
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1 },
   permWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: 48 },
   topBar: { position: 'absolute', left: 0, right: 0, top: 0, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 },
   banner: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999 },
   bottom: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, gap: 10 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, backgroundColor: PANEL, borderWidth: 1.5, borderColor: 'rgba(246,239,227,0.12)' },
-  recent: { padding: 12, borderRadius: 16, backgroundColor: PANEL, gap: 6 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1.5 },
+  recent: { padding: 12, borderRadius: 16, gap: 6 },
   recentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 });

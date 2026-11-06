@@ -1,8 +1,8 @@
 import React from 'react';
-import type { Ionicons } from '@expo/vector-icons';
 import { BottomSheet, ListGroup, ListRow } from '../ui';
+import { type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 export interface MenuAction {
   label: string;

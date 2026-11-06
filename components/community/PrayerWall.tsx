@@ -1,18 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Animated, RefreshControl, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
+import { cancelReminders, scheduledReminderKeys, schedulePrayerReminders } from '../../lib/notifications';
+import { prayerReminderKey } from '../../lib/reminderTimes';
 import { FeatureError, createPrayer, deletePrayer, getPrayerWall, markPrayerAnswered, prayFor } from '../../lib/features';
 import type { Prayer, PrayerFilter } from '../../lib/types';
 import { useReport } from '../ReportSheet';
-import { AppText, BottomSheet, Button, ChipRow, EmptyState, Field, ListGroup, ListRow, Skeleton, SkeletonGroup } from '../ui';
+import { AppText, BottomSheet, Button, ChipRow, EmptyState, Field, ListGroup, ListRow, Skeleton, SkeletonGroup, useFloatingOffset } from '../ui';
 import { ActionMenu, type MenuAction } from './ActionMenu';
 import { distributeColumns, estimatePrayerHeight } from './masonry';
 import { PrayerCard } from './PrayerCard';
+import { confirmKindness } from './kindnessCheck';
+import { useTabBarClearance } from '../TabBar';
+import { onScrollTabBar } from '../../lib/tabBarMotion';
 
 const FILTERS: readonly PrayerFilter[] = ['all', 'church', 'friends', 'answered', 'mine'];
 const FILTER_LABELS: Record<PrayerFilter, string> = {
@@ -24,17 +28,20 @@ const FILTER_LABELS: Record<PrayerFilter, string> = {
 };
 const NEEDS_SIGN_IN: PrayerFilter[] = ['church', 'friends', 'mine'];
 const MAX = 1000;
-const TAB_BAR_CLEARANCE = 84;
+const PAGE = 30;
+/** Start fetching the next page this far (px) before the bottom. */
+const LOAD_AHEAD = 600;
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
 
-export function PrayerWall({ bottomPad }: { bottomPad: number }) {
+export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
+  const floatingOffset = useFloatingOffset();
   const s = useStyles();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { session } = useAuth();
   const { blockedIds, settings } = useAppData();
   const { showToast } = useToast();
@@ -45,6 +52,9 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   const [failed, setFailed] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [menuPrayer, setMenuPrayer] = useState<Prayer | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const loadingMore = useRef(false);
+  const [reminders, setReminders] = useState<Set<string>>(new Set());
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [body, setBody] = useState('');
@@ -65,7 +75,9 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
       return;
     }
     try {
-      setPrayers(await getPrayerWall(filter));
+      const rows = await getPrayerWall(filter);
+      setPrayers(rows);
+      setHasMore(rows.length >= PAGE);
       setFailed(false);
       setNotSetUp(false);
     } catch (err) {
@@ -79,6 +91,52 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
     setPrayers(null);
     load();
   }, [load]);
+
+  useEffect(() => {
+    scheduledReminderKeys().then(setReminders);
+  }, []);
+
+  const remind = async (prayer: Prayer, days: number) => {
+    try {
+      if ((await schedulePrayerReminders(prayer, days)) === 'denied') {
+        showToast('Turn on notifications for Christ Link Social in Settings to get prayer reminders', 'info');
+        return;
+      }
+      setReminders(prev => new Set(prev).add(prayerReminderKey(prayer.id)));
+      showToast(days === 1 ? 'We’ll remind you tomorrow at 9am' : `We’ll remind you at 9am for ${days} days`, 'success');
+    } catch {
+      showToast('Could not set a reminder', 'error');
+    }
+  };
+
+  const stopReminders = async (prayer: Prayer) => {
+    await cancelReminders(prayerReminderKey(prayer.id));
+    setReminders(prev => {
+      const next = new Set(prev);
+      next.delete(prayerReminderKey(prayer.id));
+      return next;
+    });
+    showToast('Prayer reminders stopped', 'info');
+  };
+
+  // Older prayers, by created_at cursor, when scrolling near the bottom
+  const loadMore = async () => {
+    const last = prayers?.[prayers.length - 1];
+    if (!hasMore || loadingMore.current || !last || gated || noChurch) return;
+    loadingMore.current = true;
+    try {
+      const rows = await getPrayerWall(filter, last.created_at);
+      setPrayers(prev => {
+        const seen = new Set((prev ?? []).map(p => p.id));
+        return [...(prev ?? []), ...rows.filter(p => !seen.has(p.id))];
+      });
+      setHasMore(rows.length >= PAGE);
+    } catch {
+      // Keep what's shown; scrolling again retries
+    } finally {
+      loadingMore.current = false;
+    }
+  };
 
   const refresh = async () => {
     setRefreshing(true);
@@ -143,6 +201,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   const submitPrayer = async () => {
     const text = body.trim();
     if (!text) return;
+    if (!(await confirmKindness(text))) return;
     setPosting(true);
     try {
       await createPrayer(text, anonymous, shareChurch ? settings?.home_church_id : null);
@@ -165,6 +224,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         onPress: async () => {
           try {
             await deletePrayer(prayer.id);
+            cancelReminders(prayerReminderKey(prayer.id)).catch(() => undefined);
             setPrayers(prev => prev?.filter(p => p.id !== prayer.id) ?? prev);
             showToast('Prayer deleted', 'success');
           } catch (err) {
@@ -175,17 +235,26 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
     ]);
   };
 
-  const menuActions = (p: Prayer): MenuAction[] =>
+  const reminderActions = (p: Prayer): MenuAction[] => {
+    if (p.answered_at) return [];
+    if (reminders.has(prayerReminderKey(p.id))) return [{ label: 'Stop prayer reminders', icon: 'alarm-outline', onPress: () => stopReminders(p) }];
+    return [
+      { label: 'Remind me to pray tomorrow', icon: 'alarm-outline', onPress: () => remind(p, 1) },
+      { label: 'Remind me daily for a week', icon: 'alarm-outline', onPress: () => remind(p, 7) },
+    ];
+  };
+
+  const menuActions = (p: Prayer): MenuAction[] => [
+    ...reminderActions(p),
     p.is_mine
-      ? [{ label: 'Delete prayer', icon: 'trash-outline', destructive: true, onPress: () => confirmDelete(p) }]
-      : [
-          {
-            label: 'Report prayer',
-            icon: 'flag-outline',
-            onPress: () =>
-              report.open({ type: 'prayer', id: p.id, authorId: p.is_anonymous ? null : p.author_id, authorName: p.is_anonymous ? null : p.author_name }),
-          },
-        ];
+      ? { label: 'Delete prayer', icon: 'trash-outline', destructive: true, onPress: () => confirmDelete(p) }
+      : {
+          label: 'Report prayer',
+          icon: 'flag-outline',
+          onPress: () =>
+            report.open({ type: 'prayer', id: p.id, authorId: p.is_anonymous ? null : p.author_id, authorName: p.is_anonymous ? null : p.author_name }),
+        },
+  ];
 
   const visible = useMemo(() => (prayers ?? []).filter(p => !p.author_id || !blockedIds.has(p.author_id)), [prayers, blockedIds]);
   const [left, right] = useMemo(() => distributeColumns(visible, estimatePrayerHeight), [visible]);
@@ -272,6 +341,12 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
   return (
     <View style={{ flex: 1 }}>
       <ScrollView
+        scrollEventThrottle={32}
+        onScroll={e => {
+          const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+          onScroll(e);
+          if (contentOffset.y + layoutMeasurement.height > contentSize.height - LOAD_AHEAD) loadMore();
+        }}
         contentContainerStyle={{ paddingBottom: bottomPad + 56 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
@@ -280,9 +355,9 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         {renderBody()}
       </ScrollView>
 
-      <View style={[s.fab, { bottom: insets.bottom + TAB_BAR_CLEARANCE }]} pointerEvents="box-none">
+      <Animated.View style={[s.fab, { bottom: barClearance, transform: [{ translateY: floatingOffset }] }]} pointerEvents="box-none">
         <Button title="Share a prayer" icon="add" onPress={openCompose} style={s.fabShadow} />
-      </View>
+      </Animated.View>
 
       <BottomSheet
         visible={composeOpen}
@@ -305,7 +380,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
             last={!settings?.home_church_id}
           />
           {settings?.home_church_id ? (
-            <ListRow icon="business-outline" title="Share with my Home Church" subtitle="Shows under My church" toggle={shareChurch} onToggle={setShareChurch} last />
+            <ListRow icon="church-outline" title="Share with my Home Church" subtitle="Shows under My church" toggle={shareChurch} onToggle={setShareChurch} last />
           ) : null}
         </ListGroup>
       </BottomSheet>
@@ -315,7 +390,7 @@ export function PrayerWall({ bottomPad }: { bottomPad: number }) {
         onClose={() => setAnswering(null)}
         title="Prayer answered"
         subtitle="Tell the community how God answered."
-        footer={<Button title="Share testimony" icon="sparkles-outline" onPress={saveAnswered} loading={savingAnswer} disabled={!testimony.trim()} fullWidth />}
+        footer={<Button title="Share testimony" icon="checkmark-done-outline" onPress={saveAnswered} loading={savingAnswer} disabled={!testimony.trim()} fullWidth />}
       >
         <Field value={testimony} onChangeText={setTestimony} placeholder="Share your testimony…" multiline maxLength={MAX} accessibilityLabel="Testimony" />
       </BottomSheet>

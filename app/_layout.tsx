@@ -1,18 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Platform, View } from 'react-native';
+import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Sentry from '@sentry/react-native';
-import { useFonts, DMSerifDisplay_400Regular } from '@expo-google-fonts/dm-serif-display';
+import { useFonts, Newsreader_500Medium } from '@expo-google-fonts/newsreader';
 import {
-  Montserrat_400Regular,
-  Montserrat_500Medium,
-  Montserrat_600SemiBold,
-  Montserrat_700Bold,
-} from '@expo-google-fonts/montserrat';
+  InstrumentSans_400Regular,
+  InstrumentSans_500Medium,
+  InstrumentSans_600SemiBold,
+  InstrumentSans_700Bold,
+} from '@expo-google-fonts/instrument-sans';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { ThemeProvider, useTheme } from '../contexts/ThemeContext';
 import { ToastProvider } from '../contexts/ToastContext';
@@ -21,14 +21,16 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { OfflineBanner } from '../components/OfflineBanner';
 import { STRIPE_PK, SENTRY_DSN, STRIPE_MERCHANT_ID } from '../lib/constants';
 import { storage } from '../lib/storage';
-import {
-  addNotificationResponseListener,
-  registerForPushNotifications,
-  removeSubscription,
-  routeForNotification,
-} from '../lib/notifications';
+import { registerForPushNotifications, routeForNotification, useLastNotificationResponse } from '../lib/notifications';
+import { EventQuickActionsHost } from '../components/EventQuickActions';
+import { legacyHashRoute } from '../lib/legacyLinks';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+// Web preview with sample data (docs/WEB-PREVIEW.md). Never loaded in the iOS/Android apps.
+const preview: typeof import('../web-preview/demo') | null =
+  Platform.OS === 'web' && process.env.EXPO_PUBLIC_DEMO === '1' ? require('../web-preview/demo') : null;
+preview?.installDemo();
 
 if (SENTRY_DSN) {
   Sentry.init({
@@ -45,7 +47,12 @@ function RootNavigator() {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const pathname = usePathname();
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  // A deep link or push tap that arrives before onboarding is finished; opened right after it.
+  const pendingRoute = useRef<string | null>(null);
+  const lastResponse = useLastNotificationResponse();
+  const handledResponse = useRef<string | null>(null);
 
   useEffect(() => {
     storage.getOnboardingDone().then(setOnboardingDone);
@@ -55,22 +62,51 @@ function RootNavigator() {
     if (loading || onboardingDone === null) return;
     SplashScreen.hideAsync().catch(() => undefined);
     const first = segments[0] as string | undefined;
-    if (!onboardingDone && first !== 'onboarding' && first !== 'auth' && first !== 'legal') {
-      router.replace('/onboarding');
+    // The website doesn't force onboarding (it's mostly phone permissions); visitors land where the link points.
+    if (!onboardingDone && Platform.OS !== 'web' && first !== 'onboarding' && first !== 'auth' && first !== 'legal') {
+      // Re-check storage first: finishing onboarding saves the flag and navigates in the same moment, so this
+      // state can still say "not done" and would send people through onboarding a second time.
+      storage.getOnboardingDone().then(done => {
+        if (done) {
+          setOnboardingDone(true);
+          return;
+        }
+        // shortcut: keeps the path only (no query string); enough for /event/:id and /church/:id links.
+        if (pathname && pathname !== '/') pendingRoute.current = pathname;
+        router.replace('/onboarding');
+      });
+    } else if (onboardingDone && pendingRoute.current) {
+      const to = pendingRoute.current;
+      pendingRoute.current = null;
+      router.push(to as never);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, onboardingDone, segments]);
 
+  // Old website links (christlinksocial.com/#event/<id>) open the matching page of the new web app
   useEffect(() => {
-    if (!session) return;
-    registerForPushNotifications(false);
-    const sub = addNotificationResponseListener(response => {
-      const route = routeForNotification(response.notification.request.content.data as Record<string, unknown>);
-      if (route) router.push(route as never);
-    });
-    return () => removeSubscription(sub);
+    if (Platform.OS !== 'web' || loading) return;
+    const to = legacyHashRoute((globalThis as { location?: { hash?: string } }).location?.hash ?? '');
+    if (to) router.replace(to as never);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id]);
+  }, [loading]);
+
+  useEffect(() => {
+    if (session) registerForPushNotifications(false);
+  }, [session?.user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Route push taps once navigation is mounted, including the tap that cold-started the app.
+  useEffect(() => {
+    if (!session || !lastResponse || loading || onboardingDone === null) return;
+    const id = lastResponse.notification.request.identifier;
+    if (handledResponse.current === id) return;
+    handledResponse.current = id;
+    const route = routeForNotification(lastResponse.notification.request.content.data as Record<string, unknown>);
+    if (!route) return;
+    if (onboardingDone) router.push(route as never);
+    else pendingRoute.current = route;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastResponse, session?.user.id, loading, onboardingDone]);
 
   if (loading || onboardingDone === null) return <View style={{ flex: 1, backgroundColor: t.c.bg }} />;
 
@@ -85,17 +121,18 @@ function RootNavigator() {
         <Stack.Screen name="host/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
       </Stack>
       <OfflineBanner />
+      <EventQuickActionsHost />
     </>
   );
 }
 
 function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    DMSerifDisplay_400Regular,
-    Montserrat_400Regular,
-    Montserrat_500Medium,
-    Montserrat_600SemiBold,
-    Montserrat_700Bold,
+    Newsreader_500Medium,
+    InstrumentSans_400Regular,
+    InstrumentSans_500Medium,
+    InstrumentSans_600SemiBold,
+    InstrumentSans_700Bold,
   });
   if (!fontsLoaded && !fontError) return null;
 
@@ -117,6 +154,7 @@ function RootLayout() {
 }
 
 export default Sentry.wrap(function WrappedRootLayout() {
+  if (preview?.shouldFrame()) return <preview.PhoneFrame />;
   return (
     <ErrorBoundary>
       <RootLayout />

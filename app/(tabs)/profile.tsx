@@ -1,22 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Animated, RefreshControl, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../contexts/AppDataContext';
-import { useTheme } from '../contexts/ThemeContext';
-import { useToast } from '../contexts/ToastContext';
-import { getEvent, getMyEvents, updateProfile, uploadAvatar, uploadBanner } from '../lib/api';
-import { getChurch, getHoursServed } from '../lib/features';
-import { logger } from '../lib/logger';
-import type { Event } from '../lib/types';
-import { EventCard } from '../components/EventCard';
-import { useShareCard } from '../components/ShareCard';
-import { Button, EmptyState, EventCardSkeleton, ListGroup, ListRow, Screen, Segmented } from '../components/ui';
-import { EditProfileSheet } from '../components/profile/EditProfileSheet';
-import { ProfileHero } from '../components/profile/ProfileHero';
-import { StatsRow } from '../components/profile/StatsRow';
-import { PinnedPrayerCard, ProfileVerseCard } from '../components/profile/VerseCard';
-import { pickImageDataUrl } from '../components/profile/pickImage';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAppData } from '../../contexts/AppDataContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '../../contexts/ToastContext';
+import { getEvent, getMyEvents, updateProfile, uploadAvatar, uploadBanner } from '../../lib/api';
+import { getChurch, getHoursServed } from '../../lib/features';
+import { logger } from '../../lib/logger';
+import type { Event } from '../../lib/types';
+import { EventCard } from '../../components/EventCard';
+import { useShareCard } from '../../components/ShareCard';
+import { Button, CompactTitleBar, EmptyState, EventCardSkeleton, LargeTitle, ListGroup, ListRow, Screen, Segmented, useCollapsingTitle } from '../../components/ui';
+import { EditProfileSheet } from '../../components/profile/EditProfileSheet';
+import { ProfileHero } from '../../components/profile/ProfileHero';
+import { StatsRow } from '../../components/profile/StatsRow';
+import { PinnedPrayerCard, ProfileVerseCard } from '../../components/profile/VerseCard';
+import { ProfileDetails } from '../../components/profile/ProfileDetails';
+import { pickImageDataUrl } from '../../components/profile/pickImage';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'saved' | 'hosting';
 
@@ -27,6 +29,8 @@ function formatHours(h: number): string {
 
 export default function MyProfileScreen() {
   const t = useTheme();
+  const barClearance = useTabBarClearance();
+  const { scrollY, onScroll, scrollRef, scrollToTop } = useCollapsingTitle();
   const router = useRouter();
   const { session, profile, refreshProfile } = useAuth();
   const { savedIds, settings } = useAppData();
@@ -104,7 +108,7 @@ export default function MyProfileScreen() {
 
   if (!session || !token) {
     return (
-      <Screen back title="Profile">
+      <Screen title="Profile">
         <EmptyState
           art="people"
           title="Your profile lives here"
@@ -119,12 +123,21 @@ export default function MyProfileScreen() {
   const isHost = (hosted?.length ?? 0) > 0;
   const list = tab === 'saved' ? saved : hosted;
 
+  const openConnections = (which: 'followers' | 'following') => {
+    if (!profile) return;
+    router.push(`/connections?userId=${profile.id}&tab=${which}&name=${encodeURIComponent(profile.full_name ?? '')}`);
+  };
+
   return (
-    <Screen back title="Profile">
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 48, gap: t.space.md }}
+    <Screen>
+      <Animated.ScrollView
+        ref={scrollRef}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: barClearance + 16, gap: t.space.md }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
+        <LargeTitle title="Profile" scrollY={scrollY} style={{ paddingHorizontal: t.space.md, paddingTop: t.space.xs }} />
         {profile ? (
           <ProfileHero profile={profile} editable onPickBanner={() => pick('banner')} onPickAvatar={() => pick('avatar')} uploading={uploading} />
         ) : (
@@ -135,13 +148,22 @@ export default function MyProfileScreen() {
           <Button title="Edit profile" icon="create-outline" variant="secondary" size="sm" onPress={() => setEditing(true)} style={{ flex: 1 }} fullWidth />
           <Button title="Settings" icon="settings-outline" variant="secondary" size="sm" onPress={() => router.push('/settings')} style={{ flex: 1 }} fullWidth />
         </View>
+        <View style={{ paddingHorizontal: t.space.md }}>
+          <Button
+            title={isHost ? 'Host dashboard' : 'Host an event'}
+            icon={isHost ? 'stats-chart-outline' : 'add-circle-outline'}
+            size="sm"
+            onPress={() => router.push('/(tabs)/host')}
+            fullWidth
+          />
+        </View>
 
         <StatsRow
           stats={[
-            { label: 'Followers', value: String(profile?.followers_count ?? 0) },
-            { label: 'Following', value: String(profile?.following_count ?? 0) },
-            { label: 'Events hosted', value: String(hosted?.length ?? 0), onPress: isHost ? () => setTab('hosting') : undefined },
-            { label: 'Hours served', value: formatHours(hours), hint: 'Only you can see this', onPress: () => router.push('/serve') },
+            { label: 'Followers', value: String(profile?.followers_count ?? 0), onPress: profile ? () => openConnections('followers') : undefined },
+            { label: 'Following', value: String(profile?.following_count ?? 0), onPress: profile ? () => openConnections('following') : undefined },
+            { label: 'Events hosted', value: String(hosted?.length ?? 0), onPress: profile ? () => router.push(`/hosted?userId=${profile.id}`) : undefined },
+            { label: 'Hours served', value: formatHours(hours), hint: 'Only you can see this', onPress: () => router.push('/serve/history') },
           ]}
         />
 
@@ -155,11 +177,13 @@ export default function MyProfileScreen() {
 
         {profile?.prayer_request ? <PinnedPrayerCard text={profile.prayer_request} /> : null}
 
+        {profile ? <ProfileDetails profile={profile} /> : null}
+
         <View style={{ paddingHorizontal: t.space.md }}>
           <ListGroup title="Home Church">
             {settings?.home_church_id ? (
               <ListRow
-                icon="business-outline"
+                icon="church-outline"
                 title={churchName ?? 'Your Home Church'}
                 subtitle="Your church family"
                 onPress={() => router.push(`/church/${settings.home_church_id}`)}
@@ -167,7 +191,7 @@ export default function MyProfileScreen() {
               />
             ) : (
               <ListRow
-                icon="business-outline"
+                icon="church-outline"
                 title="Choose your Home Church"
                 subtitle="See services, prayers and serve shifts from your church"
                 onPress={() => router.push('/explore?tab=churches')}
@@ -218,7 +242,8 @@ export default function MyProfileScreen() {
             list.map(e => <EventCard key={e.id} event={e} variant="row" />)
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
+      <CompactTitleBar title="Profile" scrollY={scrollY} onPress={scrollToTop} />
 
       <EditProfileSheet visible={editing} onClose={() => setEditing(false)} profile={profile} token={token} onSaved={refreshProfile} />
       {shareSheet}

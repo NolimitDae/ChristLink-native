@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { PressScale } from './PressScale';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { shadow } from '../../lib/theme';
@@ -47,15 +48,16 @@ export function Card({ children, variant = 'standard', onPress, onLongPress, sty
     );
   }
   return (
-    <Pressable
+    <PressScale
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      style={({ pressed }) => [base, { opacity: pressed ? 0.85 : 1 }, style]}
+      scaleTo={0.98}
+      style={[base, style]}
     >
       {content}
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -77,7 +79,7 @@ export function TicketShell({
   accessibilityLabel?: string;
 }) {
   const t = useTheme();
-  const Wrapper = onPress ? Pressable : View;
+  const Wrapper = onPress ? PressScale : View;
   return (
     <Wrapper
       onPress={onPress}
@@ -95,21 +97,31 @@ export function TicketShell({
       ]}
     >
       <View style={notchAt !== undefined ? { flex: notchAt } : undefined}>{top}</View>
-      <View style={styles.perfRow}>
-        <View style={[styles.notch, styles.notchLeft, { backgroundColor: t.c.bg, borderColor: t.c.goldHairline }]} />
-        <View style={[styles.dash, { borderColor: t.c.border }]} />
-        <View style={[styles.notch, styles.notchRight, { backgroundColor: t.c.bg, borderColor: t.c.goldHairline }]} />
-      </View>
+      <TicketPerforation />
       <View style={notchAt !== undefined ? { flex: 1 - notchAt } : undefined}>{bottom}</View>
     </Wrapper>
   );
 }
 
-const NOTCH = 22;
+/**
+ * The perforation line of a ticket: half-circle cutouts on both edges and a dashed line between them.
+ * Place it as a direct child of a card with a 1px border; each cutout overlaps that border so the card edge
+ * reads as notched (no clipping needed, so the card keeps its shadow).
+ */
+export function TicketPerforation({ size = 22 }: { size?: number }) {
+  const t = useTheme();
+  const r = size / 2;
+  const cut = { width: r + 1, height: size, backgroundColor: t.c.bg, borderColor: t.c.goldHairline, borderWidth: 1 };
+  return (
+    <View style={[styles.perfRow, { height: size }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={[cut, { marginLeft: -1, borderLeftWidth: 0, borderTopRightRadius: r, borderBottomRightRadius: r }]} />
+      <View style={[styles.dash, { borderColor: t.c.border }]} />
+      <View style={[cut, { marginRight: -1, borderRightWidth: 0, borderTopLeftRadius: r, borderBottomLeftRadius: r }]} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  perfRow: { height: NOTCH, flexDirection: 'row', alignItems: 'center' },
-  notch: { width: NOTCH, height: NOTCH, borderRadius: NOTCH / 2, borderWidth: 1 },
-  notchLeft: { marginLeft: -NOTCH / 2 - 1 },
-  notchRight: { marginRight: -NOTCH / 2 - 1 },
-  dash: { flex: 1, borderTopWidth: 1.5, borderStyle: 'dashed', marginHorizontal: 6 },
+  perfRow: { flexDirection: 'row', alignItems: 'center' },
+  dash: { flex: 1, borderTopWidth: 1.5, borderStyle: 'dashed', marginHorizontal: 8 },
 });

@@ -2,9 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import { AddChurchSheet, type NewChurchDraft } from '../church/AddChurchSheet';
+import { createChurchFromDraft, PENDING_NEW_CHURCH_ID, setPendingNewChurch } from './pendingChurch';
 import { FeatureError, searchChurches } from '../../lib/features';
 import type { Church } from '../../lib/types';
 import { AppText, EmptyState, Field, LineArt, Skeleton } from '../ui';
+import { AppIcon } from '../icons/AppIcon';
 
 const DEBOUNCE_MS = 300;
 
@@ -15,6 +20,34 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
   const [results, setResults] = useState<Church[] | null>(null);
   const [notSetUp, setNotSetUp] = useState(false);
   const [failed, setFailed] = useState(false);
+  const { session } = useAuth();
+  const { showToast } = useToast();
+  const [adding, setAdding] = useState(false);
+  // The church this person just added: shown first and selected, even if search doesn't return it
+  const [added, setAdded] = useState<Church | null>(null);
+
+  const addChurch = async (draft: NewChurchDraft) => {
+    if (!session) {
+      // Guests: remember it; it's created and set as their Home Church right after they sign in
+      await setPendingNewChurch(draft);
+      const pending = { id: PENDING_NEW_CHURCH_ID, name: draft.name, city: draft.city, state: draft.state, denomination: draft.denomination, verified: false } as Church;
+      setAdded(pending);
+      onSelect(pending);
+      setAdding(false);
+      return;
+    }
+    try {
+      const church = await createChurchFromDraft(draft);
+      setAdded(church);
+      onSelect(church);
+      setAdding(false);
+      showToast(draft.leads ? `${church.name} is listed. Add service times from its page.` : `${church.name} is listed`, 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not add the church', 'error');
+    }
+  };
+
+  const shown = added ? [added, ...(results ?? []).filter(c => c.id !== added.id)] : results;
 
   useEffect(() => {
     let cancelled = false;
@@ -68,21 +101,23 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
         left={<Ionicons name="search" size={18} color={t.c.textFaint} style={{ alignSelf: 'center' }} />}
       />
       <View style={{ flex: 1, gap: t.space.xs }}>
-        {results === null ? (
+        {shown === null ? (
           <View style={{ gap: t.space.xs }} accessibilityLabel="Loading churches">
             <Skeleton height={56} radius={t.radius.md} />
             <Skeleton height={56} radius={t.radius.md} />
             <Skeleton height={56} radius={t.radius.md} />
           </View>
-        ) : results.length === 0 ? (
+        ) : shown.length === 0 ? (
           <EmptyState
             compact
             art="church"
             title={failed ? "Couldn't search churches" : 'No churches found'}
-            body={failed ? 'Check your connection. You can choose later.' : 'Try another name or city. You can also choose later.'}
+            body={failed ? 'Check your connection. You can choose later.' : 'Try another name or city, or add your church.'}
+            actionLabel={failed ? undefined : 'Add your church'}
+            onAction={failed ? undefined : () => setAdding(true)}
           />
         ) : (
-          results.slice(0, 6).map(c => {
+          shown.slice(0, 6).map(c => {
             const selected = c.id === selectedId;
             return (
               <Pressable
@@ -94,7 +129,7 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
                 style={({ pressed }) => [s.row, selected && s.rowSelected, { opacity: pressed ? 0.75 : 1 }]}
               >
                 <View style={s.rowIcon}>
-                  <Ionicons name="business-outline" size={18} color={t.c.goldText} />
+                  <AppIcon name="church-outline" size={22} color={selected ? t.c.goldText : t.c.textMuted} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -104,7 +139,9 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
                     {c.verified ? <Ionicons name="checkmark-circle" size={14} color={t.c.goldText} accessibilityLabel="Verified" /> : null}
                   </View>
                   <AppText variant="caption" tone="muted" numberOfLines={1}>
-                    {[c.denomination, [c.city, c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'Church'}
+                    {c.id === PENDING_NEW_CHURCH_ID
+                      ? `${[c.city, c.state].filter(Boolean).join(', ')} · added when you sign in`
+                      : [c.denomination, [c.city, c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'Church'}
                   </AppText>
                 </View>
                 <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={22} color={selected ? t.c.gold : t.c.textFaint} />
@@ -112,7 +149,24 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
             );
           })
         )}
+        {shown && shown.length > 0 && !failed ? (
+          <Pressable
+            onPress={() => setAdding(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Can't find your church? Add it"
+            style={({ pressed }) => [s.addRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <Ionicons name="add-circle-outline" size={20} color={t.c.goldText} />
+            <AppText variant="callout" tone="muted" style={{ flex: 1 }}>
+              Can’t find your church?{' '}
+              <AppText variant="callout" tone="gold" style={{ fontWeight: '600' }}>
+                Add it
+              </AppText>
+            </AppText>
+          </Pressable>
+        ) : null}
       </View>
+      <AddChurchSheet visible={adding} onClose={() => setAdding(false)} initialName={query} onSubmit={addChurch} />
     </View>
   );
 }
@@ -131,5 +185,6 @@ const useStyles = makeStyles(t => ({
     backgroundColor: t.c.surface,
   },
   rowSelected: { borderColor: t.c.gold, backgroundColor: t.c.goldDim },
-  rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.goldDim },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, minHeight: 48, paddingHorizontal: t.space.sm },
+  rowIcon: { width: 28, alignItems: 'center', justifyContent: 'center' },
 }));

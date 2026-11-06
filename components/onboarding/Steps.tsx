@@ -2,15 +2,18 @@ import React from 'react';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
-import { AppText, Button, Card, PinCross } from '../ui';
+import { AppText, Button, Card } from '../ui';
+import { Logo } from '../brand/Logo';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
+import { InterestPicker } from './InterestPicker';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 const VALUES: { icon: IconName; title: string; body: string }[] = [
   { icon: 'calendar-outline', title: 'Faith events near you', body: 'Worship nights, Bible studies, retreats and concerts.' },
   { icon: 'people-outline', title: 'See where friends are going', body: 'RSVP together and never walk in alone.' },
-  { icon: 'hand-left-outline', title: 'Pray with your community', body: 'Share requests and celebrate answered prayers.' },
-  { icon: 'heart-circle-outline', title: 'Serve where it matters', body: 'Sign up for volunteer shifts at your church.' },
+  { icon: 'pray-outline', title: 'Pray with your community', body: 'Share requests and celebrate answered prayers.' },
+  { icon: 'serve-outline', title: 'Serve where it matters', body: 'Sign up for volunteer shifts at your church.' },
 ];
 
 export function WelcomeStep() {
@@ -19,8 +22,8 @@ export function WelcomeStep() {
   return (
     <View style={{ flex: 1, justifyContent: 'center' }}>
       <View style={{ alignItems: 'center', marginBottom: t.space.xl }}>
-        <PinCross size={64} />
-        <AppText variant="display" align="center" style={{ marginTop: t.space.lg }}>
+        <Logo layout="stacked" width={200} />
+        <AppText variant="display" align="center" style={{ marginTop: t.space.xl }}>
           Find your people.{'\n'}Grow your faith.
         </AppText>
       </View>
@@ -28,7 +31,7 @@ export function WelcomeStep() {
         {VALUES.map(v => (
           <View key={v.title} style={s.value}>
             <View style={s.valueIcon}>
-              <Ionicons name={v.icon} size={20} color={t.c.goldText} />
+              <AppIcon name={v.icon} size={22} color={t.c.goldText} />
             </View>
             <View style={{ flex: 1 }}>
               <AppText variant="bodyStrong">{v.title}</AppText>
@@ -39,6 +42,21 @@ export function WelcomeStep() {
           </View>
         ))}
       </View>
+    </View>
+  );
+}
+
+export function InterestsStep({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const t = useTheme();
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', gap: t.space.lg }}>
+      <View style={{ gap: t.space.xs }}>
+        <AppText variant="display">What draws you in?</AppText>
+        <AppText variant="body" tone="muted">
+          Pick a few. We’ll put these first on your Discover page. You can change them in Settings.
+        </AppText>
+      </View>
+      <InterestPicker value={value} onChange={onChange} />
     </View>
   );
 }
@@ -106,7 +124,7 @@ function PermissionCard({
   return (
     <Card style={{ gap: t.space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <Ionicons name={icon} size={22} color={t.c.goldText} />
+        <AppIcon name={icon} size={22} color={t.c.goldText} />
         <AppText variant="headline">{title}</AppText>
       </View>
       <AppText variant="callout" tone="muted">
@@ -127,15 +145,7 @@ function PermissionCard({
 }
 
 const useStyles = makeStyles(t => ({
-  value: { flexDirection: 'row', alignItems: 'center', gap: t.space.sm },
-  valueIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: t.c.goldDim,
-    borderWidth: 1,
-    borderColor: t.c.goldHairline,
-  },
+  value: { flexDirection: 'row', alignItems: 'flex-start', gap: t.space.sm },
+  // A plain line icon beside each promise, aligned to its first line; no tinted tile behind it
+  valueIcon: { width: 28, alignItems: 'center', paddingTop: 2 },
 }));

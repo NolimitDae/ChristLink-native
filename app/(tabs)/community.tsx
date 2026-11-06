@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../contexts/ThemeContext';
-import { Screen, Segmented } from '../../components/ui';
+import { CollapsingHeader, Segmented } from '../../components/ui';
 import { FeedView } from '../../components/community/FeedView';
 import { PrayerWall } from '../../components/community/PrayerWall';
+import { useTabBarClearance } from '../../components/TabBar';
 
 type CommunityView = 'feed' | 'prayer';
 
@@ -15,8 +13,6 @@ const OPTIONS: { value: CommunityView; label: string }[] = [
 ];
 
 export default function CommunityScreen() {
-  const t = useTheme();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ view?: string }>();
   const [view, setView] = useState<CommunityView>(params.view === 'prayer' ? 'prayer' : 'feed');
 
@@ -24,14 +20,11 @@ export default function CommunityScreen() {
     if (params.view === 'prayer' || params.view === 'feed') setView(params.view);
   }, [params.view]);
 
-  const bottomPad = Math.max(120, insets.bottom + 100);
+  const bottomPad = useTabBarClearance(24);
 
   return (
-    <Screen title="Community">
-      <View style={{ paddingHorizontal: t.space.md, paddingBottom: t.space.sm }}>
-        <Segmented options={OPTIONS} value={view} onChange={setView} />
-      </View>
-      <View style={{ flex: 1 }}>{view === 'feed' ? <FeedView bottomPad={bottomPad} /> : <PrayerWall bottomPad={bottomPad} />}</View>
-    </Screen>
+    <CollapsingHeader title="Community" resetKey={view} controls={<Segmented options={OPTIONS} value={view} onChange={setView} />}>
+      {onScroll => (view === 'feed' ? <FeedView bottomPad={bottomPad} onScroll={onScroll} /> : <PrayerWall bottomPad={bottomPad} onScroll={onScroll} />)}
+    </CollapsingHeader>
   );
 }

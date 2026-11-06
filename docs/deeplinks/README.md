@@ -1,4 +1,10 @@
-# Deep links: what the website (ChristLink1) must serve
+# Deep links
+
+**After the website switch (docs/CUTOVER.md)** the new web server (`web/server.mjs`) serves both association files,
+built from its `APPLE_TEAM_ID` and `ANDROID_SHA256_FINGERPRINTS` variables, and `/event/<id>`, `/church/<id>` are real
+pages of the web app (old `#event/<id>` links are redirected in the app). The rest of this page is for the old site.
+
+## Old site (ChristLink1) until the switch
 
 The native app shares links like `https://christlinksocial.com/event/<id>` and `/church/<id>`.
 iOS universal links and Android App Links match **paths**, not `#hash` routes, so the web app needs three small changes:

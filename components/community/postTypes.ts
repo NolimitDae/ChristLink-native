@@ -1,8 +1,7 @@
-import type { Ionicons } from '@expo/vector-icons';
-import type React from 'react';
+import type { AppIconName } from '../icons/AppIcon';
 import type { PostType } from '../../lib/types';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 export const COMPOSER_TYPES = ['prayer', 'praise', 'testimony', 'encouragement'] as const;
 export type ComposerType = (typeof COMPOSER_TYPES)[number];
@@ -16,11 +15,11 @@ export const POST_TYPE_LABEL: Record<PostType, string> = {
 };
 
 export const POST_TYPE_ICON: Record<PostType, IconName> = {
-  prayer: 'hand-left-outline',
+  prayer: 'pray-outline',
   praise: 'musical-notes-outline',
   testimony: 'chatbubble-ellipses-outline',
   encouragement: 'sunny-outline',
-  answered: 'checkmark-done-outline',
+  answered: 'sparkles-outline',
 };
 
 export function isShareable(type?: PostType | null): boolean {

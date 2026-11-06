@@ -15,7 +15,7 @@ function toHhmm(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** "HH:MM" picker: native dialog on Android, spinner in a sheet on iOS. */
+/** "HH:MM" picker: native dialog on Android, spinner in a sheet on iOS (the browser's time input on web). */
 export function TimeField({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const t = useTheme();
   const [open, setOpen] = useState(false);
@@ -41,7 +41,7 @@ export function TimeField({ value, onChange, label }: { value: string; onChange:
         <AppText variant="bodyStrong">{formatClock(value)}</AppText>
       </Pressable>
       {open && Platform.OS === 'android' ? <DateTimePicker value={draft} mode="time" onChange={onAndroid} minuteInterval={5} /> : null}
-      {Platform.OS === 'ios' ? (
+      {Platform.OS !== 'android' ? (
         <BottomSheet
           visible={open}
           onClose={() => setOpen(false)}

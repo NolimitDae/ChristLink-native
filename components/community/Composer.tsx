@@ -9,6 +9,7 @@ import { setPostType } from '../../lib/features';
 import { haptic } from '../../lib/haptics';
 import type { CommunityPost } from '../../lib/types';
 import { communityPostSchema, formatZodErrors } from '../../lib/validation';
+import { confirmKindness } from './kindnessCheck';
 import { Avatar } from '../Avatar';
 import { AppText, Button, Card, Chip, Field } from '../ui';
 import { COMPOSER_TYPES, POST_TYPE_ICON, POST_TYPE_LABEL, type ComposerType } from './postTypes';
@@ -46,6 +47,7 @@ export function Composer({ onPosted }: { onPosted: (post: CommunityPost) => void
       showToast(formatZodErrors(parsed.error), 'error');
       return;
     }
+    if (!(await confirmKindness(parsed.data.content))) return;
     setBusy(true);
     try {
       const post = await createCommunityPost(parsed.data.content, session.access_token);
@@ -97,9 +99,14 @@ export function Composer({ onPosted }: { onPosted: (post: CommunityPost) => void
         accessibilityLabel="Post text"
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <AppText variant="caption" tone={remaining < 50 ? 'danger' : 'faint'} accessibilityLabel={`${remaining} characters left`}>
-          {content.length}/{MAX}
-        </AppText>
+        {/* The count only matters near the limit; an always-on 0/1000 is noise */}
+        {remaining <= 200 ? (
+          <AppText variant="caption" tone={remaining < 50 ? 'danger' : 'faint'} accessibilityLabel={`${remaining} characters left`}>
+            {remaining} left
+          </AppText>
+        ) : (
+          <View />
+        )}
         <Button title="Post" size="sm" onPress={submit} loading={busy} disabled={!type || !content.trim()} />
       </View>
     </Card>

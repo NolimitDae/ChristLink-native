@@ -1,10 +1,9 @@
 import React from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
-import { haptic } from '../../lib/haptics';
+import { AppIcon, type AppIconName } from '../icons/AppIcon';
 
-type IconName = React.ComponentProps<typeof Ionicons>['name'];
+type IconName = AppIconName;
 
 interface IconButtonProps {
   icon: IconName;
@@ -21,14 +20,12 @@ interface IconButtonProps {
 export function IconButton({ icon, label, onPress, size = 40, tone = 'default', color, badge, style, disabled }: IconButtonProps) {
   const t = useTheme();
   const bg =
-    tone === 'gold' ? t.c.gold : tone === 'glass' ? 'rgba(14,12,10,0.55)' : tone === 'plain' ? 'transparent' : t.c.surface2;
-  const fg = color ?? (tone === 'gold' ? t.c.onGold : tone === 'glass' ? '#F6EFE3' : t.c.text);
+    tone === 'gold' ? t.c.gold : tone === 'glass' ? t.c.scrim : tone === 'plain' ? 'transparent' : t.c.surface2;
+  const fg = color ?? (tone === 'gold' ? t.c.onGold : tone === 'glass' ? t.c.onImage : t.c.text);
   return (
     <Pressable
-      onPress={() => {
-        haptic.tap();
-        onPress?.();
-      }}
+      // No haptic: most icon buttons navigate or open a sheet. Screens add feedback where a press changes state.
+      onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -47,7 +44,7 @@ export function IconButton({ icon, label, onPress, size = 40, tone = 'default', 
         style,
       ]}
     >
-      <Ionicons name={icon} size={Math.round(size * 0.5)} color={fg} />
+      <AppIcon name={icon} size={Math.round(size * 0.5)} color={fg} />
       {badge ? <View style={[styles.badge, { backgroundColor: t.c.live, borderColor: t.c.bg }]} /> : null}
     </Pressable>
   );

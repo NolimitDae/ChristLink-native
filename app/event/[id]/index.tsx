@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Linking, Platform, Pressable, RefreshControl, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Linking, Pressable, RefreshControl, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,11 +7,13 @@ import * as Clipboard from 'expo-clipboard';
 import { makeStyles, useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { ApiError, cancelRsvp, getEvent, getEventAttendees, getForum, rsvpToEvent } from '../../../lib/api';
+import { ApiError, cancelRsvp, getEvent, getEventAttendees, getForum, getWaitlist, joinWaitlist, leaveWaitlist, rsvpToEvent, type WaitlistStatus } from '../../../lib/api';
 import { FeatureError, getOpenShifts } from '../../../lib/features';
 import { eventFormatLabel, eventTiming, formatDateShort, formatTimeRange, pluralize } from '../../../lib/format';
 import { eventShareUrl, isSoldOut, locationLabel, priceLabel } from '../../../lib/eventHelpers';
 import { haptic } from '../../../lib/haptics';
+import { addToCalendar } from '../../../lib/calendar';
+import { openInMaps } from '../../../lib/maps';
 import { logger } from '../../../lib/logger';
 import type { Event, ForumMessage, PersonSummary, ServeShift } from '../../../lib/types';
 import { useFriendsGoing } from '../../../hooks/useFriendsGoing';
@@ -22,6 +24,7 @@ import {
   AppText,
   BottomSheet,
   Button,
+  Chip,
   EmptyState,
   Glass,
   IconButton,
@@ -80,6 +83,8 @@ export default function EventDetailScreen() {
   const [shifts, setShifts] = useState<ServeShift[]>([]);
   const [sheet, setSheet] = useState<SheetName>(null);
   const [rsvpBusy, setRsvpBusy] = useState(false);
+  const [waitlist, setWaitlist] = useState<WaitlistStatus | null>(null);
+  const [waitBusy, setWaitBusy] = useState(false);
   const [celebration, setCelebration] = useState({ play: 0, title: 'You’re going!' });
   const reminderPending = useRef(false);
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -145,6 +150,64 @@ export default function EventDetailScreen() {
       cancelled = true;
     };
   }, [id, token, forumEnabled, canSeePrivate]);
+
+  const fullNow = !!event && isSoldOut(event);
+  useEffect(() => {
+    if (!id || !token || !fullNow || attendance.attending) {
+      setWaitlist(null);
+      return;
+    }
+    let cancelled = false;
+    getWaitlist(id, token)
+      .then(w => {
+        if (!cancelled) setWaitlist(w);
+      })
+      .catch(err => logger.info('Waitlist unavailable', { error: String(err) }));
+    return () => {
+      cancelled = true;
+    };
+  }, [id, token, fullNow, attendance.attending]);
+
+  const joinLine = async () => {
+    const tk = requireAuth();
+    if (!tk || !event || waitBusy) return;
+    setWaitBusy(true);
+    try {
+      const w = await joinWaitlist(event.id, tk);
+      setWaitlist(w);
+      haptic.success();
+      showToast(
+        event.is_paid ? 'You’re on the waitlist. We’ll tell you if a ticket opens up.' : 'You’re on the waitlist. If a spot opens, we’ll RSVP you automatically.',
+        'success',
+      );
+    } catch (err) {
+      showToast(err instanceof ApiError && err.status === 404 ? 'Waitlists aren’t available yet' : err instanceof Error ? err.message : 'Could not join the waitlist', 'error');
+      if (err instanceof ApiError && err.status === 400) load();
+    } finally {
+      setWaitBusy(false);
+    }
+  };
+
+  const confirmLeaveLine = () => {
+    const tk = requireAuth();
+    if (!tk || !event) return;
+    Alert.alert('Leave the waitlist?', 'If you join again later, you’ll go to the back of the line.', [
+      { text: 'Stay in line', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await leaveWaitlist(event.id, tk);
+            setWaitlist(w => (w ? { ...w, joined: false, status: null, position: null } : w));
+            showToast('You left the waitlist', 'info');
+          } catch (err) {
+            showToast(err instanceof Error ? err.message : 'Could not leave the waitlist', 'error');
+          }
+        },
+      },
+    ]);
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -274,14 +337,29 @@ export default function EventDetailScreen() {
   const hostVerified = event.host_role === 'verified' || event.host_role === 'admin';
   const place = [event.address, event.city, event.state].filter(Boolean).join(', ');
 
-  const openMaps = () => {
-    const q = encodeURIComponent([event.venue_name, event.address, event.city, event.state, event.zip].filter(Boolean).join(', '));
-    const hasCoords = typeof event.lat === 'number' && typeof event.lng === 'number';
-    const mapUrl =
-      Platform.OS === 'ios'
-        ? `http://maps.apple.com/?q=${q}${hasCoords ? `&ll=${event.lat},${event.lng}` : ''}`
-        : `geo:${hasCoords ? `${event.lat},${event.lng}` : '0,0'}?q=${q}`;
-    Linking.openURL(mapUrl).catch(() => showToast('Could not open maps', 'error'));
+  const mapPlace = { parts: [event.venue_name, event.address, event.city, event.state, event.zip], lat: event.lat, lng: event.lng };
+  const openMaps = (directions = false) => {
+    openInMaps(mapPlace, { directions }).catch(() => showToast('Could not open maps', 'error'));
+  };
+
+  const saveToCalendar = async () => {
+    if (!event.start_date) return;
+    try {
+      const result = await addToCalendar({
+        title: event.name,
+        start: event.start_date,
+        end: event.end_date,
+        location: event.format === 'online' ? event.online_url : [event.venue_name, place].filter(Boolean).join(', '),
+        notes: event.description,
+        url,
+      });
+      if (result === 'saved') {
+        haptic.success();
+        showToast('Added to your calendar', 'success');
+      }
+    } catch {
+      showToast('Could not open your calendar', 'error');
+    }
   };
 
   const openJoinLink = () => {
@@ -307,6 +385,13 @@ export default function EventDetailScreen() {
     : [place, hybrid ? 'Also streaming online' : null].filter(Boolean).join(' · ') || eventFormatLabel(event.format);
   const canOpenPlace = online ? canSeePrivate && !!event.online_url : !!(event.venue_name || event.address || event.city || typeof event.lat === 'number');
 
+  const onLine = !!waitlist?.joined;
+  const waitlistButton = onLine ? (
+    <Button title="On the waitlist" icon="hourglass-outline" variant="secondary" onPress={confirmLeaveLine} accessibilityHint="Opens a prompt to leave the waitlist" />
+  ) : (
+    <Button title="Join waitlist" icon="hourglass-outline" onPress={joinLine} loading={waitBusy} />
+  );
+
   const renderActions = () => {
     const invite =
       token && published && !ended ? <IconButton icon="person-add-outline" label="Invite friends" onPress={() => setSheet('invite')} size={44} /> : null;
@@ -329,10 +414,11 @@ export default function EventDetailScreen() {
           </>
         );
       }
+      if (soldOut) return waitlistButton;
       return (
         <>
           {invite}
-          <Button title={soldOut ? 'Full' : 'RSVP'} icon={soldOut ? undefined : 'checkmark'} onPress={rsvp} loading={rsvpBusy} disabled={soldOut} haptics={false} />
+          <Button title="RSVP" icon="checkmark" onPress={rsvp} loading={rsvpBusy} haptics={false} />
         </>
       );
     }
@@ -344,13 +430,13 @@ export default function EventDetailScreen() {
         </>
       );
     }
+    if (soldOut) return waitlistButton;
     return (
       <>
         {invite}
         <Button
-          title={soldOut ? 'Sold out' : 'Get tickets'}
-          icon={soldOut ? undefined : 'ticket-outline'}
-          disabled={soldOut}
+          title="Get tickets"
+          icon="ticket-outline"
           onPress={() => {
             if (requireAuth()) setSheet('checkout');
           }}
@@ -361,6 +447,10 @@ export default function EventDetailScreen() {
 
   const barTitle = isHost
     ? 'Your event'
+    : soldOut && !attendance.attending && !ended
+      ? event.is_paid
+        ? 'Sold out'
+        : 'Full'
     : event.is_paid && myTickets.length > 0
       ? 'You’re going'
       : !event.is_paid && attendance.rsvp
@@ -368,6 +458,12 @@ export default function EventDetailScreen() {
         : priceLabel(event);
   const barCaption = isHost
     ? `${pluralize(event.going_count, 'guest')}${event.status !== 'published' ? ` · ${event.status}` : ''}`
+    : soldOut && !attendance.attending && !ended
+      ? onLine && waitlist?.position
+        ? `You’re #${waitlist.position} in line`
+        : waitlist && waitlist.waiting > 0
+          ? `${pluralize(waitlist.waiting, 'person', 'people')} waiting`
+          : 'Join the waitlist for a spot'
     : event.is_paid && myTickets.length > 0
       ? pluralize(ticketQty, 'ticket')
       : !event.is_paid && attendance.rsvp
@@ -433,6 +529,12 @@ export default function EventDetailScreen() {
             {hostVerified ? <Ionicons name="checkmark-circle" size={16} color={t.c.goldText} accessibilityLabel="Verified" /> : null}
             <Ionicons name="chevron-forward" size={16} color={t.c.textFaint} />
           </Pressable>
+          {attendance.attending && !isHost && !ended && !cancelled && event.start_date ? (
+            <View style={s.planRow}>
+              <Chip label="Add to calendar" icon="calendar-outline" onPress={saveToCalendar} />
+              {!online && canOpenPlace ? <Chip label="Directions" icon="navigate-outline" onPress={() => openMaps(true)} /> : null}
+            </View>
+          ) : null}
         </View>
 
         <InfoGrid>
@@ -443,7 +545,7 @@ export default function EventDetailScreen() {
             value={online ? 'Online' : locationLabel({ ...event, format: 'in_person' })}
             sub={placeSub}
             subTone={online && canSeePrivate && event.online_url ? 'gold' : 'muted'}
-            onPress={canOpenPlace ? (online ? openJoinLink : openMaps) : undefined}
+            onPress={canOpenPlace ? (online ? openJoinLink : () => openMaps()) : undefined}
             hint={online ? 'Opens the join link' : 'Opens maps'}
           />
           <InfoTile
@@ -534,6 +636,9 @@ export default function EventDetailScreen() {
 
       <BottomSheet visible={sheet === 'menu'} onClose={() => setSheet(null)} title="Event options">
         <ListGroup>
+          {!ended && !cancelled && event.start_date ? (
+            <ListRow icon="calendar-outline" title="Add to calendar" onPress={() => afterMenu(saveToCalendar)} />
+          ) : null}
           <ListRow icon="share-outline" title="Share link" onPress={() => afterMenu(shareLink)} />
           <ListRow
             icon="image-outline"
@@ -601,6 +706,7 @@ const useStyles = makeStyles(t => ({
     borderWidth: StyleSheet.hairlineWidth,
     marginBottom: t.space.md,
   },
+  planRow: { flexDirection: 'row', flexWrap: 'wrap', gap: t.space.xs, marginTop: t.space.sm },
   hostRow: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, marginTop: t.space.md, minHeight: 44, alignSelf: 'flex-start' },
   section: { marginTop: t.space.lg },
   joinLink: { flexDirection: 'row', alignItems: 'center', gap: t.space.xs, marginHorizontal: t.space.md, marginTop: t.space.sm, minHeight: 44 },

@@ -20,7 +20,7 @@ function FeeItem({ icon, title, body }: { icon: React.ComponentProps<typeof Ioni
   return (
     <View style={s.feeRow}>
       <View style={s.feeIcon}>
-        <Ionicons name={icon} size={18} color={t.c.goldText} />
+        <Ionicons name={icon} size={20} color={t.c.textMuted} />
       </View>
       <View style={{ flex: 1, gap: 2 }}>
         <AppText variant="bodyStrong">{title}</AppText>
@@ -115,7 +115,7 @@ export default function PayoutsScreen() {
         <Card variant={status === 'active' ? 'standard' : 'featured'} style={[{ gap: t.space.sm }, status === 'active' ? { borderColor: t.c.success, backgroundColor: t.c.successDim } : null]}>
           <View style={s.statusTop}>
             <View style={[s.statusIcon, { backgroundColor: status === 'active' ? t.c.success : t.c.goldDim }]}>
-              <Ionicons name={status === 'active' ? 'checkmark' : status === 'incomplete' ? 'hourglass-outline' : 'card-outline'} size={22} color={status === 'active' ? t.c.bg : t.c.goldText} />
+              <Ionicons name={status === 'active' ? 'checkmark' : status === 'incomplete' ? 'hourglass-outline' : 'wallet-outline'} size={22} color={status === 'active' ? t.c.bg : t.c.goldText} />
             </View>
             <Badge label={statusCopy.badge} tone={statusCopy.tone} />
           </View>
@@ -187,5 +187,5 @@ const useStyles = makeStyles(t => ({
   statusTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statusIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   feeRow: { flexDirection: 'row', gap: t.space.sm, alignItems: 'flex-start' },
-  feeIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: t.c.goldDim },
+  feeIcon: { width: 28, alignItems: 'center', paddingTop: 2 },
 }));

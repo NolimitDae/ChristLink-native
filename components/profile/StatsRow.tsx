@@ -1,7 +1,7 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import { AppText } from '../ui';
+import { AppText, PressScale } from '../ui';
 
 export interface Stat {
   label: string;
@@ -25,12 +25,14 @@ export function StatsRow({ stats }: { stats: Stat[] }) {
       }}
     >
       {stats.map((st, i) => (
-        <Pressable
+        <PressScale
           key={st.label}
+          scaleTo={0.94}
           onPress={st.onPress}
           disabled={!st.onPress}
           accessibilityRole={st.onPress ? 'button' : 'text'}
           accessibilityLabel={`${st.label}: ${st.value}${st.hint ? `. ${st.hint}` : ''}`}
+          accessibilityHint={st.onPress ? `Opens the ${st.label.toLowerCase()} list` : undefined}
           style={{
             flex: 1,
             alignItems: 'center',
@@ -47,7 +49,7 @@ export function StatsRow({ stats }: { stats: Stat[] }) {
           <AppText variant="caption" tone="muted" align="center" style={{ fontSize: 11 }} numberOfLines={1}>
             {st.label}
           </AppText>
-        </Pressable>
+        </PressScale>
       ))}
     </View>
   );

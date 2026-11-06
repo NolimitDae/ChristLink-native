@@ -1,5 +1,6 @@
 import { API_BASE, API_TIMEOUT_MS, API_MAX_RETRIES } from './constants';
 import { logger } from './logger';
+import { getAccessToken, refreshSession } from './session';
 import type {
   AppNotification,
   CommunityPost,
@@ -59,12 +60,27 @@ function createCombinedSignal(a: AbortSignal, b: AbortSignal): AbortSignal {
   return controller.signal;
 }
 
-interface FetchOptions extends RequestInit {
+export interface FetchOptions extends RequestInit {
   /** Non-idempotent requests (payments, posts) must not be retried automatically. */
   retry?: boolean;
 }
 
-export async function apiFetch<T>(
+/** GETs already on the wire, keyed by path + token: a second caller for the same data shares the first request. */
+const inFlight = new Map<string, Promise<unknown>>();
+
+export function apiFetch<T>(path: string, options: FetchOptions = {}, accessToken?: string, signal?: AbortSignal): Promise<T> {
+  const method = (options.method ?? 'GET').toUpperCase();
+  // Only plain GETs without a caller's abort signal are shared (one caller cancelling must not cancel the other)
+  if (method !== 'GET' || signal || options.body) return apiFetchOnce<T>(path, options, accessToken, signal);
+  const key = `${accessToken ?? ''} ${path}`;
+  const pending = inFlight.get(key);
+  if (pending) return pending as Promise<T>;
+  const request = apiFetchOnce<T>(path, options, accessToken).finally(() => inFlight.delete(key));
+  inFlight.set(key, request);
+  return request;
+}
+
+async function apiFetchOnce<T>(
   path: string,
   options: FetchOptions = {},
   accessToken?: string,
@@ -73,21 +89,24 @@ export async function apiFetch<T>(
   const { retry, ...init } = options;
   const method = (init.method ?? 'GET').toUpperCase();
   const canRetry = retry ?? (method === 'GET' || method === 'HEAD');
-  const headers: Record<string, string> = {
+  let headers: Record<string, string> = {
     Accept: 'application/json',
     ...(init.body ? { 'Content-Type': 'application/json' } : {}),
     ...(init.headers as Record<string, string>),
   };
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  // The stored session's token wins: it is refreshed here, while screens may hold an older copy.
+  const token = (await getAccessToken()) ?? accessToken;
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   let attempt = 0;
+  let reauthed = false;
   for (;;) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     const combined = signal ? createCombinedSignal(signal, controller.signal) : controller.signal;
 
     try {
-      const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: combined });
+      const response = await fetch(`${API_BASE}${path}`, { ...init, headers, signal: combined as RequestInit['signal'] });
       clearTimeout(timeoutId);
       const text = await response.text();
       let data: unknown = null;
@@ -100,6 +119,15 @@ export async function apiFetch<T>(
       }
 
       if (!response.ok) {
+        // A 401 means the request was rejected before running, so one retry is safe even for payments.
+        if (response.status === 401 && token && !reauthed) {
+          reauthed = true;
+          const fresh = await refreshSession();
+          if (fresh) {
+            headers = { ...headers, Authorization: `Bearer ${fresh.accessToken}` };
+            continue;
+          }
+        }
         const body = (data ?? {}) as Record<string, unknown>;
         const message = typeof body.error === 'string' ? body.error : `Request failed (${response.status})`;
         const retryable = isRetryable(response.status);
@@ -132,6 +160,35 @@ export async function apiFetch<T>(
 
 function json(body: unknown, method = 'POST'): FetchOptions {
   return { method, body: JSON.stringify(body) };
+}
+
+// ── Auth (email one-time code) ───────────────────────────────
+export interface VerifyOtpResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  user: { id: string; email: string; profile?: Profile | null };
+}
+
+/** Sends a 6-digit code. A name is stored for the new profile. */
+export function requestSignInCode(email: string, fullName?: string): Promise<{ success: boolean; message?: string }> {
+  return fullName ? apiFetch('/api/auth/signup', json({ email, fullName })) : apiFetch('/api/auth/signin', json({ email }));
+}
+
+export function verifySignInCode(email: string, token: string): Promise<VerifyOtpResponse> {
+  return apiFetch('/api/auth/verify-otp', json({ email, token }));
+}
+
+/**
+ * Website switch-over: trades the old Supabase site's session (same domain, read from the browser) for a session on
+ * this API, so visitors of christlinksocial.com stay signed in. Web only; see lib/legacySession.ts.
+ */
+export function exchangeLegacySession(refreshToken: string): Promise<VerifyOtpResponse> {
+  return apiFetch('/api/auth/legacy-exchange', json({ refreshToken }));
+}
+
+export function revokeRefreshToken(refreshToken: string): Promise<unknown> {
+  return apiFetch('/api/auth/signout', json({ refreshToken }));
 }
 
 // ── Normalizers: the API returns some web-specific field names ────────────
@@ -275,6 +332,26 @@ export function getRsvp(eventId: string, accessToken: string): Promise<{ rsvp: R
   return apiFetch(`/api/rsvp/${eventId}`, {}, accessToken);
 }
 
+/** Waitlist for a full free event or a sold-out paid one. `position` is 1-based while waiting; null once notified. */
+export interface WaitlistStatus {
+  joined: boolean;
+  status: 'waiting' | 'notified' | null;
+  position: number | null;
+  waiting: number;
+}
+
+export function getWaitlist(eventId: string, accessToken: string): Promise<WaitlistStatus> {
+  return apiFetch(`/api/events/${eventId}/waitlist`, {}, accessToken);
+}
+
+export function joinWaitlist(eventId: string, accessToken: string): Promise<WaitlistStatus> {
+  return apiFetch(`/api/events/${eventId}/waitlist`, { method: 'POST' }, accessToken);
+}
+
+export function leaveWaitlist(eventId: string, accessToken: string): Promise<{ success?: boolean }> {
+  return apiFetch(`/api/events/${eventId}/waitlist`, { method: 'DELETE' }, accessToken);
+}
+
 export async function getEventAttendees(
   eventId: string,
   accessToken?: string,
@@ -328,8 +405,14 @@ export function hostRefundTicket(ticketId: string, accessToken: string): Promise
   return apiFetch(`/api/tickets/${ticketId}/refund`, { method: 'POST' }, accessToken);
 }
 
-export function walletPassUrl(ticketId: string): string {
-  return `${API_BASE}/api/tickets/${ticketId}/wallet`;
+/** A short-lived signed .pkpass URL that Safari / Wallet can open without a bearer header. */
+export function getWalletLink(ticketId: string, accessToken: string): Promise<{ url: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/wallet-link`, {}, accessToken);
+}
+
+/** "Add to Google Wallet" save link (pay.google.com). 503 until the server has Google Wallet keys. */
+export function getGoogleWalletLink(ticketId: string, accessToken: string): Promise<{ url: string }> {
+  return apiFetch(`/api/tickets/${ticketId}/google-wallet-link`, {}, accessToken);
 }
 
 export function validateListingPromo(
@@ -393,8 +476,12 @@ export function getIdentityStatus(accessToken: string): Promise<IdentityStatus> 
 }
 
 // ── Community ────────────────────────────────────────────────
-export async function getCommunityPosts(accessToken?: string, signal?: AbortSignal): Promise<CommunityPostsResponse> {
-  const res = await apiFetch<{ posts?: RawPost[] }>('/api/community-posts', {}, accessToken, signal);
+export const FEED_PAGE = 30;
+
+/** Newest posts first; `offset` loads the next page (the server's default page is FEED_PAGE). */
+export async function getCommunityPosts(accessToken?: string, signal?: AbortSignal, offset = 0): Promise<CommunityPostsResponse> {
+  const path = offset > 0 ? `/api/community-posts?limit=${FEED_PAGE}&offset=${offset}` : '/api/community-posts';
+  const res = await apiFetch<{ posts?: RawPost[] }>(path, {}, accessToken, signal);
   return { posts: (res.posts ?? []).map(normalizePost) };
 }
 
@@ -463,6 +550,18 @@ export async function getFollowers(accessToken: string): Promise<PersonSummary[]
   return res.followers ?? [];
 }
 
+/** People who follow `userId` (public, newest first, up to 200). */
+export async function getFollowersOf(userId: string): Promise<PersonSummary[]> {
+  const res = await apiFetch<{ users?: PersonSummary[] }>(`/api/followers/${encodeURIComponent(userId)}`);
+  return res.users ?? [];
+}
+
+/** People `userId` follows (public, newest first, up to 200). */
+export async function getFollowingOf(userId: string): Promise<PersonSummary[]> {
+  const res = await apiFetch<{ users?: PersonSummary[] }>(`/api/following/${encodeURIComponent(userId)}`);
+  return res.users ?? [];
+}
+
 export function followUser(userId: string, accessToken: string): Promise<{ following: boolean }> {
   return apiFetch(`/api/follow/${userId}`, { method: 'POST' }, accessToken);
 }
@@ -499,6 +598,22 @@ export function createTicketType(
   accessToken: string,
 ): Promise<TicketType> {
   return apiFetch('/api/ticket-types', json(payload), accessToken);
+}
+
+/** New backend only (PATCH /api/ticket-types/:id); the old Railway API has no update route. */
+export function updateTicketType(
+  id: string,
+  payload: {
+    name?: string;
+    price_cents?: number;
+    quantity?: number | null;
+    sales_start?: string | null;
+    sales_end?: string | null;
+    sort_order?: number;
+  },
+  accessToken: string,
+): Promise<TicketType> {
+  return apiFetch(`/api/ticket-types/${id}`, json(payload, 'PATCH'), accessToken);
 }
 
 // ── Admin (role checked on the server) ───────────────────────
