@@ -1,0 +1,8 @@
+{
+  "name": "christlink-supabase-migrate",
+  "private": true,
+  "type": "module",
+  "description": "One-time copy of the old site's Supabase data into the Railway Postgres (docs/CUTOVER.md)",
+  "scripts": { "start": "node migrate.mjs" },
+  "dependencies": { "pg": "8.13.1" }
+}
