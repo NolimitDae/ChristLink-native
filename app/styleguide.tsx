@@ -38,6 +38,7 @@ import {
 import type { LineArtName } from '../components/ui/LineArt';
 import { AppIcon } from '../components/icons/AppIcon';
 import type { ThemePreference } from '../lib/theme';
+import { Logo, LogoMark } from '../components/brand/Logo';
 
 const TYPE_VARIANTS: TypeVariant[] = ['display', 'title1', 'title2', 'title3', 'headline', 'body', 'bodyStrong', 'callout', 'caption', 'overline', 'button', 'numeral'];
 const ART: LineArtName[] = ['cross', 'calendar', 'ticket', 'prayer', 'people', 'church', 'serve', 'search', 'bell', 'map', 'offline'];
@@ -390,6 +391,17 @@ export default function StyleguideScreen() {
           <Card padded={false}>
             <EmptyState compact art="calendar" title="No upcoming events" body="Start something your community will love." actionLabel="Create an event" onAction={() => undefined} />
           </Card>
+        </Block>
+
+        <Block title="Logo" note="assets/brand holds the masters; scripts/brand/build-brand.mjs regenerates icons and splash.">
+          <View style={{ gap: t.space.md }}>
+            <Logo layout="horizontal" width={260} />
+            <View style={[s.row, { alignItems: 'flex-end' }]}>
+              <Logo layout="stacked" width={150} />
+              <LogoMark size={64} />
+              <LogoMark size={28} />
+            </View>
+          </View>
         </Block>
 
         <Block title="Line art">

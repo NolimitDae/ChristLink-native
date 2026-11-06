@@ -179,6 +179,14 @@ export function verifySignInCode(email: string, token: string): Promise<VerifyOt
   return apiFetch('/api/auth/verify-otp', json({ email, token }));
 }
 
+/**
+ * Website switch-over: trades the old Supabase site's session (same domain, read from the browser) for a session on
+ * this API, so visitors of christlinksocial.com stay signed in. Web only; see lib/legacySession.ts.
+ */
+export function exchangeLegacySession(refreshToken: string): Promise<VerifyOtpResponse> {
+  return apiFetch('/api/auth/legacy-exchange', json({ refreshToken }));
+}
+
 export function revokeRefreshToken(refreshToken: string): Promise<unknown> {
   return apiFetch('/api/auth/signout', json({ refreshToken }));
 }

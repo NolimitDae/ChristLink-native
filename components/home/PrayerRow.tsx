@@ -57,11 +57,17 @@ function PrayerCard({ prayer, onPress }: { prayer: Prayer; onPress: () => void }
 export function PrayerRow({ refreshKey }: { refreshKey: number }) {
   const t = useTheme();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
+  const userId = session?.user.id;
   const [prayers, setPrayers] = useState<Prayer[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    // The Prayer Wall is for signed-in members; guests see the invitation card instead of a failed request
+    if (!userId) {
+      setPrayers([]);
+      return undefined;
+    }
     getPrayerWall('all')
       .then(list => {
         if (!cancelled) setPrayers(list.slice(0, 8));
@@ -72,7 +78,7 @@ export function PrayerRow({ refreshKey }: { refreshKey: number }) {
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+  }, [refreshKey, userId]);
 
   const open = () => router.push(PRAYER_ROUTE);
 

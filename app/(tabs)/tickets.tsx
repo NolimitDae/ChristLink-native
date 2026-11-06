@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, RefreshControl, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
-import { getMyRsvps, getMyTickets } from '../../lib/api';
+import { confirmTicketByIntent, getMyRsvps, getMyTickets } from '../../lib/api';
 import { storage } from '../../lib/storage';
 import { logger } from '../../lib/logger';
 import { pluralize } from '../../lib/format';
@@ -90,6 +90,22 @@ export default function TicketsScreen() {
       load();
     }, [load]),
   );
+
+  // Web checkout: payment methods that leave for the bank return here (?payment_intent=…&redirect_status=…).
+  // Confirm like the in-app sheet does after a payment (the webhook stays the source of truth), then reload.
+  const params = useLocalSearchParams<{ payment_intent?: string; redirect_status?: string }>();
+  useEffect(() => {
+    const intent = params.payment_intent;
+    if (!token || !intent || !/^pi_[A-Za-z0-9]+$/.test(intent)) return;
+    const ok = params.redirect_status === 'succeeded' || params.redirect_status === 'processing';
+    (ok ? confirmTicketByIntent(intent, token) : Promise.resolve())
+      .catch(err => logger.warn('confirm-by-intent after redirect failed', { error: String(err) }))
+      .finally(() => {
+        router.setParams({ payment_intent: undefined, payment_intent_client_secret: undefined, redirect_status: undefined } as never);
+        load();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, params.payment_intent]);
 
   const onRefresh = async () => {
     setRefreshing(true);

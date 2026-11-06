@@ -11,6 +11,8 @@
  * (id, email, created_at, last_sign_in_at only) into `users`. Everything runs in one transaction with
  * foreign-key triggers off, so table order doesn't matter and a failure changes nothing.
  * --wipe empties the copied tables first (use it when re-running against staging).
+ * Emails are stored lower-case (sign-in matches them that way). The import stops, changing nothing, if two accounts
+ * share an email once lower-cased, or if an imported profile would end up without its login.
  */
 import fs from 'node:fs';
 import readline from 'node:readline';
@@ -147,6 +149,35 @@ async function main() {
       await db.query(
         `select setval($1, greatest((select coalesce(max("${s.column_name}"), 0) from public."${s.table_name}"), 1))`,
         [s.seq],
+      );
+    }
+
+    // Sign-in looks accounts up by lower-case email (auth.service normalizeEmail), so stored emails must match it,
+    // or the person would get a new, empty account on their first sign-in.
+    const { rows: caseClashes } = await db.query(`
+      select lower(trim(email)) as email, count(*)::int as n from public.users
+      group by 1 having count(*) > 1`);
+    if (caseClashes.length) {
+      throw new Error(
+        `These emails belong to more than one account once lower-cased; merge them before importing: ${caseClashes
+          .map((r) => r.email)
+          .join(', ')}`,
+      );
+    }
+    await db.query(`update public.users set email = lower(trim(email)) where email <> lower(trim(email))`);
+    await db.query(`update public.profiles set email = lower(trim(email)) where email <> lower(trim(email))`);
+
+    // An imported profile whose login row was skipped (that email already had a different account in the target,
+    // e.g. someone signed up on the new app before the import) would be cut off from its owner. Stop instead.
+    const { rows: orphans } = await db.query(`
+      select p.id, p.email from public.profiles p
+      where not exists (select 1 from public.users u where u.id = p.id)`);
+    if (orphans.length) {
+      throw new Error(
+        `${orphans.length} imported profile(s) have no login (their email already has another account in the target): ${orphans
+          .slice(0, 20)
+          .map((r) => r.email ?? r.id)
+          .join(', ')}. Import into an empty database (--wipe on staging) or remove those new accounts first.`,
       );
     }
 

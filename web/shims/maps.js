@@ -1,4 +1,4 @@
-// Web preview stand-in for react-native-maps (no web support): an empty dark panel.
+// Web build of react-native-maps (no web support): an empty panel. The Map tab is hidden on the website.
 const React = require('react'); const { View } = require('react-native');
 // Camera calls are no-ops so screens that move the map don't throw
 const MapView = React.forwardRef((p, ref) => {

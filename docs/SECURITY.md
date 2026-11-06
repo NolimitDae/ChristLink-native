@@ -10,6 +10,9 @@
 | Network | 15 s timeouts; only idempotent GETs retry; non-JSON error pages handled. No tokens in URLs. |
 | Logging | Structured logger, no `console.*`; Sentry with `sendDefaultPii: false`, user id only. |
 | Deep links | Universal links / App Links limited to `christlinksocial.com/event/*` and `/church/*`. |
+| Website sessions | The web build keeps the session in `localStorage` (browsers have no keychain; `web/shims/securestore.js`), as the old Supabase site did. Access tokens last 1 hour; refresh tokens rotate and reuse revokes the chain. Card data stays inside Stripe's iframes (`web/shims/stripe.tsx`). |
+| Website switch-over | `POST /api/auth/legacy-exchange` accepts an old-site Supabase refresh token only after Supabase itself confirms it, maps to an *existing* imported account (same id or email), never creates one, is rate-limited like sign-in, logs the old session out, and is off when `LEGACY_SUPABASE_*` are unset (remove them ~60 days after the switch). |
+| Web server | `web/server.mjs`: HSTS, nosniff, `X-Frame-Options: DENY`, strict referrer and permissions policies; never serves files outside the build; `/webhook` forwards Stripe's raw body and signature unchanged (the API verifies it); 1 MB cap. No CSP yet (Stripe.js, Sentry and Google Fonts would need allow-listing). |
 | Permissions | Asked in context with plain-language reasons (camera for check-in, location for Near me, notifications after onboarding explains why). Removed legacy Android storage permissions. |
 
 ## New tables (supabase/migrations/20261015000000_native_features.sql)

@@ -2,7 +2,8 @@ import React from 'react';
 import { View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
-import { AppText, Button, Card, PinCross } from '../ui';
+import { AppText, Button, Card } from '../ui';
+import { Logo } from '../brand/Logo';
 import { AppIcon, type AppIconName } from '../icons/AppIcon';
 import { InterestPicker } from './InterestPicker';
 
@@ -21,8 +22,8 @@ export function WelcomeStep() {
   return (
     <View style={{ flex: 1, justifyContent: 'center' }}>
       <View style={{ alignItems: 'center', marginBottom: t.space.xl }}>
-        <PinCross size={64} />
-        <AppText variant="display" align="center" style={{ marginTop: t.space.lg }}>
+        <Logo layout="stacked" width={200} />
+        <AppText variant="display" align="center" style={{ marginTop: t.space.xl }}>
           Find your people.{'\n'}Grow your faith.
         </AppText>
       </View>

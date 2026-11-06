@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="%LANG_ISO_CODE%">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Christ Link Social</title>
+    <meta name="description" content="Find faith events, get tickets, pray with your community and serve at your church." />
+    <meta name="theme-color" content="#0E0C0A" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F7F2E8" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/svg+xml" href="/brand/mark.svg" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="apple-mobile-web-app-title" content="Christ Link" />
+    <!-- Link previews (iMessage, WhatsApp, social) -->
+    <meta property="og:site_name" content="Christ Link Social" />
+    <meta property="og:title" content="Christ Link Social" />
+    <meta property="og:description" content="Find faith events, get tickets, pray with your community and serve at your church." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://christlinksocial.com/brand/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- The react-native-web recommended reset, plus the app's ground color so there's no white flash while loading -->
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+        background: #0e0c0a;
+      }
+      @media (prefers-color-scheme: light) {
+        html,
+        body {
+          background: #f7f2e8;
+        }
+      }
+      body {
+        overflow: hidden;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>Christ Link Social needs JavaScript. Turn it on, or get the app on the App Store or Google Play.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

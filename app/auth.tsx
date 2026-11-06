@@ -12,7 +12,8 @@ import { FeatureError, acceptTerms } from '../lib/features';
 import { haptic } from '../lib/haptics';
 import { logger } from '../lib/logger';
 import { emailSchema, fullNameSchema } from '../lib/validation';
-import { AppText, Button, Field, IconButton, PinCross } from '../components/ui';
+import { AppText, Button, Field, IconButton } from '../components/ui';
+import { Logo } from '../components/brand/Logo';
 import { OTP_LENGTH, OtpBoxes, type OtpBoxesHandle } from '../components/onboarding/OtpBoxes';
 import { applyPendingHomeChurch } from '../components/onboarding/pendingChurch';
 
@@ -148,11 +149,8 @@ export default function AuthScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.brand}>
-          <PinCross size={48} />
-          <AppText variant="title1" align="center" style={{ marginTop: t.space.md }}>
-            Christ Link Social
-          </AppText>
-          <AppText variant="callout" tone="muted" align="center" style={{ marginTop: 4 }}>
+          <Logo layout="stacked" width={190} />
+          <AppText variant="callout" tone="muted" align="center" style={{ marginTop: t.space.lg }}>
             {step === 'email' ? 'Sign in or create an account. No password needed.' : `Enter the 6-digit code we sent to ${normalizedEmail}`}
           </AppText>
         </View>

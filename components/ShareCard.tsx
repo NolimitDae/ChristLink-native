@@ -1,12 +1,13 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Platform, Share, StyleSheet, View, type ViewInstance } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppText } from './ui/AppText';
 import { BottomSheet } from './ui/BottomSheet';
 import { Button } from './ui/Button';
-import { PinCross } from './ui/LineArt';
+import { Logo } from './brand/Logo';
 import { fonts } from '../lib/theme';
 import { formatDateLong, formatTime } from '../lib/format';
 import { logger } from '../lib/logger';
@@ -28,8 +29,7 @@ function CardArt({ content }: { content: ShareContent }) {
       <LinearGradient colors={['#1A1612', '#0E0C0A']} style={StyleSheet.absoluteFill} />
       <View style={[styles.frame, { borderColor: 'rgba(201,168,76,0.5)' }]} />
       <View style={styles.top}>
-        <PinCross size={30} fill={GOLD} stroke="#0E0C0A" />
-        <AppText style={styles.brand}>CHRIST LINK SOCIAL</AppText>
+        <Logo layout="horizontal" width={156} ground="dark" />
       </View>
 
       <View style={styles.body}>
@@ -80,13 +80,36 @@ export function useShareCard() {
   return { open, sheet };
 }
 
+/** Plain-text version of a card, for sharing from the website. */
+export function shareText(c: ShareContent): string {
+  if (c.kind === 'verse') return `“${c.text}” — ${c.reference}\n\nShared from Christ Link Social`;
+  if (c.kind === 'testimony') return `${c.text}${c.author ? ` — ${c.author}` : ''}\n\nShared from Christ Link Social`;
+  return `Join me at ${c.name}: ${c.url}`;
+}
+
 export function ShareCardSheet({ content, onClose }: { content: ShareContent | null; onClose: () => void }) {
   const ref = useRef<ViewInstance>(null);
   const [busy, setBusy] = useState(false);
 
+  const [copied, setCopied] = useState(false);
+  useEffect(() => setCopied(false), [content]);
+
   const share = async () => {
     if (!ref.current || !content) return;
     setBusy(true);
+    // Browsers can't capture the card as an image: share the words (and link) instead, or copy them
+    if (Platform.OS === 'web') {
+      const message = shareText(content);
+      try {
+        await Share.share({ message });
+      } catch {
+        await Clipboard.setStringAsync(message).catch(() => undefined);
+        setCopied(true);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     try {
       const uri = await captureRef(ref, { format: 'png', quality: 1, width: 1080, height: 1920 });
       if (await Sharing.isAvailableAsync()) {
@@ -107,7 +130,15 @@ export function ShareCardSheet({ content, onClose }: { content: ShareContent | n
       onClose={onClose}
       title="Share card"
       subtitle="Sized for Instagram Stories"
-      footer={<Button title="Share image" icon="share-outline" onPress={share} loading={busy} fullWidth />}
+      footer={
+        <Button
+          title={Platform.OS === 'web' ? (copied ? 'Copied' : 'Share') : 'Share image'}
+          icon={copied ? 'checkmark' : 'share-outline'}
+          onPress={share}
+          loading={busy}
+          fullWidth
+        />
+      }
     >
       <View style={styles.previewWrap}>
         <View style={styles.previewScale}>
@@ -126,7 +157,6 @@ const styles = StyleSheet.create({
   card: { width: W, height: H, borderRadius: 4, overflow: 'hidden', padding: 32, justifyContent: 'space-between' },
   frame: { ...StyleSheet.absoluteFill, margin: 14, borderWidth: 1, borderRadius: 2 },
   top: { alignItems: 'center', gap: 10, marginTop: 18 },
-  brand: { color: GOLD, fontFamily: fonts.bold, fontSize: 11, letterSpacing: 3 },
   body: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6 },
   quoteMark: { color: GOLD, fontFamily: fonts.display, fontSize: 72, lineHeight: 72, height: 50 },
   verse: { color: IVORY, fontFamily: fonts.display, fontSize: 25, lineHeight: 33, textAlign: 'center' },

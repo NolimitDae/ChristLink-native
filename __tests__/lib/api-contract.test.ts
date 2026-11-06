@@ -84,6 +84,7 @@ const cases: Case[] = [
   ['requestSignInCode', () => api.requestSignInCode('a@b.co'), 'POST', '/api/auth/signin', { email: 'a@b.co' }],
   ['requestSignInCode+name', () => api.requestSignInCode('a@b.co', 'Ann'), 'POST', '/api/auth/signup', { email: 'a@b.co', fullName: 'Ann' }],
   ['verifySignInCode', () => api.verifySignInCode('a@b.co', '123456'), 'POST', '/api/auth/verify-otp', { email: 'a@b.co', token: '123456' }],
+  ['exchangeLegacySession', () => api.exchangeLegacySession('sb-rt'), 'POST', '/api/auth/legacy-exchange', { refreshToken: 'sb-rt' }],
   ['revokeRefreshToken', () => api.revokeRefreshToken('rt'), 'POST', '/api/auth/signout', { refreshToken: 'rt' }],
   // Native features (lib/features.ts)
   ['getVerseOfTheDay', () => f.getVerseOfTheDay('Hope'), 'GET', '/api/verses/today?theme=hope'],

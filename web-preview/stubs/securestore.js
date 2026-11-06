@@ -1,2 +1,0 @@
-// Web preview stand-in for expo-secure-store: browser localStorage (sample session only, never real tokens).
-module.exports = { getItemAsync: async (k) => localStorage.getItem(k), setItemAsync: async (k, v) => localStorage.setItem(k, v), deleteItemAsync: async (k) => localStorage.removeItem(k), isAvailableAsync: async () => true, AFTER_FIRST_UNLOCK: 0, AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: 1, WHEN_UNLOCKED: 2, WHEN_UNLOCKED_THIS_DEVICE_ONLY: 3 };

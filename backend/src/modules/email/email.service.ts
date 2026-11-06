@@ -30,10 +30,14 @@ export function otpEmail(code: string): Omit<EmailJob, 'to'> {
   const line = `Your Christ Link Social code is ${code}`;
   const note = "It expires in 10 minutes. If you didn't ask for it, you can ignore this email.";
   const text = `${line}\n\n${note}\n\nChrist Link Social`;
+  const logo = appConfig().email.logo_url;
+  const header = logo
+    ? `<img src="${escapeHtml(logo)}" width="240" alt="Christ Link Social" style="display:block;border:0;width:240px;max-width:100%;height:auto">`
+    : 'Christ Link Social';
   const html = `<!doctype html><html><body style="margin:0;background:#F7F3EA;font-family:Helvetica,Arial,sans-serif;color:#1A1714">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:40px 16px">
 <table role="presentation" width="100%" style="max-width:440px;background:#FFFDF8;border-radius:16px;padding:32px" cellpadding="0" cellspacing="0">
-<tr><td style="font-family:Georgia,serif;font-size:22px;padding-bottom:16px">Christ Link Social</td></tr>
+<tr><td style="font-family:Georgia,serif;font-size:22px;padding-bottom:${logo ? 24 : 16}px">${header}</td></tr>
 <tr><td style="font-size:15px;line-height:22px;padding-bottom:20px">${escapeHtml(line)}.</td></tr>
 <tr><td style="font-size:34px;letter-spacing:8px;font-weight:bold;color:#8A6A1F;padding-bottom:20px">${escapeHtml(code)}</td></tr>
 <tr><td style="font-size:13px;line-height:20px;color:#6B6358">${escapeHtml(note)}</td></tr>

@@ -743,3 +743,46 @@ and changed what applied, within the existing design system:
    Same on Churches and Serve; switching to Map brings the title back.
 2. Community: same on Feed and Prayer Wall; the Share a prayer button never moves.
 3. With Reduce Motion on, the titles never move.
+
+## 2026-11-06 — Logo everywhere it belongs + the website on the new app (accounts kept)
+
+**Changed**
+- **Logo** (the refined mark from the logo canvas: open ring + gold cross with a rounded tip, CHRISTLINK / SOCIAL
+  wordmark). `scripts/brand/build-brand.mjs` generates everything from one source: the in-app `Logo` / `LogoMark`
+  components (outlined wordmark, no extra fonts), SVG masters in assets/brand, the app icon, Android adaptive and
+  notification icons, splash, favicon, web touch icon, link-preview image and email logo.
+  Placed on: onboarding welcome, sign-in, share cards, Settings footer, `/styleguide`, the web page icons/preview, and
+  the sign-in email header (`EMAIL_LOGO_URL`). Map pins stay pins.
+- **Website build** of this app for christlinksocial.com (docs/CUTOVER.md):
+  - Real web versions of native-only modules in `web/shims/`: Stripe (Payment Element dialog for tickets, card field
+    for the listing fee, bank-redirect returns confirmed on Tickets), sessions in localStorage, the browser's
+    date/time inputs (event and church times now work on the web), no-op notifications. Map tab hidden on the web.
+  - Old `#event/<id>`, `#user/<id>`, `#forum/<id>` links open the matching page; onboarding isn't forced on the web.
+  - `public/index.html` (title, description, link previews, icons, no white flash), `manifest.json`, robots.txt.
+  - `web/server.mjs` (no dependencies): serves the build with long caching for hashed files, brotli/gzip, security
+    headers, `www` → apex redirect, `.well-known` app-link files from env, and passes Stripe's `POST /webhook` to the
+    API so the webhook URL never changes. `Dockerfile.web` + `web/railway.toml` for a new Railway service.
+- **Accounts carry over**: the old site already used email codes (no passwords), the import keeps every user id, and
+  sign-in matches by email. New `POST /api/auth/legacy-exchange` keeps people who are signed in on the old site signed
+  in (Supabase confirms the old session; existing accounts only). The import now stores emails lower-case and refuses
+  to run (changing nothing) when an imported profile would lose its login.
+- Share cards on the web share text + link (browsers can't capture the image). Home's prayer row no longer calls the
+  API for guests and reloads after sign-in.
+- Tests: backend 6 legacy-exchange + 2 email tests; app 7 session hand-over, 3 old-link, 6 web-shim tests; 8 web
+  server tests (`npm run test:web`, also in CI). Verified end to end in a browser against a local backend: old-site
+  session carried over (and kept after reload), old link opened the right page, email-code sign-in, no forced
+  onboarding. Import guards checked against a scratch database.
+
+**Not finished / needs you**
+- The switch itself (docs/CUTOVER.md): create the ChristLink-Web Railway service, set the production variables, rehearse
+  the import on staging, then move the domain. Nothing in production was changed.
+- The new app icon and splash need a new native build (`eas build`); everything else ships over the air.
+- Stripe: add christlinksocial.com under Payment method domains for Apple Pay / Google Pay on the web.
+- Not tested here: a real web payment (no Stripe test key in this environment) and the Docker image build (Docker Hub
+  is blocked here; the same steps were run in a clean copy instead).
+
+**Test**
+1. Phone (OTA): onboarding welcome, sign-in, Settings footer and a share card show the new logo.
+2. https://christlink.expo.app (demo): logo, link preview icon, event creation date/time fields work in the browser.
+3. After the website service exists on Railway (its Railway URL, before moving the domain): sign in with your email,
+   buy and refund a ticket with a real card, create a draft event with a date and time.

@@ -8,6 +8,7 @@ import { getSession, loadSession, onSessionChange, refreshSession, sessionFromTo
 import { storage } from '../lib/storage';
 import { logger } from '../lib/logger';
 import type { Profile } from '../lib/types';
+import { takeOverLegacySession } from '../lib/legacySession';
 
 export interface AuthUser {
   id: string;
@@ -63,6 +64,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!s) setProfile(null);
     });
     loadSession()
+      // Web only: a visitor still signed in on the old website keeps their session (lib/legacySession.ts)
+      .then(s => s ?? takeOverLegacySession())
       .then(s => {
         setAuthSession(toAuthSession(s));
         Sentry.setUser(s ? { id: s.user.id } : null);

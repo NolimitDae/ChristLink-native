@@ -23,6 +23,7 @@ import { STRIPE_PK, SENTRY_DSN, STRIPE_MERCHANT_ID } from '../lib/constants';
 import { storage } from '../lib/storage';
 import { registerForPushNotifications, routeForNotification, useLastNotificationResponse } from '../lib/notifications';
 import { EventQuickActionsHost } from '../components/EventQuickActions';
+import { legacyHashRoute } from '../lib/legacyLinks';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -61,7 +62,8 @@ function RootNavigator() {
     if (loading || onboardingDone === null) return;
     SplashScreen.hideAsync().catch(() => undefined);
     const first = segments[0] as string | undefined;
-    if (!onboardingDone && first !== 'onboarding' && first !== 'auth' && first !== 'legal') {
+    // The website doesn't force onboarding (it's mostly phone permissions); visitors land where the link points.
+    if (!onboardingDone && Platform.OS !== 'web' && first !== 'onboarding' && first !== 'auth' && first !== 'legal') {
       // Re-check storage first: finishing onboarding saves the flag and navigates in the same moment, so this
       // state can still say "not done" and would send people through onboarding a second time.
       storage.getOnboardingDone().then(done => {
@@ -80,6 +82,14 @@ function RootNavigator() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, onboardingDone, segments]);
+
+  // Old website links (christlinksocial.com/#event/<id>) open the matching page of the new web app
+  useEffect(() => {
+    if (Platform.OS !== 'web' || loading) return;
+    const to = legacyHashRoute((globalThis as { location?: { hash?: string } }).location?.hash ?? '');
+    if (to) router.replace(to as never);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   useEffect(() => {
     if (session) registerForPushNotifications(false);

@@ -29,9 +29,19 @@ export default () => ({
     review_email: process.env.REVIEW_EMAIL?.trim().toLowerCase() || undefined,
     review_code: process.env.REVIEW_CODE?.trim() || undefined,
   },
+  /**
+   * Website switch-over (docs/CUTOVER.md): the old site's Supabase project, used only to confirm a visitor's old
+   * session so christlinksocial.com keeps them signed in. Unset both to turn the exchange off.
+   */
+  legacy: {
+    supabase_url: process.env.LEGACY_SUPABASE_URL?.trim().replace(/\/+$/, '') || undefined,
+    supabase_anon_key: process.env.LEGACY_SUPABASE_ANON_KEY?.trim() || undefined,
+  },
   email: {
     resend_api_key: process.env.RESEND_API_KEY,
     from: process.env.FROM_EMAIL || 'Christ Link Social <no-reply@christlinksocial.com>',
+    /** Hosted logo for email headers (the web app serves /brand/logo-email.png). Unset: a text header. */
+    logo_url: process.env.EMAIL_LOGO_URL?.trim() || undefined,
   },
   stripe: {
     secret_key: process.env.STRIPE_SECRET_KEY,

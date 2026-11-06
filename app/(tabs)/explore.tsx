@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CollapsingHeader, Segmented } from '../../components/ui';
 import { EventsTab } from '../../components/explore/EventsTab';
@@ -9,12 +10,14 @@ import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'events' | 'map' | 'churches' | 'serve';
 
-const TABS: { value: Tab; label: string }[] = [
+const ALL_TABS: { value: Tab; label: string }[] = [
   { value: 'events', label: 'Events' },
   { value: 'map', label: 'Map' },
   { value: 'churches', label: 'Churches' },
   { value: 'serve', label: 'Serve' },
 ];
+// Maps need the phone app (react-native-maps has no web version)
+const TABS = Platform.OS === 'web' ? ALL_TABS.filter(x => x.value !== 'map') : ALL_TABS;
 
 function asTab(v?: string): Tab | null {
   return TABS.some(x => x.value === v) ? (v as Tab) : null;

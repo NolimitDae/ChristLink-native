@@ -34,6 +34,7 @@ Environments: `production` (untouched until the switch) and `staging` (what the 
 | `POST /api/auth/verify-otp` | `{ email, token }` | `{ success, accessToken, refreshToken, expiresIn, user: { id, email, profile } }` |
 | `POST /api/auth/refresh` | `{ refreshToken }` | `{ accessToken, refreshToken, expiresIn }` (rotates; old token revoked) |
 | `POST /api/auth/signout` | `{ refreshToken }` | `{ success: true }` (revokes it) |
+| `POST /api/auth/legacy-exchange` | `{ refreshToken }` (the old Supabase site's) | same as verify-otp; 401 = sign in with email, 503 = retry, 404 = off |
 
 - Code: 6 digits, stored hashed in Redis for 10 min, max 5 attempts, 1 send per 60 s per email.
 - Access token: HS256 JWT (`JWT_SECRET`), 1 hour, `sub` = user id. Refresh token: random, stored hashed in
@@ -41,6 +42,9 @@ Environments: `production` (untouched until the switch) and `staging` (what the 
 - First verify creates `users` + `profiles` rows (what Supabase's `handle_new_user` trigger did).
 - `REVIEW_EMAIL` + `REVIEW_CODE` env: a fixed code for the App Store / Play reviewer account.
 - No `RESEND_API_KEY` (local dev only): the code is written to the log instead of emailed.
+- Website switch-over (docs/CUTOVER.md): `legacy-exchange` has the old Supabase project confirm a visitor's old session
+  (`LEGACY_SUPABASE_URL` + `LEGACY_SUPABASE_ANON_KEY`; unset = off) and opens the imported account with that Supabase
+  user id or email. It never creates accounts, and it logs the old Supabase session out afterwards.
 
 ## Files (Cloudflare R2; replaces Supabase Storage)
 Upload routes keep server.js's shape (`{ dataUrl }` → `{ url }`, max 5 MB): `/api/upload-avatar`, `/api/upload-banner`,
@@ -107,10 +111,14 @@ Response shapes equal what the Supabase RPC / table query returned (see the SQL 
 `STRIPE_CONNECT_WEBHOOK_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`,
 `R2_PUBLIC_URL`, `EXPO_ACCESS_TOKEN` (optional), `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, `APPLE_PASS_P12_BASE64`,
 `APPLE_PASS_PASSWORD` (Wallet), `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_KEY_JSON_BASE64` (Google Wallet, optional),
-`SENTRY_DSN` (optional), `DB_POOL_MAX` (Postgres connections per instance, default 10), `OTEL_EXPORTER_OTLP_*`
+`SENTRY_DSN` (optional), `EMAIL_LOGO_URL` (optional, logo image in the sign-in email),
+`LEGACY_SUPABASE_URL` + `LEGACY_SUPABASE_ANON_KEY` (switch-over only), `DB_POOL_MAX` (Postgres connections per instance, default 10), `OTEL_EXPORTER_OTLP_*`
 (set by Railway when tracing is on; enables OpenTelemetry in src/tracing.ts), `CACHE_DISABLED=1` (tests only).
 
 ## Data copy (production Supabase → Railway)
 `backend/scripts/import-supabase.ts` loads a `supabase db dump --data-only` file: `auth.users` (id, email,
 created_at only) → `users`; every `public` table → the same table. Files: `backend/scripts/copy-storage.ts` copies
 the Supabase `avatars`, `banner-images` and `event-images` buckets to R2 and rewrites stored URLs.
+Emails are stored lower-case (sign-in matches that way). The import stops, changing nothing, if two accounts share an
+email once lower-cased, or if an imported profile's email already has a different account in the target.
+Full runbook for the website switch: docs/CUTOVER.md.

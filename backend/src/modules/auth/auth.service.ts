@@ -1,4 +1,11 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import appConfig from '../../config/app.config';
@@ -56,6 +63,63 @@ export class AuthService {
 
     const user = await this.findOrCreateUser(email, fullName);
     const tokens = await this.issueTokens(user.id, user.email);
+    const profile = await this.prisma.profiles.findUnique({ where: { id: user.id } });
+    return { success: true, ...tokens, user: { id: user.id, email: user.email, profile } };
+  }
+
+  /**
+   * Website switch-over: trades a session from the old Supabase site (its refresh token, read from the browser on
+   * the same domain) for a session here. Supabase itself confirms the token; the account must already have been
+   * imported (matched by Supabase user id, then by email). Never creates an account, so an imported profile can't be
+   * shadowed by an empty new one. Off unless LEGACY_SUPABASE_URL and LEGACY_SUPABASE_ANON_KEY are set.
+   */
+  async legacyExchange(refreshToken: unknown) {
+    const { supabase_url, supabase_anon_key } = appConfig().legacy;
+    if (!supabase_url || !supabase_anon_key) throw new NotFoundException('Not available.');
+    if (typeof refreshToken !== 'string' || !refreshToken || refreshToken.length > 1024) {
+      throw new BadRequestException('Refresh token required.');
+    }
+    const signInAgain = new UnauthorizedException('Please sign in with your email.');
+
+    let res: Response;
+    try {
+      res = await fetch(`${supabase_url}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { apikey: supabase_anon_key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (err) {
+      this.logger.warn(`Legacy exchange: Supabase unreachable (${String(err)})`);
+      throw new ServiceUnavailableException('Try again in a moment.');
+    }
+    if (res.status >= 500) throw new ServiceUnavailableException('Try again in a moment.');
+    if (!res.ok) throw signInAgain; // expired, revoked or not a Supabase token
+
+    const data = (await res.json().catch(() => null)) as { access_token?: string; user?: { id?: string; email?: string } } | null;
+    const sbId = data?.user?.id;
+    const sbEmail = typeof data?.user?.email === 'string' ? data.user.email.trim().toLowerCase() : '';
+    if (!sbId || !sbEmail) throw signInAgain;
+
+    const user =
+      (await this.prisma.users.findUnique({ where: { id: sbId } })) ??
+      (await this.prisma.users.findUnique({ where: { email: sbEmail } }));
+    if (!user) {
+      this.logger.warn(`Legacy exchange: Supabase user ${sbId} is not in this database (import not run?)`);
+      throw signInAgain;
+    }
+
+    // The old session has done its job: end it on Supabase (best effort) so the token can't be replayed there.
+    if (data?.access_token) {
+      fetch(`${supabase_url}/auth/v1/logout?scope=local`, {
+        method: 'POST',
+        headers: { apikey: supabase_anon_key, Authorization: `Bearer ${data.access_token}` },
+        signal: AbortSignal.timeout(5_000),
+      }).catch(() => undefined);
+    }
+
+    await this.prisma.users.update({ where: { id: user.id }, data: { last_sign_in_at: new Date() } });
+    const { refreshTokenId: _id, ...tokens } = await this.issueTokens(user.id, user.email);
     const profile = await this.prisma.profiles.findUnique({ where: { id: user.id } });
     return { success: true, ...tokens, user: { id: user.id, email: user.email, profile } };
   }

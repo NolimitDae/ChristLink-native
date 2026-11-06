@@ -42,6 +42,15 @@ export class AuthController {
     return this.auth.verifyOtp(body?.email, body?.token);
   }
 
+  /** Website switch-over: keeps visitors of the old site signed in (AuthService.legacyExchange, docs/CUTOVER.md). */
+  @Public()
+  @Post('legacy-exchange')
+  @HttpCode(200)
+  @Throttle(AUTH_LIMIT)
+  legacyExchange(@Body() body: { refreshToken?: string }) {
+    return this.auth.legacyExchange(body?.refreshToken);
+  }
+
   @Public()
   @Post('refresh')
   @HttpCode(200)

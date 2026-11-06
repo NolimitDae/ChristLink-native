@@ -54,6 +54,9 @@ jobs:
       - name: Run tests
         run: npm run test:ci
 
+      - name: Web server tests
+        run: npm run test:web
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         if: always()

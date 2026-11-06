@@ -1,0 +1,23 @@
+# Website (christlinksocial.com): the Expo web export served by web/server.mjs. Railway service "ChristLink-Web",
+# config web/railway.toml, runbook docs/CUTOVER.md. Build from the repo root.
+FROM node:22.22.0-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json .npmrc ./
+RUN npm ci --ignore-scripts
+COPY . .
+# Public build-time config (Railway service variables are passed as build args)
+ARG EXPO_PUBLIC_API_BASE
+ARG EXPO_PUBLIC_STRIPE_PK
+ARG EXPO_PUBLIC_SENTRY_DSN
+ARG EXPO_PUBLIC_STRIPE_MERCHANT_ID
+RUN test -n "$EXPO_PUBLIC_API_BASE" || (echo "EXPO_PUBLIC_API_BASE is required" && exit 1)
+RUN npx expo export --platform web --output-dir dist-web
+
+FROM node:22.22.0-alpine
+WORKDIR /srv
+ENV NODE_ENV=production WEB_ROOT=/srv/dist
+COPY web/server.mjs ./server.mjs
+COPY --from=build /app/dist-web ./dist
+USER node
+EXPOSE 8080
+CMD ["node", "server.mjs"]

@@ -11,6 +11,7 @@ import { SUPPORT_EMAIL } from '../../lib/constants';
 import type { ThemePreference } from '../../lib/theme';
 import type { UserSettings } from '../../lib/types';
 import { AppText, ListGroup, ListRow, Screen, Segmented } from '../../components/ui';
+import { LogoMark } from '../../components/brand/Logo';
 import { BlockedSheet } from '../../components/settings/BlockedSheet';
 import { DELETE_EXPLANATION, DeleteAccountSheet } from '../../components/settings/DeleteAccountSheet';
 import { useSettingsStatus } from '../../components/settings/useSettingsStatus';
@@ -181,6 +182,7 @@ export default function SettingsScreen() {
           </ListGroup>
         ) : null}
 
+        <LogoMark size={30} style={{ alignSelf: 'center', marginTop: t.space.md }} />
         <AppText variant="caption" tone="faint" align="center" style={{ marginTop: t.space.xs }}>
           Christ Link Social · Version {version}
         </AppText>
