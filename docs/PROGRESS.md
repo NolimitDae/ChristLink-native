@@ -786,3 +786,24 @@ and changed what applied, within the existing design system:
 2. https://christlink.expo.app (demo): logo, link preview icon, event creation date/time fields work in the browser.
 3. After the website service exists on Railway (its Railway URL, before moving the domain): sign in with your email,
    buy and refund a ticket with a real card, create a draft event with a date and time.
+
+## 2026-11-06 (evening) — Production built out and loaded with the old site's data
+
+**Changed** (details and remaining steps: docs/CUTOVER.md "Status")
+- PR #2 merged to `master`. Staging API + worker follow `claude/railway-launch`; production API follows `master` with
+  its settings filled in (generated JWT secret; Stripe, Apple Wallet and Supabase values referenced from the old
+  ChristLink1 service so nothing secret was copied by hand). New production services: ChristLink-Worker, ChristLink-Web
+  (https://christlink-web-production.up.railway.app) and a temporary Data-Copy-Temp job.
+- New `backend/scripts/supabase-migrate`: copies the old site's data inside Railway (no database password needed, no key
+  leaves Railway). Dry run, then the real copy: 75 accounts and profiles, 12 events, 11 tickets, 69 RSVPs, 64 follows,
+  25 event chat posts, 19 notifications, posts, coupons and the host's Stripe account. Production had no data before.
+- Checked: production website loads live data; an old `#user/<id>` link opens that member's imported profile; the
+  session hand-over reaches the real Supabase; the Apple app-link file is served.
+
+**Not finished / needs you**
+- The domain still points at the old site. Blockers: no Resend key on the ChristLink projects (sign-in emails), no R2 keys
+  (photo uploads). The DNS change is in Cloudflare.
+
+**Test**
+- Open https://christlink-web-production.up.railway.app on your phone and computer; browse Events and a profile.
+  (Signing in there works once the Resend key is added.)
