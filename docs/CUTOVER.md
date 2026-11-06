@@ -3,9 +3,8 @@
 The website becomes this repo's app (the same screens as the phone app, built for the browser) on the new backend.
 The old site (`NolimitDae/ChristLink1`: server.js + Supabase) stops serving the domain. Everyone keeps their account.
 
-> Domain: the live site and the app's links use **christlinksocial.com**. If you also own christlink.com, point it at
-> the same Railway service; `CANONICAL_HOST` decides which one visitors end up on (app links stay on christlinksocial.com
-> unless `associatedDomains` in app.json changes, which needs a new app build).
+> Domain: **christlinksocial.com** (and www.christlinksocial.com, which redirects to it). The app's shared links,
+> universal links and the sign-in email sender already use it.
 
 ## Why nobody has to make a new account
 
