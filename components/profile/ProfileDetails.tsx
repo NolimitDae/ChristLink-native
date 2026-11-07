@@ -2,7 +2,8 @@ import React from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
-import { CONNECT_OPTIONS, HOBBIES, parseHobbies } from '../../lib/profileOptions';
+import { CONNECT_OPTIONS, HOBBIES, normalizeSocial, parseHobbies } from '../../lib/profileOptions';
+import { logger } from '../../lib/logger';
 import type { Profile } from '../../lib/types';
 import { AppIcon, type AppIconName } from '../icons/AppIcon';
 import { AppText, Card, PressScale, SectionHeader } from '../ui';
@@ -41,9 +42,9 @@ function StoryCard({ icon, title, text }: { icon: AppIconName; title: string; te
 }
 
 const SOCIALS = [
-  { key: 'instagram_url', label: 'Instagram', icon: 'logo-instagram' },
-  { key: 'facebook_url', label: 'Facebook', icon: 'logo-facebook' },
-  { key: 'tiktok_url', label: 'TikTok', icon: 'logo-tiktok' },
+  { key: 'instagram_url', label: 'Instagram', icon: 'logo-instagram', site: 'instagram.com' },
+  { key: 'facebook_url', label: 'Facebook', icon: 'logo-facebook', site: 'facebook.com' },
+  { key: 'tiktok_url', label: 'TikTok', icon: 'logo-tiktok', site: 'tiktok.com' },
 ] as const;
 
 /**
@@ -63,7 +64,11 @@ export function ProfileDetails({ profile }: { profile: Profile }) {
     label: h,
     icon: HOBBIES.find(x => x.label === h)?.icon ?? 'star-outline',
   }));
-  const socials = SOCIALS.filter(s => !!profile[s.key]);
+  // Normalized here too: profiles from the old website stored links like "instagram.com/name" that can't be opened
+  const socials = SOCIALS.flatMap(s => {
+    const href = normalizeSocial(profile[s.key], s.site);
+    return href ? [{ ...s, href }] : [];
+  });
 
   return (
     <>
@@ -89,7 +94,7 @@ export function ProfileDetails({ profile }: { profile: Profile }) {
           {socials.map(s => (
             <PressScale
               key={s.key}
-              onPress={() => Linking.openURL(profile[s.key] as string).catch(() => undefined)}
+              onPress={() => Linking.openURL(s.href).catch(err => logger.warn('Social link did not open', { site: s.site, error: String(err) }))}
               accessibilityRole="link"
               accessibilityLabel={`${name} on ${s.label}`}
               scaleTo={0.95}

@@ -41,7 +41,22 @@ describe('normalizeSocial', () => {
     ['myhandle', 'tiktok.com', 'https://tiktok.com/@myhandle'],
     ['tiktok.com/@myhandle', 'tiktok.com', 'https://tiktok.com/@myhandle'],
     ['  ', 'tiktok.com', ''],
+    // Shapes found in profiles copied from the old website and other things people paste
+    ['instagram.com/grace.a?igsh=abc', 'instagram.com', 'https://instagram.com/grace.a?igsh=abc'],
+    ['www.instagram.com/grace/', 'instagram.com', 'https://instagram.com/grace'],
+    ['instagr.am/grace', 'instagram.com', 'https://instagram.com/grace'],
+    ['m.facebook.com/grace.adeyemi', 'facebook.com', 'https://facebook.com/grace.adeyemi'],
+    ['fb.com/grace', 'facebook.com', 'https://facebook.com/grace'],
+    ['tiktok.com/grace', 'tiktok.com', 'https://tiktok.com/@grace'],
+    ['www.tiktok.com/@grace/video/123', 'tiktok.com', 'https://tiktok.com/@grace/video/123'],
+    ['linktr.ee/grace', 'instagram.com', 'https://linktr.ee/grace'],
+    ['@grace/', 'instagram.com', 'https://instagram.com/grace'],
+    ['instagram.com', 'instagram.com', 'https://instagram.com'],
   ] as const)('%s on %s', (input, site, out) => {
     expect(normalizeSocial(input, site)).toBe(out);
+  });
+  it('treats missing values as no link', () => {
+    expect(normalizeSocial(null, 'instagram.com')).toBe('');
+    expect(normalizeSocial(undefined, 'facebook.com')).toBe('');
   });
 });

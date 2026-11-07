@@ -835,3 +835,11 @@ and changed what applied, within the existing design system:
 2. Sign out, sign in with your email code: your profile, hosted events and followers are there.
 3. Open an old shared link (`christlinksocial.com/#event/<id>`): it opens the event.
 4. After `R2_PUBLIC_URL` is set: change your profile photo.
+
+## 2026-11-07 (later) — Fix: social links on profiles didn't open
+
+- Profiles copied from the old website stored links as typed (5 of the 8 social links were like `instagram.com/name`,
+  no https), and the profile opened the raw value, so tapping did nothing. Profiles now clean the link when showing it
+  (`normalizeSocial`, also used when saving), which also handles `m.facebook.com`, `fb.com`, `instagr.am`, TikTok
+  names without `@`, and links to other sites; a link that still fails to open is logged instead of ignored.
+- Test: open a profile with Instagram/Facebook/TikTok and tap each (phone and christlinksocial.com).
