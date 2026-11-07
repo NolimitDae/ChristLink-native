@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, PayloadTooLargeException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, PayloadTooLargeException, ServiceUnavailableException } from '@nestjs/common';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
@@ -59,6 +59,11 @@ export class StorageService {
 
   /** Validates a `data:<mime>;base64,...` upload and stores it at `<prefix>/<ownerId>/<uuid>.<ext>`. Returns the public URL. */
   async putDataUrl(prefix: string, ownerId: string, dataUrl: unknown, opts: PutDataUrlOptions = {}): Promise<string> {
+    // Without the public address the file would be stored but its saved link would be broken ("undefined/…")
+    if (!appConfig().r2.public_url) {
+      this.log.error('R2_PUBLIC_URL is not set; refusing a public upload');
+      throw new ServiceUnavailableException('Photo uploads are unavailable right now. Please try again later.');
+    }
     const parsed = parseDataUrl(dataUrl, opts);
     // Smaller, faster images: WebP, resized for how they're shown. Falls back to the original on any failure.
     const webp = await optimizeImage(parsed.buffer, MAX_EDGE[prefix] ?? DEFAULT_MAX_EDGE);
