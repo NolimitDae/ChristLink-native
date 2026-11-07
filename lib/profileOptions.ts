@@ -85,12 +85,32 @@ export function toggle<T>(list: readonly T[], item: T): T[] {
   return list.includes(item) ? list.filter(x => x !== item) : [...list, item];
 }
 
-/** Accepts "@handle", "handle", "site.com/handle" or a full URL; returns an https URL or ''. */
-export function normalizeSocial(input: string, site: 'instagram.com' | 'facebook.com' | 'tiktok.com'): string {
-  const v = input.trim();
+/** Other spellings of each site's domain people paste (mobile pages, short domains). */
+const SITE_HOSTS: Record<'instagram.com' | 'facebook.com' | 'tiktok.com', string> = {
+  'instagram.com': '(?:www\\.|m\\.)?instagram\\.com|instagr\\.am',
+  'facebook.com': '(?:www\\.|m\\.|mobile\\.|web\\.)?facebook\\.com|fb\\.com',
+  'tiktok.com': '(?:www\\.|m\\.)?tiktok\\.com',
+};
+
+/**
+ * Accepts "@handle", "handle", "site.com/handle" (any common spelling of the site) or a full URL; returns an https
+ * URL or ''. Used when saving the profile and again when showing it, because profiles copied from the old website
+ * kept whatever was typed (e.g. "instagram.com/name" without https, which phones can't open).
+ */
+export function normalizeSocial(input: string | null | undefined, site: 'instagram.com' | 'facebook.com' | 'tiktok.com'): string {
+  const v = (input ?? '').trim();
   if (!v) return '';
   if (/^https?:\/\//i.test(v)) return v;
-  const bare = v.replace(new RegExp(`^(www\\.)?${site.replace('.', '\\.')}/`, 'i'), '');
-  const handle = site === 'tiktok.com' ? `@${bare.replace(/^@/, '')}` : bare.replace(/^@/, '');
+  const onSite = new RegExp(`^(?:${SITE_HOSTS[site]})(?:/|$)`, 'i');
+  if (onSite.test(v)) {
+    let path = v.replace(onSite, '').replace(/\/+$/, '');
+    // TikTok profile paths need the @ ("tiktok.com/name" is a 404)
+    if (site === 'tiktok.com' && path && !path.startsWith('@') && !path.includes('/')) path = `@${path}`;
+    return path ? `https://${site}/${path}` : `https://${site}`;
+  }
+  // Another site entirely (a link-in-bio page, say): keep it, just make it openable
+  if (/^[\w-]+(\.[\w-]+)+\//.test(v)) return `https://${v}`;
+  const bare = v.replace(/^@/, '').replace(/\/+$/, '');
+  const handle = site === 'tiktok.com' ? `@${bare}` : bare;
   return `https://${site}/${handle}`;
 }
