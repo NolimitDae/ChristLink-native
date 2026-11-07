@@ -843,3 +843,17 @@ and changed what applied, within the existing design system:
   (`normalizeSocial`, also used when saving), which also handles `m.facebook.com`, `fb.com`, `instagr.am`, TikTok
   names without `@`, and links to other sites; a link that still fails to open is logged instead of ignored.
 - Test: open a profile with Instagram/Facebook/TikTok and tap each (phone and christlinksocial.com).
+
+## 2026-11-07 (later) — Prayer Wall for visitors; honest "couldn't load" messages
+
+- The Prayer Wall empty-state art was an abstract shape that read as a rocket; it is now the app's praying-hands
+  glyph (Phosphor hands-praying, thin weight, MIT) at the same line weight as the other illustrations.
+- Signed-out visitors saw "Couldn't load prayers — check your connection" on All/Answered: the API answers 401 to
+  visitors (prayer requests are members-only), and the screen blamed the connection for every error. Visitors now
+  get "Sign in to see the Prayer Wall" on every filter.
+- New `lib/loadFailure.ts` + `components/LoadError.tsx`: failed screens say what actually happened — no connection
+  ("check your connection"), signed out / session ended (Sign in button) or a server error ("on our side"). Used on
+  the Prayer Wall, feed, notifications, followers/following, hosted events, serve history, the event page and the
+  onboarding church search. `FeatureError` now carries the HTTP status.
+- Test: christlinksocial.com signed out → Community → Prayer Wall → every filter shows the sign-in message with
+  praying hands; turn on airplane mode and pull to refresh a list → "check your connection".

@@ -17,6 +17,8 @@ import { PrayerCard } from './PrayerCard';
 import { confirmKindness } from './kindnessCheck';
 import { useTabBarClearance } from '../TabBar';
 import { onScrollTabBar } from '../../lib/tabBarMotion';
+import { LoadError } from '../LoadError';
+import { loadFailure, type LoadFailure } from '../../lib/loadFailure';
 
 const FILTERS: readonly PrayerFilter[] = ['all', 'church', 'friends', 'answered', 'mine'];
 const FILTER_LABELS: Record<PrayerFilter, string> = {
@@ -26,7 +28,6 @@ const FILTER_LABELS: Record<PrayerFilter, string> = {
   answered: 'Answered',
   mine: 'Mine',
 };
-const NEEDS_SIGN_IN: PrayerFilter[] = ['church', 'friends', 'mine'];
 const MAX = 1000;
 const PAGE = 30;
 /** Start fetching the next page this far (px) before the bottom. */
@@ -49,7 +50,7 @@ export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad
   const [filter, setFilter] = useState<PrayerFilter>('all');
   const [prayers, setPrayers] = useState<Prayer[] | null>(null);
   const [notSetUp, setNotSetUp] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<LoadFailure | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [menuPrayer, setMenuPrayer] = useState<Prayer | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -66,7 +67,8 @@ export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad
   const [testimony, setTestimony] = useState('');
   const [savingAnswer, setSavingAnswer] = useState(false);
 
-  const gated = !session && NEEDS_SIGN_IN.includes(filter);
+  // Prayer requests are for members: the API answers 401 to visitors, so every filter asks them to sign in
+  const gated = !session;
   const noChurch = filter === 'church' && !!session && !settings?.home_church_id;
 
   const load = useCallback(async () => {
@@ -78,11 +80,11 @@ export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad
       const rows = await getPrayerWall(filter);
       setPrayers(rows);
       setHasMore(rows.length >= PAGE);
-      setFailed(false);
+      setFailed(null);
       setNotSetUp(false);
     } catch (err) {
       if (err instanceof FeatureError && err.notSetUp) setNotSetUp(true);
-      else setFailed(true);
+      else setFailed(loadFailure(err));
       setPrayers(prev => prev ?? []);
     }
   }, [filter, gated, noChurch]);
@@ -279,8 +281,8 @@ export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad
       return (
         <EmptyState
           art="prayer"
-          title="Sign in to see these prayers"
-          body="Prayers from your church, your friends and your own requests appear here once you're signed in."
+          title="Sign in to see the Prayer Wall"
+          body="Prayer requests are shared with members only. Sign in to read them, pray for others and share your own."
           actionLabel="Sign in"
           onAction={() => router.push('/auth')}
         />
@@ -312,7 +314,7 @@ export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad
       );
     }
     if (failed && visible.length === 0) {
-      return <EmptyState art="offline" title="Couldn't load prayers" body="Check your connection and try again." actionLabel="Try again" onAction={load} />;
+      return <LoadError failure={failed} what="prayers" art="prayer" onRetry={load} />;
     }
     if (visible.length === 0) {
       return (

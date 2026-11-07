@@ -27,7 +27,12 @@ import type {
 export const TERMS_VERSION = '2026-10-15';
 
 export class FeatureError extends Error {
-  constructor(message: string, public readonly notSetUp = false) {
+  constructor(
+    message: string,
+    public readonly notSetUp = false,
+    /** HTTP status from the API (0 = no connection), when the failure came from a request. */
+    public readonly status?: number,
+  ) {
     super(message);
     this.name = 'FeatureError';
   }
@@ -45,11 +50,11 @@ async function call<T>(scope: string, path: string, init: FetchOptions = {}): Pr
     if (!(err instanceof ApiError)) throw err;
     if (isMissing(err)) {
       logger.warn(`${scope}: route not deployed yet`, { status: err.status });
-      throw new FeatureError('This feature is being set up. Please check back soon.', true);
+      throw new FeatureError('This feature is being set up. Please check back soon.', true, err.status);
     }
-    if (err.status === 401) throw new FeatureError('Please sign in first.');
-    logger.error(`${scope} failed`, { status: err.status, message: err.message });
-    throw new FeatureError(err.message);
+    if (err.status === 401) throw new FeatureError('Please sign in first.', false, 401);
+    if (err.status !== 0) logger.error(`${scope} failed`, { status: err.status, message: err.message });
+    throw new FeatureError(err.message, false, err.status);
   }
 }
 

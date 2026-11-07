@@ -1,8 +1,11 @@
 import React from 'react';
-import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Line, Path, Rect } from 'react-native-svg';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export type LineArtName = 'cross' | 'calendar' | 'ticket' | 'prayer' | 'people' | 'church' | 'serve' | 'search' | 'bell' | 'map' | 'offline';
+
+const PRAYING_HANDS_THIN =
+  'M232.49,182.83l-37-37L158.79,24.62A17.77,17.77,0,0,0,128,18.56a17.77,17.77,0,0,0-30.79,6.06L60.46,145.88l-36.95,37a12,12,0,0,0,0,17L56.2,232.49a12,12,0,0,0,17,0l48.28-48.29a36,36,0,0,0,6.55-8.94,36,36,0,0,0,6.55,8.94l48.28,48.29a12,12,0,0,0,17,0l32.69-32.69A12,12,0,0,0,232.49,182.83Zm-165,44a4,4,0,0,1-5.66,0L29.17,194.15a4,4,0,0,1,0-5.66L44.68,173,83,211.32Zm48.29-48.28L88.68,205.66,50.34,167.32l16.48-16.49a3.92,3.92,0,0,0,1-1.67l37-122.22A9.78,9.78,0,0,1,124,29.78v129A27.81,27.81,0,0,1,115.8,178.55Zm16.2-19.8v-129a9.78,9.78,0,0,1,19.14-2.84l37,122.22a3.92,3.92,0,0,0,1,1.67l17.38,17.38-39.18,37.51L140.2,178.55A27.81,27.81,0,0,1,132,158.75Zm94.83,35.4-32.68,32.68a4,4,0,0,1-5.66,0L173,211.38l39.18-37.51,14.61,14.62A4,4,0,0,1,226.83,194.15Z';
 
 /** Gold single-weight line illustrations for empty states. */
 export function LineArt({ name, size = 96 }: { name: LineArtName; size?: number }) {
@@ -32,11 +35,12 @@ export function LineArt({ name, size = 96 }: { name: LineArtName; size?: number 
         <Line x1={56} y1={38} x2={56} y2={60} {...s} strokeDasharray="3 3" />
       </>
     ),
+    // Praying hands: the same glyph as the app's Amen / "I prayed" icon (Phosphor hands-praying, thin weight, MIT),
+    // scaled so its line matches the other illustrations (8/256 units × 0.2 = 1.6)
     prayer: (
-      <>
-        <Path d="M48 70 L40 46 Q38 36 44 30 L48 26 L52 30 Q58 36 56 46 Z" {...s} />
-        <Path d="M40 46 L32 60 M56 46 L64 60" {...s} />
-      </>
+      <G transform="translate(22.4 22.4) scale(0.2)">
+        <Path d={PRAYING_HANDS_THIN} fill={t.c.goldText} />
+      </G>
     ),
     people: (
       <>

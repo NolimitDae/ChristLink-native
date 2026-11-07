@@ -14,6 +14,8 @@ import { ActionMenu, type MenuAction } from './ActionMenu';
 import { Composer } from './Composer';
 import { PostCard } from './PostCard';
 import { onScrollTabBar } from '../../lib/tabBarMotion';
+import { LoadError } from '../../components/LoadError';
+import { loadFailure, type LoadFailure } from '../../lib/loadFailure';
 
 export function FeedView({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
@@ -25,7 +27,7 @@ export function FeedView({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: 
   const { open: openReport } = report;
   const { open: openShare, sheet: shareSheet } = useShareCard();
   const [posts, setPosts] = useState<CommunityPost[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<LoadFailure | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [menuPost, setMenuPost] = useState<CommunityPost | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -38,9 +40,9 @@ export function FeedView({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: 
       const res = await getCommunityPosts(token);
       setPosts(res.posts);
       setHasMore(res.posts.length >= FEED_PAGE);
-      setFailed(false);
-    } catch {
-      setFailed(true);
+      setFailed(null);
+    } catch (err) {
+      setFailed(loadFailure(err));
     }
   }, [token]);
 
@@ -173,7 +175,7 @@ export function FeedView({ bottomPad, onScroll = onScrollTabBar }: { bottomPad: 
       </SkeletonGroup>
     );
   } else if (failed && posts === null) {
-    empty = <EmptyState art="offline" title="Couldn't load the feed" body="Check your connection and try again." actionLabel="Try again" onAction={load} />;
+    empty = <LoadError failure={failed} what="the feed" art="people" onRetry={load} />;
   } else {
     empty = (
       <EmptyState

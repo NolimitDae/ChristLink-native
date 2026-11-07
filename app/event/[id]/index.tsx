@@ -52,6 +52,8 @@ import { InviteSheet } from '../../../components/event/InviteSheet';
 import { RsvpCelebration } from '../../../components/event/RsvpCelebration';
 import { useAttendance } from '../../../components/event/useAttendance';
 import { clearEventReminders, setupEventReminders } from '../../../components/event/reminders';
+import { LoadError } from '../../../components/LoadError';
+import { loadFailure, type LoadFailure } from '../../../lib/loadFailure';
 
 type LoadState = 'loading' | 'ready' | 'notFound' | 'error';
 type SheetName = 'menu' | 'attendees' | 'checkout' | 'invite' | null;
@@ -76,6 +78,7 @@ export default function EventDetailScreen() {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [loadFailed, setLoadFailed] = useState<LoadFailure>('server');
   const [refreshing, setRefreshing] = useState(false);
   const [people, setPeople] = useState<{ attendees: PersonSummary[]; total: number }>({ attendees: [], total: 0 });
   const [forum, setForum] = useState<ForumMessage[]>([]);
@@ -103,6 +106,7 @@ export default function EventDetailScreen() {
       else {
         logger.warn('Event load failed', { error: String(err) });
         setLoadState(prev => (prev === 'ready' ? 'ready' : 'error'));
+        setLoadFailed(loadFailure(err));
         showToast(err instanceof Error ? err.message : 'Could not load event', 'error');
       }
     }
@@ -304,6 +308,21 @@ export default function EventDetailScreen() {
 
   if (!event) {
     const notFound = loadState === 'notFound';
+    if (!notFound && loadState === 'error') {
+      return (
+        <Screen back>
+          <LoadError
+            failure={loadFailed}
+            what="this event"
+            art="calendar"
+            onRetry={() => {
+              setLoadState('loading');
+              load();
+            }}
+          />
+        </Screen>
+      );
+    }
     return (
       <Screen back>
         <EmptyState
