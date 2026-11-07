@@ -6,38 +6,39 @@ The old site (`NolimitDae/ChristLink1`: server.js + Supabase) stops serving the 
 > Domain: **christlinksocial.com** (and www.christlinksocial.com, which redirects to it). The app's shared links,
 > universal links and the sign-in email sender already use it. DNS is on **Cloudflare** (proxied); `www` has no record.
 
-## Status (2026-11-06)
+## Status: switched on 2026-11-07
 
-Done, without touching the live site (christlinksocial.com is still the old ChristLink1 service):
-- `master` has everything (PR #2). Railway project **ChristLink** (production):
-  - **ChristLink-API** follows `master`; migrations applied; settings: generated `JWT_SECRET`, Stripe and Apple
-    Wallet values and the Supabase URL/anon key are *references* to the ChristLink1 service (`${{ChristLink1.…}}`),
-    so they stay identical to the old site's and never had to be copied.
-  - **ChristLink-Worker** (new, follows `master`, `ROLE=worker`).
-  - **ChristLink-Web** (new, follows `master`, `Dockerfile.web`, settings set on the service directly because new
-    Railway services can't use a config file path): https://christlink-web-production.up.railway.app — loads live
-    production data, live Stripe publishable key, Apple app-link file served.
-  - **Data-Copy-Temp** (`backend/scripts/supabase-migrate`): copied the old site into production (75 accounts,
-    75 profiles, 12 events, 11 tickets, 69 RSVPs, 64 follows, 25 event chat posts…). Redeploy it to copy again; it
-    wipes and reloads in one transaction. Delete the service after the switch.
-- Staging (`claude/railway-launch`) runs the same code.
+**christlinksocial.com now serves the new app** (Railway project ChristLink → **ChristLink-Web**), on the new API and
+database. The old ChristLink1 service still runs at christlink1-production.up.railway.app, without the domain (rollback:
+remove the domain from ChristLink-Web and add it back to ChristLink1).
 
-Still needed before the switch:
-1. **Resend** (sign-in codes): put the key on ChristLink → ChristLink-API and ChristLink-Worker as `RESEND_API_KEY`
-   (the key in the Vendly project works if christlinksocial.com is verified in that Resend account: Resend →
-   Domains → add christlinksocial.com → add its DNS records in Cloudflare). Without it nobody can sign in.
-2. **R2** (photo uploads): `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_PUBLIC_URL` on
-   the API and Worker in both projects. Existing photos keep loading from Supabase Storage until `copy-storage.mjs` runs.
-3. Optional: `ANDROID_SHA256_FINGERPRINTS` on ChristLink-Web (Android app links), Stripe → Payment method domains →
-   christlinksocial.com (Apple Pay / Google Pay on the web).
+What was done:
+- `master` has everything (PRs #2 and #3). Production services follow `master`:
+  - **ChristLink-API**: migrations applied; generated `JWT_SECRET`; Stripe, Apple Wallet and the Supabase URL/anon key
+    are *references* to the ChristLink1 service (`${{ChristLink1.…}}`); `RESEND_API_KEY` (sign-in emails verified
+    working); R2 keys (access key/secret referenced from the worker); `EMAIL_LOGO_URL` set.
+  - **ChristLink-Worker** (`ROLE=worker`): Resend and R2 keys (`R2_ACCOUNT_ID` referenced from the API).
+  - **ChristLink-Web** (`Dockerfile.web`; settings set on the service directly because new Railway services can't use
+    a config file path): custom domains `christlinksocial.com` and `www.christlinksocial.com`.
+- Final data copy at the switch (07:24 UTC): 75 accounts, 75 profiles, 12 events, 11 tickets, 69 RSVPs, 64 follows,
+  25 event chat posts, 19 notifications, 31 verses, 5 posts, 3 coupons, 1 host Stripe account. Identical to the old
+  site. **Data-Copy-Temp** is disarmed (`DRY_RUN=1`, `WIPE=0`): a redeploy only reports counts. Delete it once you're
+  happy (it holds a reference to the Supabase service-role key).
+- Smoke tested on the live domain: home and an old `#event/<id>` link open the right page with live data, CORS, the
+  Apple app-link file, Stripe's `/webhook` path reaching the API, and an emailed sign-in code.
 
-The switch itself (≈15 minutes):
-1. Railway → ChristLink1 → Settings → Networking: remove `christlinksocial.com` (site offline from here).
-2. Railway → Data-Copy-Temp → Redeploy (final copy; check its log says `Done.` with the counts).
-3. Railway → ChristLink-Web → Networking → add `christlinksocial.com` and `www.christlinksocial.com`.
-4. Cloudflare → DNS: point `christlinksocial.com` (and add `www`) to the CNAME target Railway shows in step 3, and
-   add Railway's `_railway-verify` TXT records if it asks. Keep the records proxied (orange cloud) as now.
-5. Set `EMAIL_LOGO_URL=https://christlinksocial.com/brand/logo-email.png` on the API. Smoke test (below).
+Still to do:
+1. **`www`**: Cloudflare → DNS → add `CNAME www → 352f9l9o.up.railway.app` (proxied, like the apex) and
+   `TXT _railway-verify.www → railway-verify=ca0db222f0ed67ca73cc8deb0ac774cf9db186cf819a3a1422dcf1e3cfec27b6`.
+   Until then www.christlinksocial.com doesn't answer.
+2. **Photo uploads**: Cloudflare → R2 → `christlink-media` → Settings → Public access → Custom domain
+   `media.christlinksocial.com`, then set `R2_PUBLIC_URL=https://media.christlinksocial.com` on ChristLink-API and
+   ChristLink-Worker. Until then uploads answer "unavailable" (existing photos load from Supabase Storage). After that,
+   run `backend/scripts/copy-storage.mjs` so old photos move to R2 before Supabase is paused.
+3. Optional: `ANDROID_SHA256_FINGERPRINTS` on ChristLink-Web (Android app links); Stripe → Payment method domains →
+   christlinksocial.com (Apple Pay / Google Pay on the website).
+4. Keep the Supabase project and the ChristLink1 service ~60 days (session hand-over + rollback), then remove
+   `LEGACY_SUPABASE_*` from the API, pause Supabase and delete ChristLink1.
 
 ## Why nobody has to make a new account
 

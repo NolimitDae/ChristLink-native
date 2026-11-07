@@ -1,9 +1,9 @@
 # Christ Link Social — native app (Expo)
 
-Faith events, tickets, community, prayer, churches and volunteering. This repo holds the **iOS/Android app**
-and its **backend** (`backend/`, NestJS on Railway). The website still lives in `NolimitDae/ChristLink1`
-(server.js + Supabase) until the switch in docs/CUTOVER.md, after which christlinksocial.com is this app's web build
-(`web/server.mjs`, Railway service ChristLink-Web); **no new features go into server.js or Supabase.**
+Faith events, tickets, community, prayer, churches and volunteering. This repo holds the **iOS/Android app**,
+its **backend** (`backend/`, NestJS on Railway) and, since 2026-11-07, the **website**: christlinksocial.com is this
+app's web build (`web/server.mjs`, Railway service ChristLink-Web; docs/CUTOVER.md). The old site
+(`NolimitDae/ChristLink1`, server.js + Supabase) is off the domain and kept only for rollback; **nothing new goes there.**
 
 ## Stack
 - App: Expo SDK 58, expo-router (file routes in `app/`), React Native 0.88, React 19, New Architecture,
@@ -33,8 +33,8 @@ and its **backend** (`backend/`, NestJS on Railway). The website still lives in 
    `npm run typecheck && npm test && npm run test:e2e` (backend/README.md).
 
 ## Deploys
-- Railway production (project "ChristLink") deploys `backend/` from this repo's `master`, and the old API from
-  ChristLink1 `main`, automatically — untested merges go live. Staging follows `claude/railway-launch`.
+- Railway production (project "ChristLink") deploys the API, worker and website (ChristLink-Web) from this repo's
+  `master` — untested merges go live, including christlinksocial.com. Staging follows `claude/railway-launch`.
 - This app ships through EAS: `eas build --profile preview` (internal testers), `--profile production` + `eas submit`.
 - Preview builds read the **development** EAS environment (API = staging); production builds read **production**.
   Public config (`EXPO_PUBLIC_*`) lives in EAS environment variables, not in `eas.json` or the repo: docs/BUILDS.md.
@@ -99,7 +99,8 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 
 ## Known gaps / don't break
 - Payout history is in the Stripe dashboard. Apple Wallet needs the APPLE_PASS_* certificate variables in Railway.
-- Website must serve `.well-known` files and redirect `/event/:id` → `/#event/:id` (docs/deeplinks/README.md).
+- The website serves `.well-known` app-link files from env (`web/server.mjs`); old `#event/<id>` links are redirected
+  in the app (`lib/legacyLinks.ts`). Uploads need `R2_PUBLIC_URL` (docs/CUTOVER.md status).
 - The old server.js still returns negative host earnings for `price=0`; the new backend fixes it.
 
 ## Docs
