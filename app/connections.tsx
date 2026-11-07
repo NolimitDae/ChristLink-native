@@ -8,6 +8,8 @@ import { getFollowersOf, getFollowingOf } from '../lib/api';
 import type { PersonSummary } from '../lib/types';
 import { Avatar } from '../components/Avatar';
 import { AppText, EmptyState, ListSkeleton, PressScale, Screen, Segmented } from '../components/ui';
+import { LoadError } from '../components/LoadError';
+import { loadFailure, type LoadFailure } from '../lib/loadFailure';
 
 type Tab = 'followers' | 'following';
 type Person = PersonSummary & { city?: string | null };
@@ -21,7 +23,7 @@ export default function ConnectionsScreen() {
   const userId = params.userId;
   const [tab, setTab] = useState<Tab>(params.tab === 'following' ? 'following' : 'followers');
   const [people, setPeople] = useState<Record<Tab, Person[] | null>>({ followers: null, following: null });
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<LoadFailure | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const isMe = !!user && user.id === userId;
   const first = (params.name ?? '').trim().split(/\s+/)[0];
@@ -32,9 +34,9 @@ export default function ConnectionsScreen() {
       // Both lists at once, so switching tabs is instant
       const [followers, following] = await Promise.all([getFollowersOf(userId), getFollowingOf(userId)]);
       setPeople({ followers, following });
-      setFailed(false);
-    } catch {
-      setFailed(true);
+      setFailed(null);
+    } catch (err) {
+      setFailed(loadFailure(err));
       setPeople(p => ({ followers: p.followers ?? [], following: p.following ?? [] }));
     }
   }, [userId]);
@@ -47,7 +49,7 @@ export default function ConnectionsScreen() {
   const open = (p: Person) => router.push(user && p.id === user.id ? '/(tabs)/profile' : `/user/${p.id}`);
 
   const empty = failed ? (
-    <EmptyState art="offline" title="Couldn’t load this list" body="Check your connection and try again." actionLabel="Try again" onAction={load} compact />
+    <LoadError failure={failed} what="this list" art="people" onRetry={load} compact />
   ) : tab === 'followers' ? (
     <EmptyState
       art="people"

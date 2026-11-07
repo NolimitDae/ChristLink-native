@@ -5,6 +5,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { FeatureError, getServeHistory, type ServeHistoryItem } from '../../lib/features';
 import { AppText, EmptyState, ListSkeleton, Screen } from '../../components/ui';
 import { AppIcon } from '../../components/icons/AppIcon';
+import { LoadError } from '../../components/LoadError';
+import { loadFailure, type LoadFailure } from '../../lib/loadFailure';
 
 function formatHours(h: number): string {
   return h < 10 ? String(Math.round(h * 10) / 10) : String(Math.round(h));
@@ -21,15 +23,15 @@ export default function ServeHistoryScreen() {
   const router = useRouter();
   const [items, setItems] = useState<ServeHistoryItem[] | null>(null);
   const [notSetUp, setNotSetUp] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<LoadFailure | null>(null);
 
   const load = useCallback(async () => {
     try {
       setItems(await getServeHistory());
-      setFailed(false);
+      setFailed(null);
     } catch (err) {
       if (err instanceof FeatureError && err.notSetUp) setNotSetUp(true);
-      else setFailed(true);
+      else setFailed(loadFailure(err));
       setItems([]);
     }
   }, []);
@@ -61,13 +63,17 @@ export default function ServeHistoryScreen() {
           }
           ItemSeparatorComponent={() => <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: t.c.border }} />}
           ListEmptyComponent={
-            <EmptyState
-              art={failed ? 'offline' : 'serve'}
-              title={failed ? 'Couldn’t load your shifts' : notSetUp ? 'Serve history is almost ready' : 'No completed shifts yet'}
-              body={failed ? 'Check your connection and try again.' : 'Hours count once a shift leader marks your shift complete.'}
-              actionLabel={failed ? 'Try again' : 'Find a place to serve'}
-              onAction={failed ? load : () => router.push('/(tabs)/explore?tab=serve')}
-            />
+            failed ? (
+              <LoadError failure={failed} what="your shifts" art="serve" onRetry={load} />
+            ) : (
+              <EmptyState
+                art="serve"
+                title={notSetUp ? 'Serve history is almost ready' : 'No completed shifts yet'}
+                body="Hours count once a shift leader marks your shift complete."
+                actionLabel="Find a place to serve"
+                onAction={() => router.push('/(tabs)/explore?tab=serve')}
+              />
+            )
           }
           renderItem={({ item }) => (
             <View style={styles.row} accessible accessibilityLabel={`${item.role_name}, ${item.event_name ?? item.church_name ?? ''}, ${when(item.starts_at)}, ${formatHours(item.hours)} hours`}>

@@ -10,6 +10,7 @@ import { FeatureError, searchChurches } from '../../lib/features';
 import type { Church } from '../../lib/types';
 import { AppText, EmptyState, Field, LineArt, Skeleton } from '../ui';
 import { AppIcon } from '../icons/AppIcon';
+import { loadFailure, type LoadFailure } from '../../lib/loadFailure';
 
 const DEBOUNCE_MS = 300;
 
@@ -19,7 +20,7 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Church[] | null>(null);
   const [notSetUp, setNotSetUp] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<LoadFailure | null>(null);
   const { session } = useAuth();
   const { showToast } = useToast();
   const [adding, setAdding] = useState(false);
@@ -56,12 +57,12 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
         const rows = await searchChurches(query, 12);
         if (!cancelled) {
           setResults(rows);
-          setFailed(false);
+          setFailed(null);
         }
       } catch (err) {
         if (cancelled) return;
         if (err instanceof FeatureError && err.notSetUp) setNotSetUp(true);
-        else setFailed(true);
+        else setFailed(loadFailure(err));
         setResults([]);
       }
     }, DEBOUNCE_MS);
@@ -112,7 +113,13 @@ export function ChurchStep({ selectedId, onSelect }: { selectedId: string | null
             compact
             art="church"
             title={failed ? "Couldn't search churches" : 'No churches found'}
-            body={failed ? 'Check your connection. You can choose later.' : 'Try another name or city, or add your church.'}
+            body={
+              failed === 'offline'
+                ? 'Check your connection. You can choose later.'
+                : failed
+                  ? 'Something went wrong on our side. You can choose later.'
+                  : 'Try another name or city, or add your church.'
+            }
             actionLabel={failed ? undefined : 'Add your church'}
             onAction={failed ? undefined : () => setAdding(true)}
           />

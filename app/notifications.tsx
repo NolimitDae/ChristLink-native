@@ -9,6 +9,8 @@ import { routeForNotification, setBadgeCount } from '../lib/notifications';
 import type { AppNotification } from '../lib/types';
 import { AppText, EmptyState, ListSkeleton, Screen } from '../components/ui';
 import { AppIcon, type AppIconName } from '../components/icons/AppIcon';
+import { LoadError } from '../components/LoadError';
+import { loadFailure, type LoadFailure } from '../lib/loadFailure';
 
 type IconName = AppIconName;
 
@@ -35,16 +37,16 @@ export default function NotificationsScreen() {
   const { session } = useAuth();
   const token = session?.access_token;
   const [items, setItems] = useState<AppNotification[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<LoadFailure | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
     try {
       setItems(await getNotifications(token));
-      setFailed(false);
-    } catch {
-      setFailed(true);
+      setFailed(null);
+    } catch (err) {
+      setFailed(loadFailure(err));
     }
   }, [token]);
 
@@ -87,7 +89,7 @@ export default function NotificationsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
           ListEmptyComponent={
             failed ? (
-              <EmptyState art="offline" title="Couldn't load notifications" body="Check your connection and try again." actionLabel="Try again" onAction={load} />
+              <LoadError failure={failed} what="notifications" art="bell" onRetry={load} />
             ) : (
               <EmptyState art="bell" title="You're all caught up" body="We'll let you know about tickets, invites and prayers here." />
             )
