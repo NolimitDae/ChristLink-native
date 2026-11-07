@@ -807,3 +807,31 @@ and changed what applied, within the existing design system:
 **Test**
 - Open https://christlink-web-production.up.railway.app on your phone and computer; browse Events and a profile.
   (Signing in there works once the Resend key is added.)
+
+## 2026-11-07 — christlinksocial.com switched to the new app
+
+**Changed**
+- Production (Railway project ChristLink) now runs this repo from `master`: ChristLink-API (migrated, all settings;
+  Stripe/Apple/Supabase values referenced from the old ChristLink1 service), a new ChristLink-Worker, and a new
+  ChristLink-Web serving christlinksocial.com. Staging follows `claude/railway-launch` with the same code.
+- One-time data copy job (`backend/scripts/supabase-migrate`) runs inside Railway, so no key passed through anyone:
+  final copy at the switch = 75 accounts, 75 profiles, 12 events, 11 tickets, 69 RSVPs, 64 follows and the rest,
+  identical to the old site. The job is now disarmed (dry run only).
+- Uploads refuse cleanly (503) when `R2_PUBLIC_URL` is missing instead of saving broken photo links (PR #3).
+- Sign-in emails verified from production (Resend); email header shows the logo.
+- Live smoke test: home and an old `#event/<id>` link opened the right page with live data; CORS, Apple app-link
+  file and Stripe's `/webhook` path checked.
+
+**Not finished / needs you** (docs/CUTOVER.md → Status)
+- `www.christlinksocial.com`: add the CNAME + TXT records in Cloudflare.
+- Photo uploads: make the `christlink-media` bucket public (custom domain `media.christlinksocial.com`), then set
+  `R2_PUBLIC_URL`; later run `copy-storage.mjs` to move old photos off Supabase.
+- Optional: Android app-link fingerprint; Stripe payment-method domain for Apple Pay / Google Pay on the web.
+- Delete the Data-Copy-Temp service (production) and the fn-check-temp service (staging) when convenient; keep
+  Supabase + ChristLink1 for ~60 days.
+
+**Test**
+1. Open christlinksocial.com in a browser where you were signed in on the old site: you should land signed in.
+2. Sign out, sign in with your email code: your profile, hosted events and followers are there.
+3. Open an old shared link (`christlinksocial.com/#event/<id>`): it opens the event.
+4. After `R2_PUBLIC_URL` is set: change your profile photo.
