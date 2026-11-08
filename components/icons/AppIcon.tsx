@@ -1,13 +1,13 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
-import { FILL_GLYPHS, STROKE_GLYPHS } from './glyphs';
+import { FILL_GLYPHS, PRAY_GLYPH, STROKE_GLYPHS } from './glyphs';
 
 type IonName = React.ComponentProps<typeof Ionicons>['name'];
 
 /**
  * Faith-specific glyphs Ionicons doesn't have. `-outline` matches Ionicons' outline weight; plain = solid.
- * pray = praying hands (prayer, "I prayed", Amen) · church = church building · serve = hand holding a heart
+ * pray = praying hands with fingers (prayer, "I prayed", Amen; Material Symbols folded hands) · church = church building · serve = hand holding a heart
  * (serve / volunteer) · bible = book with a cross · skate = roller skate.
  */
 export type CustomIconName =
@@ -43,6 +43,13 @@ export function AppIcon({ name, size = 20, color }: { name: AppIconName; size?: 
     );
   }
   const variant = name.endsWith('-outline') ? 'regular' : 'filled';
+  if (base === 'pray') {
+    return (
+      <Svg width={size} height={size} viewBox={PRAY_GLYPH.viewBox} accessibilityElementsHidden importantForAccessibility="no">
+        <Path d={PRAY_GLYPH[variant]} fill={color} />
+      </Svg>
+    );
+  }
   return (
     <Svg width={size} height={size} viewBox="0 0 256 256" accessibilityElementsHidden importantForAccessibility="no">
       <Path d={FILL_GLYPHS[base][variant]} fill={color} />
