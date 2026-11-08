@@ -857,3 +857,11 @@ and changed what applied, within the existing design system:
   onboarding church search. `FeatureError` now carries the HTTP status.
 - Test: christlinksocial.com signed out → Community → Prayer Wall → every filter shows the sign-in message with
   praying hands; turn on airplane mode and pull to refresh a list → "check your connection".
+
+## 2026-11-08 — Praying hands with fingers
+
+- Every prayer icon ("I prayed", Prayed, prayer counts, Amen, the Prayer chip) and the Prayer Wall illustration now use
+  Material Symbols' rounded "folded hands" (Apache 2.0), which shows fingers and thumbs, instead of Phosphor's
+  finger-less praying hands. One glyph source (`PRAY_GLYPH` in components/icons/glyphs.ts): weight 400 for icons,
+  weight 200 for the illustration so its line matches the other empty-state drawings. docs/ICONS.md updated.
+- Test: Community → Prayer Wall (cards and the signed-out message) and a post's Amen on phone and website.
