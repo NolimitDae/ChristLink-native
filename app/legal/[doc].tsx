@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Platform, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,25 +53,28 @@ export default function LegalScreen() {
           </View>
         ))}
 
-        <Pressable
-          onPress={openWeb}
-          accessibilityRole="link"
-          accessibilityLabel={`Open ${content.title} on the web`}
-          style={({ pressed }) => ({
-            marginTop: t.space.xl,
-            minHeight: 48,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            opacity: pressed ? 0.6 : 1,
-          })}
-        >
-          <Ionicons name="globe-outline" size={18} color={t.c.goldText} />
-          <AppText variant="callout" tone="gold" style={{ flex: 1 }}>
-            View on the web: {webUrl.replace(/^https:\/\//, '')}
-          </AppText>
-          <Ionicons name="open-outline" size={16} color={t.c.goldText} />
-        </Pressable>
+        {/* On the website this page already is the web version */}
+        {Platform.OS === 'web' ? null : (
+          <Pressable
+            onPress={openWeb}
+            accessibilityRole="link"
+            accessibilityLabel={`Open ${content.title} on the web`}
+            style={({ pressed }) => ({
+              marginTop: t.space.xl,
+              minHeight: 48,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Ionicons name="globe-outline" size={18} color={t.c.goldText} />
+            <AppText variant="callout" tone="gold" style={{ flex: 1 }}>
+              View on the web: {webUrl.replace(/^https:\/\//, '')}
+            </AppText>
+            <Ionicons name="open-outline" size={16} color={t.c.goldText} />
+          </Pressable>
+        )}
       </ScrollView>
     </Screen>
   );

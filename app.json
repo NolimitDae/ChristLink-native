@@ -18,7 +18,6 @@
         "NSCameraUsageDescription": "Christ Link Social uses the camera to scan tickets and volunteer passes at check-in, and to take event or profile photos.",
         "NSPhotoLibraryUsageDescription": "Christ Link Social uses your photo library so you can choose a profile picture, banner or event cover.",
         "NSLocationWhenInUseUsageDescription": "Christ Link Social uses your location to show events and churches near you. It is never shared with other people.",
-        "NSUserNotificationUsageDescription": "Christ Link Social sends ticket confirmations, event reminders and prayer updates.",
         "NSPhotoLibraryAddUsageDescription": "Christ Link Social saves share cards to your photo library when you ask it to.",
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -28,6 +27,39 @@
       ],
       "config": {
         "usesNonExemptEncryption": false
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "0A2A.1",
+              "3B52.1",
+              "C617.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "E174.1",
+              "85F4.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "35F9.1"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -91,10 +123,17 @@
       [
         "expo-router",
         {
-          "asyncRoutes": { "web": false }
+          "asyncRoutes": {
+            "web": false
+          }
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       [
         "expo-notifications",
         {
@@ -107,14 +146,19 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Christ Link Social uses your location to show events and churches near you."
+          "locationWhenInUsePermission": "Christ Link Social uses your location to show events and churches near you.",
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "locationFullAccuracyPermission": false
         }
       ],
       [
         "expo-image-picker",
         {
           "photosPermission": "Christ Link Social uses your photos so you can choose a profile picture, banner or event cover.",
-          "cameraPermission": "Christ Link Social uses the camera to take event or profile photos."
+          "cameraPermission": "Christ Link Social uses the camera to scan tickets and volunteer passes at check-in, and to take event or profile photos.",
+          "microphonePermission": false
         }
       ],
       [
@@ -123,14 +167,15 @@
           "writeOnlyAccess": true,
           "calendarPermission": "Christ Link Social adds the events you RSVP to into your calendar.",
           "writeOnlyCalendarPermission": "Christ Link Social adds the events you RSVP to into your calendar.",
-          "remindersPermission": "Christ Link Social does not read your reminders."
+          "remindersPermission": false
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Christ Link Social uses the camera to scan tickets and volunteer passes at check-in.",
-          "recordAudioAndroid": false
+          "cameraPermission": "Christ Link Social uses the camera to scan tickets and volunteer passes at check-in, and to take event or profile photos.",
+          "recordAudioAndroid": false,
+          "microphonePermission": false
         }
       ],
       [
@@ -151,7 +196,8 @@
         }
       ],
       "expo-web-browser",
-      "./plugins/withStripeTapAndPayExclude"
+      "./plugins/withStripeTapAndPayExclude",
+      "./plugins/withAppStoreRelease"
     ],
     "extra": {
       "eas": {
@@ -166,7 +212,7 @@
     },
     "owner": "nolimittechs-organization",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "fingerprint"
     },
     "updates": {
       "url": "https://u.expo.dev/d64de815-22a9-48e7-8e89-f1da181fab6a"

@@ -1,7 +1,9 @@
 # Builds and over-the-air updates
 
 EAS project: `@nolimittechs-organization/christlink` (id `d64de815-22a9-48e7-8e89-f1da181fab6a`). Expo SDK 58.
-Runtime version follows `version` in app.json (`1.0.0`), so updates only reach builds of that version.
+Runtime version is a **fingerprint** of the native project (packages, plugins, app.json native settings), so an
+update only reaches builds whose native side is identical. After a native change (package upgrade, plugin, permission)
+older builds stop getting updates until rebuilt. Since 2026-11-12; builds made before that use runtime `1.0.0`.
 
 | Profile | Installs as | EAS environment | API | Update channel |
 | --- | --- | --- | --- | --- |
@@ -14,7 +16,7 @@ Runtime version follows `version` in app.json (`1.0.0`), so updates only reach b
 | Variable | development | production | Notes |
 | --- | --- | --- | --- |
 | `EXPO_PUBLIC_API_BASE` | `https://christlink-api-staging.up.railway.app` | `https://christlink-api-production.up.railway.app` | set 2026-10-28 |
-| `EXPO_PUBLIC_STRIPE_PK` | `pk_test_…` | `pk_live_…` at launch | without it paid checkout is off |
+| `EXPO_PUBLIC_STRIPE_PK` | `pk_test_…` | `pk_live_…` (set 2026-11-12) | without it paid checkout is off |
 | `EXPO_PUBLIC_SENTRY_DSN` | optional | optional | crash reporting |
 | `EXPO_PUBLIC_STRIPE_MERCHANT_ID` | optional | optional | defaults to `merchant.com.christlinksocial.app` |
 
@@ -42,8 +44,10 @@ its QR code, and install.
 eas update --channel preview --environment development --message "what changed"
 ```
 
-Close and reopen the app twice to pick it up. Rebuild instead when you add a native package, change a plugin or
-permission in app.json, or bump `version`.
+Close and reopen the app twice to pick it up. Rebuild instead when you add or upgrade a native package, change a
+plugin or permission in app.json, or bump `version` (`npx expo-updates runtimeversion:resolve --platform ios` shows the current one).
+
+Store release: docs/APP-STORE.md (iOS) and docs/STORE.md (Google Play).
 
 Expo Go (App Store) only runs the newest SDK: `EXPO_GO_UPDATE=1 eas update --branch expo-go --environment development`.
 

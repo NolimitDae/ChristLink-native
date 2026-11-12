@@ -118,7 +118,7 @@ export const RSVPS: Row[] = [
 
 export const PROFILE: Row = {
   id: ME.id, email: ME.email, full_name: 'Jordan Ellis', city: 'Atlanta', role: 'host', avatar_color: 'linear-gradient(135deg,#C9A84C,#8B6914)',
-  bio: 'Worship leader. Coffee. Community.', created_at: day(-200), host_stripe_accounts: [], followers_count: 128, following_count: 96,
+  bio: 'Worship leader. Coffee. Community.', created_at: day(-200), host_stripe_accounts: [{ stripe_account_id: 'acct_demo', onboarding_complete: true, payouts_enabled: true, charges_enabled: true }], followers_count: 128, following_count: 96,
   identity_verified: true, bible_verse: 'Let all that you do be done in love.', bible_verse_reference: '1 Corinthians 16:14',
   hobbies: 'Worship, Music, Hiking, Mentorship', connect_tags: ['worship', 'meetup', 'mentorship'],
   testimony: 'I led worship for years without really resting in it. A quiet season at our prayer retreat changed that.',

@@ -25,6 +25,25 @@ const SESSION_KEY = 'cl.session';
 const PHONE = { width: 390, height: 844 };
 const LATENCY_MS = 180;
 
+/** Two weeks of plausible ticket sales for a paid demo event (deterministic per event, so screenshots are stable). */
+function demoSales(eventId: string) {
+  const ev = findEvent(eventId);
+  if (!ev?.is_paid) return [];
+  const seed = [...eventId].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 9973, 7);
+  const unit = 2500;
+  return Array.from({ length: 22 }, (_, i) => {
+    const quantity = 1 + ((seed + i * 7) % 3);
+    const daysAgo = (seed + i * 5) % 14;
+    const created = new Date(Date.now() - daysAgo * 86_400_000 - ((seed + i) % 20) * 3_600_000).toISOString();
+    const total = Math.round(unit * quantity * 1.07);
+    return {
+      id: `demo-sale-${eventId}-${i}`, event_id: eventId, user_id: `demo-buyer-${i}`, quantity, unit_price_cents: unit,
+      total_charged_cents: total, platform_fee_cents: total - unit * quantity, stripe_fee_cents: Math.round(unit * quantity * 0.029 + 30),
+      host_receives_cents: unit * quantity - Math.round(unit * quantity * 0.029 + 30), status: 'confirmed', created_at: created, confirmed_at: created,
+    };
+  });
+}
+
 const state = {
   events: D.EVENTS.map(e => ({ ...e })),
   posts: D.POSTS.map(p => ({ ...p })),
@@ -96,7 +115,7 @@ const routes: [string, RegExp, Handler][] = [
   ['GET', /^\/my-tickets$/, () => ({ tickets: state.tickets })],
   ['GET', /^\/my-events$/, () => ({ events: state.events.slice(0, 3).map(e => ({ ...e, host_id: D.ME.id })) })],
   ['GET', /^\/events\/([^/]+)\/sales$/, ([id]) => ({
-    event: findEvent(id), tickets: [], rsvps: [],
+    event: findEvent(id), tickets: demoSales(id), rsvps: [],
     summary: { totalTicketsSold: 52, totalRsvps: Number(findEvent(id)?.confirmed_rsvps ?? 0), grossRevenue: 754000, hostEarnings: 701220 },
   })],
   ['GET', /^\/profile$/, () => state.profile],

@@ -14,7 +14,7 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
-export const LEGAL_UPDATED = 'October 15, 2026';
+export const LEGAL_UPDATED = 'November 12, 2026';
 export const LEGAL_DRAFT_NOTICE = 'Draft — pending legal review';
 
 export const LEGAL_DOC_KEYS: readonly LegalDocKey[] = ['privacy', 'terms', 'host', 'guidelines'];
@@ -33,7 +33,7 @@ const privacy: LegalDoc = {
       heading: '1. Information you give us',
       paragraphs: [
         'Account. We use passwordless sign-in: you enter your email address and we email you a one-time code. We store your email address and, if you provide it, your name. We do not create or store a password.',
-        'Profile. You can add a profile photo, banner image, bio, city, favorite Bible verse, a pinned prayer request and a link to your Instagram account. Your name, photo and public profile details are visible to other members.',
+        'Profile. You can add a profile photo, banner image, bio, city, favorite Bible verse, a pinned prayer request, your testimony, hobbies, interests, "open to" tags, hot takes and links to your Instagram, Facebook or TikTok. Your name, photo and public profile details are visible to other members.',
         'Content. Posts, replies, prayers (including whether you chose to post anonymously), testimonies, event forum messages, reports you submit and Amens or "I prayed" taps are stored so the community features work. Anonymous prayers are hidden from other members, but we still know who posted them so we can moderate and so you can manage or delete them.',
         'Photos. Images you upload — avatars, banners and event cover or gallery images — are stored in our file storage and are publicly viewable by anyone with the link.',
         'Events and tickets. When you RSVP, buy a ticket, sign up to serve or host an event, we store those records, including ticket type, quantity, price, check-in status and refund requests.',
@@ -44,10 +44,12 @@ const privacy: LegalDoc = {
     {
       heading: '2. Information collected automatically',
       paragraphs: [
-        'Location. If you tap "Near me" or open the map, the app asks your device for your approximate or precise location so it can show nearby events and churches. Your location is used for that request only. We do not store your location history or share it with other members.',
+        'Location. If you tap "Near me" or open the map, the app asks your device for your location while you are using the app so it can show nearby events and churches. Your location is used for that request only. We do not store your location history, track your location in the background or share it with other members.',
+        'Calendar. If you choose "Add to calendar", the app asks for permission to add that event to your calendar. It can only add events; it does not read your calendar.',
         'Push notifications. If you allow notifications, we store a push token for your device so we can send ticket confirmations, reminders and updates you have turned on. Event reminders are scheduled on your device.',
         'Crash and diagnostics. When the app crashes or hits an error, we receive a crash report (device model, operating system, app version and the error) so we can fix problems. We configure crash reporting not to include your name or email.',
         'Basic usage. Our servers log requests (such as time, IP address and the page or endpoint requested) for security, abuse prevention and troubleshooting. Event pages count views in aggregate.',
+        'Website. On christlinksocial.com your sign-in session is kept in your browser’s local storage so you stay signed in. We do not use advertising or tracking cookies.',
       ],
     },
     {
@@ -70,7 +72,7 @@ const privacy: LegalDoc = {
       heading: '5. Who we share information with',
       paragraphs: [
         'Other members see your public profile and the content you post. Hosts see the name and email of people who RSVP or buy tickets to their events so they can manage attendance and contact guests about the event.',
-        'Service providers process data on our behalf under contract: Supabase (database, authentication and file storage), Railway (API hosting), Stripe (payments and host payouts), Sentry (crash reports), Expo (push notification delivery) and our email provider (sign-in codes and receipts).',
+        'Service providers process data on our behalf under contract: Railway (servers and database), Cloudflare (file storage and website delivery), Stripe (payments and host payouts), Resend (sign-in codes and other email), Sentry (crash reports) and Expo (push notification delivery). Supabase, which hosted our previous website, keeps a copy of data from before November 2026 only until we delete it after the move to our new systems.',
         'We may disclose information if required by law, to protect the safety of any person, or as part of a merger or acquisition, in which case this policy will continue to apply.',
       ],
     },
@@ -98,7 +100,7 @@ const privacy: LegalDoc = {
     {
       heading: '9. Security',
       paragraphs: [
-        'We use encryption in transit, row-level access rules in our database, private storage for sensitive files and limited administrator access. No system is perfectly secure, so please keep access to your email account safe, since it is how you sign in.',
+        'We use encryption in transit, access checks on every request to our servers, private storage for sensitive files and limited administrator access. No system is perfectly secure, so please keep access to your email account safe, since it is how you sign in.',
       ],
     },
     {

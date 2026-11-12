@@ -39,7 +39,7 @@ app's web build (`web/server.mjs`, Railway service ChristLink-Web; docs/CUTOVER.
 - Preview builds read the **development** EAS environment (API = staging); production builds read **production**.
   Public config (`EXPO_PUBLIC_*`) lives in EAS environment variables, not in `eas.json` or the repo: docs/BUILDS.md.
 - JS-only fixes go over the air: `eas update --channel preview --environment development --message "..."`.
-  A new native module or a new `version` in app.json needs a new build (runtime version = app version).
+  A new or upgraded native module, plugin or permission needs a new build (runtime version = native fingerprint).
 - Database changes: add a new Prisma migration in `backend/prisma/migrations/` (`prisma migrate deploy` runs before
   each deploy; staging first). Never edit an applied migration. `supabase/` is the frozen old schema.
 
@@ -105,7 +105,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 
 ## Docs
 docs/LAUNCH.pdf (plan) · docs/CUTOVER.md (website switch, keeping accounts) · docs/BACKEND.md · docs/BUILDS.md (EAS builds + updates) · docs/ICONS.md · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
-docs/REVIEW.md (developer review packet) · docs/STORE.md (listings + launch checklist) · docs/WEB-PREVIEW.md (browser preview with sample data) · docs/deeplinks/
+docs/REVIEW.md (developer review packet) · docs/APP-STORE.md (iOS submission sheet) · docs/STORE.md (Google Play + launch checklist) · docs/WEB-PREVIEW.md (browser preview with sample data) · docs/deeplinks/
 
 ## End of every session
 Answer "Summarize what you changed, what you didn't finish, and anything I should test" in docs/PROGRESS.md.
