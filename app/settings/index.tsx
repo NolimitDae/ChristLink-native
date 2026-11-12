@@ -162,6 +162,7 @@ export default function SettingsScreen() {
         )}
 
         <ListGroup title="Support">
+          <ListRow icon="help-circle-outline" title="Help & support" subtitle="Answers to common questions" onPress={() => router.push('/support')} />
           <ListRow icon="mail-outline" title="Email support" subtitle={SUPPORT_EMAIL} onPress={emailSupport} />
           <ListRow icon="people-outline" title="Community guidelines" onPress={() => router.push('/legal/guidelines')} />
           <ListRow icon="lock-closed-outline" title="Privacy Policy" onPress={() => router.push('/legal/privacy')} />

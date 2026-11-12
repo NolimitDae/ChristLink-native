@@ -47,7 +47,9 @@ export function computeBreakdown(
 export function formatCents(cents: number, opts: { free?: string } = {}): string {
   if (cents === 0 && opts.free) return opts.free;
   const sign = cents < 0 ? '-' : '';
-  return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
+  const [whole, frac] = (Math.abs(cents) / 100).toFixed(2).split('.');
+  // Thousands separators ("$1,061.43"), by hand so it doesn't depend on the device's Intl data
+  return `${sign}$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${frac}`;
 }
 
 /** Parse a dollar string typed by a host ("15", "15.5", "$15.50") into cents, or null when invalid. */

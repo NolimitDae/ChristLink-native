@@ -865,3 +865,35 @@ and changed what applied, within the existing design system:
   finger-less praying hands. One glyph source (`PRAY_GLYPH` in components/icons/glyphs.ts): weight 400 for icons,
   weight 200 for the illustration so its line matches the other empty-state drawings. docs/ICONS.md updated.
 - Test: Community → Prayer Wall (cards and the signed-out message) and a post's Amen on phone and website.
+
+## 2026-11-12 — App Store readiness
+
+**Changed**
+- iOS config for review: privacy manifest (required-reason APIs, no tracking); removed permission prompts the app
+  never uses (Face ID, microphone, Reminders, "Always" location, motion, full-accuracy location, the unused
+  notifications string); one specific camera purpose string; store builds drop the dev-client local-network keys and
+  use production push (`plugins/withAppStoreRelease.js`). Checked with `expo prebuild`.
+- All Expo SDK 58 packages on the SDK's expected patch versions. Runtime version is now the native **fingerprint**
+  (was the app version), so existing preview builds stop receiving OTA updates until they are rebuilt.
+- New Support page (`/support`, christlinksocial.com/support: FAQ + email), linked from Settings. Privacy policy
+  updated to the new backend (processors, calendar, location while in use, website). Legal "View on the web" link
+  hidden on the website itself.
+- Money shows thousands separators ("$1,061.43").
+- 6 App Store screenshots (6.9", 1320×2868) in `store/screenshots/iphone-6.9/`, generated from the sample-data
+  preview by `scripts/store/screenshots.js`.
+- docs/APP-STORE.md: the full App Store Connect sheet (listing copy, keywords, privacy labels, age rating, review
+  account + notes, steps). docs/STORE.md rewritten for the current backend (Google Play + launch checklist).
+- Production: App Review account `appreview@christlinksocial.com` signs in with the fixed `REVIEW_CODE`
+  (Railway → ChristLink-API); live Stripe publishable key added to the EAS production environment.
+
+**Not finished / needs you**
+- **Apple Developer Program membership for team QKP52JF8KD is not active** (Apple's API: "Unable to find a team"),
+  so no store build, bundle ID, merchant ID or App Store Connect app could be created. Steps in docs/APP-STORE.md.
+- Publish a few real upcoming events in production (all copied events are past; Discover is empty).
+- Decide on the host listing fee (possible Guideline 3.1.1 issue) and the "Draft — pending legal review" label.
+- Optional: Sentry DSN in EAS production.
+
+**Test**
+- Settings → Help & support on the phone and christlinksocial.com/support.
+- Sign in as the review account on the website with the review code.
+- After the next build: camera, photo and location prompts show the new wording; no Face ID prompt.

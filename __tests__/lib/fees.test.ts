@@ -65,6 +65,10 @@ describe('money parsing', () => {
   it('formats cents', () => {
     expect(formatCents(0, { free: 'Free' })).toBe('Free');
     expect(formatCents(-250)).toBe('-$2.50');
+    expect(formatCents(99999)).toBe('$999.99');
+    expect(formatCents(106143)).toBe('$1,061.43');
+    expect(formatCents(123456789)).toBe('$1,234,567.89');
+    expect(formatCents(-250000)).toBe('-$2,500.00');
   });
 
   it('extracts the PaymentIntent id for the confirm-by-intent fallback', () => {
