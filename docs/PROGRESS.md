@@ -897,3 +897,16 @@ and changed what applied, within the existing design system:
 - Settings → Help & support on the phone and christlinksocial.com/support.
 - Sign in as the review account on the website with the review code.
 - After the next build: camera, photo and location prompts show the new wording; no Face ID prompt.
+
+## 2026-11-13 — Payments check: Stripe webhooks moved to the new backend
+
+- Found that both live Stripe webhook endpoints still called the old server (`christlink1-production…/webhook`, still
+  running on Supabase), so the new API never heard about payments, refunds or host onboarding. No live payments had
+  happened since the cutover. Both now call `https://christlinksocial.com/webhook` (forwarded to the API, same signing
+  secrets); the payments endpoint also sends `charge.refunded` and `charge.dispute.created`.
+- Registered `christlinksocial.com` as a Stripe payment method domain: Apple Pay, Google Pay and Link on the website.
+- Checked: Stripe account verified, charges and payouts enabled; live keys on the API, website and EAS production.
+- Not done: no host has a Stripe Connect payout account yet (none exist on the platform), so no paid event can sell
+  tickets until its host taps Set up payouts. Apple Pay in the iOS app waits on the Apple membership (docs/APP-STORE.md).
+- Test: set up payouts as a host, create a $1 event, buy a ticket on christlinksocial.com, refund it; in Stripe →
+  Developers → Webhooks both endpoints should show 200s.
