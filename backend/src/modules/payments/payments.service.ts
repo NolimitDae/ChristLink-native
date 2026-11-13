@@ -336,6 +336,7 @@ export class PaymentsService {
   private platformSetupError(e: unknown): never {
     const msg = (e as Error)?.message ?? '';
     if (msg.toLowerCase().includes('platform profile') || msg.toLowerCase().includes('signed up for connect')) {
+      this.logger.warn(`Stripe Connect not ready: ${msg}`);
       throw new JsonError(400, {
         error:
           'Stripe Connect is not fully configured yet. The platform owner must complete the Connect platform profile in the Stripe Dashboard before hosts can set up payouts.',
