@@ -15,7 +15,8 @@ app's web build (`web/server.mjs`, Railway service ChristLink-Web; docs/CUTOVER.
   and `lib/features.ts` (churches, prayers, verses, serve, reports, blocks, settings, push tokens).
 - Auth: email one-time code from the API (`/api/auth/*`); JWT access + rotating refresh token in
   Keychain/Keystore (`lib/session.ts`).
-- Payments: Stripe PaymentSheet (Apple Pay / Google Pay) + Stripe Connect Express. See docs/PAYMENTS.md.
+- Payments: Stripe PaymentSheet (Apple Pay / Google Pay) + Stripe Connect with embedded onboarding/payouts (hosts
+  never leave the app; accounts have no Stripe dashboard). See docs/PAYMENTS.md.
 - Push: Expo push tokens → `push_tokens`; the backend worker pushes every new `notifications` row.
   Event/serve reminders are local scheduled notifications (`lib/notifications.ts`).
 - Monitoring: Sentry (`EXPO_PUBLIC_SENTRY_DSN`).
@@ -98,7 +99,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 - Permission prompts explain why (camera = check-in, location = nearby, notifications = reminders).
 
 ## Known gaps / don't break
-- Payout history is in the Stripe dashboard. Apple Wallet needs the APPLE_PASS_* certificate variables in Railway.
+- Apple Wallet needs the APPLE_PASS_* certificate variables in Railway.
 - The website serves `.well-known` app-link files from env (`web/server.mjs`); old `#event/<id>` links are redirected
   in the app (`lib/legacyLinks.ts`). Uploads need `R2_PUBLIC_URL` (docs/CUTOVER.md status).
 - The old server.js still returns negative host earnings for `price=0`; the new backend fixes it.

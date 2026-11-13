@@ -46,6 +46,7 @@ const cases: Case[] = [
   ['decideRefundRequest', () => api.decideRefundRequest('r1', 'approve', T), 'POST', '/api/refund-requests/r1/approve'],
   ['getAttendance', () => api.getAttendance('e1', T), 'GET', '/api/events/e1/attendance'],
   ['startConnectOnboarding', () => api.startConnectOnboarding(T), 'POST', '/api/connect-onboard'],
+  ['createConnectSession', () => api.createConnectSession(T), 'POST', '/api/connect/account-session'],
   ['syncConnectStatus', () => api.syncConnectStatus(T), 'POST', '/api/connect-sync'],
   ['getHostStats', () => api.getHostStats('u1'), 'GET', '/api/profiles/u1/stats'],
   ['submitIdentity', () => api.submitIdentity('Jane Doe', 'data:image/jpeg;base64,xx', T), 'POST', '/api/identity/submit', { legal_name: 'Jane Doe', id_doc_base64: 'data:image/jpeg;base64,xx' }],

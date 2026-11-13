@@ -41,6 +41,7 @@ const stripe = {
     createLoginLink: jest.fn(async () => ({ url: 'https://connect.stripe.com/login' })),
   },
   accountLinks: { create: jest.fn(async () => ({ url: 'https://connect.stripe.com/setup' })) },
+  accountSessions: { create: jest.fn(async () => ({ client_secret: 'accs_secret_test' })) },
   tax: { calculations: { create: jest.fn(async () => Promise.reject(new Error('tax off'))) } },
 };
 
@@ -303,6 +304,26 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     await http.delete('/api/connect-disconnect').set(as('stranger')).expect(200, { success: true });
     await http.delete('/api/connect-disconnect').set(as('stranger')).expect(404, { error: 'No connected Stripe account found.' });
     await http.post('/api/connect-sync').set(as('stranger')).expect(404, { error: 'No connected account found.' });
+  });
+
+  it('Embedded Connect: account session creates one no-dashboard account and reuses it', async () => {
+    stripe.accounts.create.mockClear();
+    const first = await http.post('/api/connect/account-session').set(as('stranger')).expect(200);
+    expect(first.body).toEqual({ client_secret: 'accs_secret_test', accountId: 'acct_new' });
+    expect(stripe.accounts.create).toHaveBeenCalledTimes(1);
+    expect(stripe.accounts.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        controller: expect.objectContaining({ stripe_dashboard: { type: 'none' }, losses: { payments: 'stripe' }, requirement_collection: 'stripe' }),
+        metadata: { christlink_user_id: users.stranger.id },
+      }),
+    );
+    expect(stripe.accountSessions.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ account: 'acct_new', components: expect.objectContaining({ account_onboarding: expect.objectContaining({ enabled: true }), payouts: expect.objectContaining({ enabled: true }) }) }),
+    );
+    await http.post('/api/connect/account-session').set(as('stranger')).expect(200);
+    expect(stripe.accounts.create).toHaveBeenCalledTimes(1);
+    await http.post('/api/connect/account-session').expect(401);
+    await http.delete('/api/connect-disconnect').set(as('stranger')).expect(200);
   });
 
   describe('Apple Wallet', () => {

@@ -233,8 +233,8 @@ export default function HostTab() {
               {!payoutsReady ? (
                 <RequirementRow
                   icon="wallet-outline"
-                  title={acct ? 'Finish Stripe setup' : 'Set up payouts'}
-                  body={acct ? 'Stripe needs a few more details before payouts start' : 'Connect Stripe to get paid for ticket sales'}
+                  title={acct ? 'Finish payout setup' : 'Set up payouts'}
+                  body={acct ? 'A few more details before payouts start' : 'Add your bank account to get paid for ticket sales'}
                   onPress={() => router.push('/host/payouts')}
                   last
                 />

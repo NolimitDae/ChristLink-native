@@ -95,8 +95,11 @@ with their email and see their existing account.
    npx supabase@latest db dump --db-url "<Supabase connection string>" --data-only --use-copy -s public,auth -f prod_data.sql
    cd backend && DATABASE_URL="<staging Postgres public URL>" node scripts/import-supabase.mjs ../prod_data.sql --wipe
    ```
-4. **Stripe**: Dashboard → Settings → Payment method domains → add `christlinksocial.com` (Apple Pay / Google Pay on
-   the website). The webhook endpoint can stay `https://christlinksocial.com/webhook`.
+4. **Stripe** (done 2026-11-13): payment method domain `christlinksocial.com` registered (Apple Pay, Google Pay,
+   Link on the website). Both live webhook endpoints (payments: `payment_intent.succeeded`/`payment_failed`,
+   `charge.refunded`, `charge.dispute.created`; Connect: `account.updated`) call `https://christlinksocial.com/webhook`,
+   which the website forwards to the API. Until 2026-11-13 they still called the old server
+   (`christlink1-production.up.railway.app/webhook`); for a rollback, point them back there.
 
 ## The switch (about 30 minutes; pick a quiet hour and announce it)
 

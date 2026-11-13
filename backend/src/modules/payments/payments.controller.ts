@@ -47,6 +47,12 @@ export class PaymentsController {
     return this.payments.connectOnboard(user, req.headers.host);
   }
 
+  @Post('connect/account-session')
+  @HttpCode(200)
+  connectAccountSession(@CurrentUser() user: AuthUser) {
+    return this.payments.connectAccountSession(user);
+  }
+
   @Post('connect-sync')
   @HttpCode(200)
   connectSync(@CurrentUser() user: AuthUser) {
