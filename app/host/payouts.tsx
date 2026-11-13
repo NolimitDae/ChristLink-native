@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Platform, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
@@ -11,8 +11,11 @@ import { ApiError, startConnectOnboarding, syncConnectStatus } from '../../lib/a
 import { formatCents, LISTING_FEE_CENTS } from '../../lib/fees';
 import { AppText, Badge, Button, Card, EmptyState, Screen } from '../../components/ui';
 import { errorMessage } from '../../components/host/errors';
+import { CONNECT_EMBEDDED, PayoutHistory, PayoutNotices, PayoutSetup, StripeConnect } from '../../components/host/StripeConnect';
 
 type Status = 'none' | 'incomplete' | 'active';
+/** Embedded Stripe views: on phones they open as full-screen sheets; on the website they replace the page body. */
+type View_ = 'status' | 'setup' | 'history';
 
 function FeeItem({ icon, title, body }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; body: string }) {
   const t = useTheme();
@@ -43,11 +46,14 @@ export default function PayoutsScreen() {
   const [busy, setBusy] = useState<'connect' | 'sync' | null>(null);
   const [platformIssue, setPlatformIssue] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [view, setView] = useState<View_>('status');
+  // The embedded components (and so the Stripe account) start only once the host asks for them
+  const [embedStarted, setEmbedStarted] = useState(false);
 
   const acct = profile?.host_stripe_accounts?.[0];
   const status: Status = !acct?.stripe_account_id ? 'none' : acct.payouts_enabled ? 'active' : 'incomplete';
 
-  const sync = async (quiet = false) => {
+  const sync = useCallback(async (quiet = false) => {
     if (!token) return;
     setBusy('sync');
     try {
@@ -59,9 +65,30 @@ export default function PayoutsScreen() {
     } finally {
       setBusy(null);
     }
+  }, [token, refreshProfile, showToast]);
+
+  const onEmbedError = useCallback(
+    (err: unknown) => {
+      setView('status');
+      if (err instanceof ApiError && err.body?.platformSetup) setPlatformIssue(errorMessage(err));
+      else showToast(errorMessage(err, 'Could not reach Stripe'), 'error');
+    },
+    [showToast],
+  );
+
+  const openEmbedded = (next: 'setup' | 'history') => {
+    setPlatformIssue(null);
+    setEmbedStarted(true);
+    setView(next);
   };
 
-  const connect = async () => {
+  const closeSetup = () => {
+    setView('status');
+    void sync(true);
+  };
+
+  /** Stripe-hosted page: only where the embedded views can't run (Expo Go, missing key). */
+  const connectHosted = async () => {
     if (!token) return;
     setBusy('connect');
     setPlatformIssue(null);
@@ -101,84 +128,131 @@ export default function PayoutsScreen() {
   }
 
   const statusCopy = {
-    none: { badge: 'Not connected', tone: 'neutral' as const, title: 'Connect payouts', body: 'Connect a Stripe Express account so ticket sales are paid out to your bank.' },
-    incomplete: { badge: 'Onboarding incomplete', tone: 'gold' as const, title: 'Finish Stripe setup', body: 'Stripe needs a few more details before it can send payouts. It only takes a few minutes.' },
-    active: { badge: 'Payouts active', tone: 'success' as const, title: 'You’re ready to sell tickets', body: 'Ticket revenue is paid out to your bank on Stripe’s schedule.' },
+    none: {
+      badge: 'Not set up',
+      tone: 'neutral' as const,
+      title: 'Get paid for ticket sales',
+      body: 'Add your bank account and confirm your identity, right here. It takes about five minutes, and Stripe keeps your details secure.',
+    },
+    incomplete: { badge: 'Setup incomplete', tone: 'gold' as const, title: 'Finish payout setup', body: 'Stripe needs a few more details before it can send payouts. Pick up where you left off.' },
+    active: { badge: 'Payouts active', tone: 'success' as const, title: 'You’re ready to sell tickets', body: 'Ticket revenue is paid out to your bank automatically, usually a few business days after each sale.' },
   }[status];
+
+  // Existing accounts start the embedded views right away (so Stripe's notices can show); new ones wait for a tap
+  const embedReady = embedStarted || (CONNECT_EMBEDDED && !!acct?.stripe_account_id);
+
+  const setupOrHosted = () => (CONNECT_EMBEDDED ? openEmbedded('setup') : connectHosted());
+  const historyOrHosted = () => (CONNECT_EMBEDDED ? openEmbedded('history') : connectHosted());
+  // On the website the Stripe form takes the page; on phones it opens over it
+  const inline = Platform.OS === 'web' && view !== 'status';
+
+  const body = (
+    <ScrollView
+      contentContainerStyle={{ padding: t.space.md, paddingBottom: insets.bottom + t.space.xxl, gap: t.space.md }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
+    >
+      {inline && view === 'setup' ? <PayoutSetup onExit={closeSetup} onLoadError={() => setView('status')} /> : null}
+      {inline && view === 'history' ? <PayoutHistory onClose={() => setView('status')} /> : null}
+      {inline ? null : (
+        <>
+          {embedReady && status !== 'none' ? <PayoutNotices /> : null}
+          <Card
+            variant={status === 'active' ? 'standard' : 'featured'}
+            style={[{ gap: t.space.sm }, status === 'active' ? { borderColor: t.c.success, backgroundColor: t.c.successDim } : null]}
+          >
+            <View style={s.statusTop}>
+              <View style={[s.statusIcon, { backgroundColor: status === 'active' ? t.c.success : t.c.goldDim }]}>
+                <Ionicons
+                  name={status === 'active' ? 'checkmark' : status === 'incomplete' ? 'hourglass-outline' : 'wallet-outline'}
+                  size={22}
+                  color={status === 'active' ? t.c.bg : t.c.goldText}
+                />
+              </View>
+              <Badge label={statusCopy.badge} tone={statusCopy.tone} />
+            </View>
+            <AppText variant="title2">{statusCopy.title}</AppText>
+            <AppText variant="callout" tone="muted">
+              {statusCopy.body}
+            </AppText>
+            {status === 'active' && acct?.charges_enabled === false ? (
+              <AppText variant="caption" tone="danger">
+                Stripe has paused card charges on your account. Open payout setup to see what it needs.
+              </AppText>
+            ) : null}
+            <View style={{ gap: t.space.xs, marginTop: t.space.xs }}>
+              {status === 'active' ? (
+                <Button title="View payouts" variant="secondary" icon="wallet-outline" size="lg" fullWidth onPress={historyOrHosted} disabled={busy !== null} />
+              ) : (
+                <Button
+                  title={status === 'none' ? 'Set up payouts' : 'Finish payout setup'}
+                  size="lg"
+                  fullWidth
+                  onPress={setupOrHosted}
+                  loading={busy === 'connect'}
+                  disabled={busy !== null}
+                />
+              )}
+              {status === 'active' && acct?.charges_enabled === false ? (
+                <Button title="Open payout setup" variant="ghost" fullWidth onPress={setupOrHosted} disabled={busy !== null} />
+              ) : null}
+              {status !== 'none' ? (
+                <Button title="Check status" variant="ghost" icon="refresh" fullWidth onPress={() => sync()} loading={busy === 'sync'} disabled={busy !== null} />
+              ) : null}
+            </View>
+          </Card>
+
+          {platformIssue ? (
+            <Card style={{ borderColor: t.c.danger, gap: 6 }}>
+              <AppText variant="headline">Payouts aren’t available yet</AppText>
+              <AppText variant="callout" tone="muted">
+                The platform owner still needs to finish the Stripe Connect platform profile before hosts can set up payouts. You can keep creating free events in the
+                meantime.
+              </AppText>
+              <AppText variant="caption" tone="faint">
+                {platformIssue}
+              </AppText>
+            </Card>
+          ) : null}
+
+          <Card style={{ gap: t.space.md }}>
+            <AppText variant="title3">How fees work</AppText>
+            <FeeItem icon="people-outline" title="Attendees pay a 7% service fee" body="Added on top of your ticket price at checkout. It keeps Christ Link Social running." />
+            <FeeItem
+              icon="cash-outline"
+              title="You receive face value"
+              body="Minus card processing (2.9% + 30¢), unless you choose to pass processing on to attendees when you create the event."
+            />
+            <FeeItem icon="pricetag-outline" title={`${formatCents(LISTING_FEE_CENTS)} listing fee`} body="A one-time fee per paid event, charged when you publish. Free events are always free." />
+            <FeeItem icon="calendar-outline" title="Automatic payouts" body="Usually a few business days after each sale, straight to the bank account you add here." />
+          </Card>
+
+          {status !== 'none' ? (
+            <Card variant="outline" style={{ gap: t.space.sm }}>
+              <AppText variant="headline">Payout history</AppText>
+              <AppText variant="callout" tone="muted">
+                Your balance, past payouts, payout schedule and bank account.
+              </AppText>
+              <Button title="View payouts" variant="secondary" onPress={historyOrHosted} disabled={busy !== null} />
+            </Card>
+          ) : null}
+
+          <Button title="Verify your identity" variant="ghost" icon="id-card-outline" onPress={() => router.push('/host/verify')} />
+        </>
+      )}
+      {!inline && view === 'setup' ? <PayoutSetup onExit={closeSetup} onLoadError={() => setView('status')} /> : null}
+      {!inline && view === 'history' ? <PayoutHistory onClose={() => setView('status')} /> : null}
+    </ScrollView>
+  );
 
   return (
     <Screen title="Payouts" back>
-      <ScrollView
-        contentContainerStyle={{ padding: t.space.md, paddingBottom: insets.bottom + t.space.xxl, gap: t.space.md }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
-      >
-        <Card variant={status === 'active' ? 'standard' : 'featured'} style={[{ gap: t.space.sm }, status === 'active' ? { borderColor: t.c.success, backgroundColor: t.c.successDim } : null]}>
-          <View style={s.statusTop}>
-            <View style={[s.statusIcon, { backgroundColor: status === 'active' ? t.c.success : t.c.goldDim }]}>
-              <Ionicons name={status === 'active' ? 'checkmark' : status === 'incomplete' ? 'hourglass-outline' : 'wallet-outline'} size={22} color={status === 'active' ? t.c.bg : t.c.goldText} />
-            </View>
-            <Badge label={statusCopy.badge} tone={statusCopy.tone} />
-          </View>
-          <AppText variant="title2">{statusCopy.title}</AppText>
-          <AppText variant="callout" tone="muted">
-            {statusCopy.body}
-          </AppText>
-          {status === 'active' && acct?.charges_enabled === false ? (
-            <AppText variant="caption" tone="danger">
-              Stripe has paused card charges on your account. Open Stripe to resolve it.
-            </AppText>
-          ) : null}
-          <View style={{ gap: t.space.xs, marginTop: t.space.xs }}>
-            <Button
-              title={status === 'none' ? 'Connect with Stripe' : status === 'incomplete' ? 'Finish Stripe setup' : 'Manage in Stripe'}
-              variant={status === 'active' ? 'secondary' : 'primary'}
-              icon={status === 'active' ? 'open-outline' : 'arrow-forward-circle-outline'}
-              size="lg"
-              fullWidth
-              onPress={connect}
-              loading={busy === 'connect'}
-              disabled={busy !== null}
-            />
-            {status !== 'none' ? (
-              <Button title="Check status" variant="ghost" icon="refresh" fullWidth onPress={() => sync()} loading={busy === 'sync'} disabled={busy !== null} />
-            ) : null}
-          </View>
-        </Card>
-
-        {platformIssue ? (
-          <Card style={{ borderColor: t.c.danger, gap: 6 }}>
-            <AppText variant="headline">Payouts aren’t available yet</AppText>
-            <AppText variant="callout" tone="muted">
-              The platform owner still needs to finish the Stripe Connect platform profile before hosts can connect. You can keep creating free events in the meantime.
-            </AppText>
-            <AppText variant="caption" tone="faint">
-              {platformIssue}
-            </AppText>
-          </Card>
-        ) : null}
-
-        <Card style={{ gap: t.space.md }}>
-          <AppText variant="title3">How fees work</AppText>
-          <FeeItem icon="people-outline" title="Attendees pay a 7% service fee" body="Added on top of your ticket price at checkout. It keeps Christ Link Social running." />
-          <FeeItem
-            icon="cash-outline"
-            title="You receive face value"
-            body="Minus card processing (2.9% + 30¢), unless you choose to pass processing on to attendees when you create the event."
-          />
-          <FeeItem icon="pricetag-outline" title={`${formatCents(LISTING_FEE_CENTS)} listing fee`} body="A one-time fee per paid event, charged when you publish. Free events are always free." />
-          <FeeItem icon="calendar-outline" title="Payouts on Stripe’s schedule" body="Usually a few business days after each sale. Stripe handles tax forms and bank details securely." />
-        </Card>
-
-        <Card variant="outline" style={{ gap: t.space.sm }}>
-          <AppText variant="headline">Payout history</AppText>
-          <AppText variant="callout" tone="muted">
-            Payout history is available in your Stripe Express dashboard.
-          </AppText>
-          <Button title="Manage in Stripe" variant="secondary" icon="open-outline" onPress={connect} disabled={busy !== null || status === 'none'} />
-        </Card>
-
-        <Button title="Verify your identity" variant="ghost" icon="id-card-outline" onPress={() => router.push('/host/verify')} />
-      </ScrollView>
+      {embedReady && token ? (
+        <StripeConnect token={token} onError={onEmbedError}>
+          {body}
+        </StripeConnect>
+      ) : (
+        body
+      )}
     </Screen>
   );
 }

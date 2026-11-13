@@ -306,22 +306,75 @@ export class PaymentsService {
   }
 
   // ── Stripe Connect ────────────────────────────────────────
+  /**
+   * The host's connected account, created on first use. New accounts have no Stripe dashboard, so hosts onboard and
+   * see payouts only through the embedded components inside Christ Link (no Stripe sign-in or redirect); Stripe still
+   * collects the verification details and is liable for the account's negative balances.
+   */
+  private async ensureConnectAccount(user: AuthUser) {
+    const existing = await this.prisma.host_stripe_accounts.findUnique({ where: { user_id: user.id } });
+    if (existing?.stripe_account_id) return { accountId: existing.stripe_account_id, existing };
+    const account = await this.stripe.accounts.create({
+      country: 'US',
+      email: user.email,
+      controller: {
+        stripe_dashboard: { type: 'none' },
+        requirement_collection: 'stripe',
+        losses: { payments: 'stripe' },
+        fees: { payer: 'application' },
+      },
+      capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+      business_profile: { product_description: 'Faith events and tickets sold on Christ Link Social' },
+      metadata: { christlink_user_id: user.id },
+    });
+    await this.prisma.host_stripe_accounts.create({
+      data: { user_id: user.id, stripe_account_id: account.id, onboarding_complete: false, payouts_enabled: false, charges_enabled: false },
+    });
+    return { accountId: account.id, existing: null };
+  }
+
+  private platformSetupError(e: unknown): never {
+    const msg = (e as Error)?.message ?? '';
+    if (msg.toLowerCase().includes('platform profile') || msg.toLowerCase().includes('signed up for connect')) {
+      throw new JsonError(400, {
+        error:
+          'Stripe Connect is not fully configured yet. The platform owner must complete the Connect platform profile in the Stripe Dashboard before hosts can set up payouts.',
+        platformSetup: true,
+      });
+    }
+    stripeError(e);
+  }
+
+  /**
+   * POST /api/connect/account-session: a short-lived client secret for Stripe's embedded components (onboarding,
+   * payouts, account details, requirement notices). The app and website render them in place.
+   */
+  async connectAccountSession(user: AuthUser) {
+    try {
+      const { accountId } = await this.ensureConnectAccount(user);
+      const session = await this.stripe.accountSessions.create({
+        account: accountId,
+        components: {
+          account_onboarding: { enabled: true, features: { external_account_collection: true } },
+          account_management: { enabled: true, features: { external_account_collection: true } },
+          notification_banner: { enabled: true, features: { external_account_collection: true } },
+          payouts: {
+            enabled: true,
+            features: { standard_payouts: true, instant_payouts: false, edit_payout_schedule: true, external_account_collection: true },
+          },
+        },
+      });
+      return { client_secret: session.client_secret, accountId };
+    } catch (e) {
+      this.platformSetupError(e);
+    }
+  }
+
+  /** Stripe-hosted fallback (older app builds and Expo Go). New hosts use connectAccountSession. */
   async connectOnboard(user: AuthUser, host: string | undefined) {
     try {
-      const existing = await this.prisma.host_stripe_accounts.findUnique({ where: { user_id: user.id } });
-      let accountId = existing?.stripe_account_id;
-      if (!accountId) {
-        const account = await this.stripe.accounts.create({
-          type: 'express',
-          email: user.email,
-          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
-          metadata: { christlink_user_id: user.id },
-        });
-        accountId = account.id;
-        await this.prisma.host_stripe_accounts.create({
-          data: { user_id: user.id, stripe_account_id: accountId, onboarding_complete: false, payouts_enabled: false, charges_enabled: false },
-        });
-      } else if (existing?.payouts_enabled) {
+      const { accountId, existing } = await this.ensureConnectAccount(user);
+      if (existing?.payouts_enabled) {
         try {
           const loginLink = await this.stripe.accounts.createLoginLink(accountId);
           return { url: loginLink.url, accountId, alreadyOnboarded: true };
@@ -338,15 +391,7 @@ export class PaymentsService {
       });
       return { url: link.url, accountId };
     } catch (e) {
-      const msg = (e as Error)?.message ?? '';
-      if (msg.toLowerCase().includes('platform profile')) {
-        throw new JsonError(400, {
-          error:
-            'Stripe Connect is not fully configured yet. The platform owner must complete the Connect platform profile in the Stripe Dashboard before hosts can set up payouts.',
-          platformSetup: true,
-        });
-      }
-      stripeError(e);
+      this.platformSetupError(e);
     }
   }
 

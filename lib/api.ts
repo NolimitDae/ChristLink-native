@@ -459,6 +459,11 @@ export function startConnectOnboarding(accessToken: string): Promise<{ url?: str
   return apiFetch('/api/connect-onboard', { method: 'POST' }, accessToken);
 }
 
+/** Client secret for Stripe's embedded Connect components (payout setup and payouts shown inside Christ Link). */
+export function createConnectSession(accessToken: string): Promise<{ client_secret: string; accountId: string }> {
+  return apiFetch('/api/connect/account-session', { method: 'POST' }, accessToken);
+}
+
 export function syncConnectStatus(accessToken: string): Promise<unknown> {
   return apiFetch('/api/connect-sync', { method: 'POST' }, accessToken);
 }

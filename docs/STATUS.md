@@ -22,7 +22,7 @@ must be applied (development project first).
 | Refund request / host approve / host refund | Done | app/ticket/[id].tsx, app/event/[id]/sales.tsx | /request-refund, /refund-requests, /tickets/:id/refund |
 | Check-in scanner (tickets + volunteer passes) | Done | app/host/scan.tsx | /api/tickets/verify, /attendance; serve_check_in() |
 | Create/edit event (4 steps, live preview, listing fee + promo, schedule) | Done | app/event/create.tsx | /api/events, /ticket-types, /charge-listing-fee, /validate-listing-promo, /publish, /schedule |
-| Host dashboard, sales view with sparkline, payouts, ID verification | Done (payout history in Stripe) | app/(tabs)/host.tsx, app/event/[id]/sales.tsx, app/host/* | /sales, /connect-onboard, /connect-sync, /identity/* |
+| Host dashboard, sales view with sparkline, payouts, ID verification | Done (payouts embedded from Stripe) | app/(tabs)/host.tsx, app/event/[id]/sales.tsx, app/host/* | /sales, /connect/account-session, /connect-onboard, /connect-sync, /identity/* |
 | Community feed (types, double-tap Amen, replies, share) | Done | app/(tabs)/community.tsx, components/community/* | /api/community-posts*, set_post_type() (migration) |
 | Profiles (own, public, follow) | Done | app/profile.tsx, app/user/[id].tsx | /api/profile*, /api/follow |
 | Notifications inbox | Done | app/notifications.tsx | /api/notifications |

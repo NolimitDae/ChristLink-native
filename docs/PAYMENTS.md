@@ -44,12 +44,23 @@ If the attendee covers processing, the charge is grossed up to $16.84 and the ho
   future payouts). The Sales screen shows refunds as a separate line and **net payout excludes refunded tickets**
   (`summarizeSales`, tested).
 
-## Host payouts (Stripe Connect Express)
+## Host payouts (Stripe Connect, embedded)
 
-- Host tab → Payouts → `POST /api/connect-onboard` returns a Stripe onboarding URL opened in an in-app browser;
-  on return the app calls `POST /api/connect-sync` and refreshes the profile (`host_stripe_accounts`).
+- Hosts never leave Christ Link. Host → Payouts → **Set up payouts** opens Stripe's embedded onboarding form
+  (`components/host/StripeConnect.tsx` on phones via `@stripe/stripe-react-native`, `StripeConnect.web.tsx` on the
+  website via Connect.js). Both get a client secret from `POST /api/connect/account-session`.
+- Accounts are created on first use with **no Stripe dashboard** (`controller.stripe_dashboard.type = none`), so
+  there is no Stripe sign-in step. Stripe collects the verification details and is liable for the account's negative
+  balances (`requirement_collection = stripe`, `losses.payments = stripe`); our platform pays Stripe's Connect fees
+  (`fees.payer = application`). Ticket charges are destination charges on the platform account (statement name
+  `CHRISTLINK`).
+- After onboarding the app calls `POST /api/connect-sync`; Stripe's `account.updated` webhook keeps
+  `host_stripe_accounts` current too.
+- **View payouts** shows Stripe's embedded payouts component: balance, history, schedule and bank account. On the
+  website, Stripe's notification banner appears when Stripe needs more details.
+- Fallback: Expo Go (its native Stripe module has no Connect views) and app builds from before 2026-11-13 use
+  `POST /api/connect-onboard` (Stripe-hosted page).
 - Paid events require: identity verified (Host → Verify) **and** payouts enabled.
-- Payout schedule and history live in the host's Stripe Express dashboard (Manage in Stripe).
 
 ## Listing a paid event
 
@@ -73,7 +84,6 @@ payout via Stripe test clocks) belong in the ChristLink1 repo — see the develo
 
 - `GET /api/price-breakdown?price=0` returns `stripeFee: 30, hostReceives: -30`. Free tickets should return zeros.
   The native app uses its own zero-safe math for display.
-- There is no endpoint for the host's Stripe balance or payout history; the app links to the Stripe dashboard.
 - `/api/tickets/:id/wallet` (Apple Wallet pass) requires an Authorization header and returns a `.pkpass` blob,
   which the native app can't open without a short-lived signed download URL. Add
   `GET /api/tickets/:id/wallet-link` that returns a 5-minute signed URL, then wire the button.
