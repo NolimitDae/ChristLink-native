@@ -922,7 +922,9 @@ and changed what applied, within the existing design system:
 
 **Not finished / needs you**
 - The phone version needs a new build (new native module). Expo Go keeps opening Stripe's page.
-- Not tested on staging (no Stripe keys there); checked live with the App Review account.
+- Not tested on staging (no Stripe keys there). Live check with the App Review account: sign-in and the new route
+  work, but Stripe refuses to create host accounts until **Stripe Dashboard → Connect** setup (platform profile) is
+  finished. Nobody can set up payouts until then; the Payouts screen says so.
 
 **Test**
 - christlinksocial.com → Host → Payouts → Set up payouts: the Stripe form appears in the page; finish it with your
