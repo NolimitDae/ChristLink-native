@@ -910,3 +910,21 @@ and changed what applied, within the existing design system:
   tickets until its host taps Set up payouts. Apple Pay in the iOS app waits on the Apple membership (docs/APP-STORE.md).
 - Test: set up payouts as a host, create a $1 event, buy a ticket on christlinksocial.com, refund it; in Stripe →
   Developers → Webhooks both endpoints should show 200s.
+
+## 2026-11-13 (later) — Payouts embedded in Christ Link
+
+**Changed**
+- Hosts set up and manage payouts without leaving the app or website: Stripe's embedded onboarding form and payouts
+  view (balance, history, schedule, bank account) render inside Host → Payouts. Connected accounts are created with no
+  Stripe dashboard, so there is no Stripe sign-in or redirect; Stripe still verifies hosts and covers account losses.
+- New `POST /api/connect/account-session`; `react-native-webview`, `@stripe/connect-js`, `@stripe/react-connect-js`.
+- Card statements: change the descriptor to `CHRISTLINK` in the Stripe Dashboard (the API can't change it).
+
+**Not finished / needs you**
+- The phone version needs a new build (new native module). Expo Go keeps opening Stripe's page.
+- Not tested on staging (no Stripe keys there); checked live with the App Review account.
+
+**Test**
+- christlinksocial.com → Host → Payouts → Set up payouts: the Stripe form appears in the page; finish it with your
+  real details and bank; status turns "Payouts active"; View payouts shows your balance.
+- After the next build, the same on the phone.
