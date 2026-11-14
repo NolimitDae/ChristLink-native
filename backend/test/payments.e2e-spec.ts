@@ -313,7 +313,7 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     expect(stripe.accounts.create).toHaveBeenCalledTimes(1);
     expect(stripe.accounts.create).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        controller: expect.objectContaining({ stripe_dashboard: { type: 'none' }, losses: { payments: 'application' }, requirement_collection: 'application' }),
+        controller: expect.objectContaining({ stripe_dashboard: { type: 'none' }, losses: { payments: 'stripe' }, requirement_collection: 'stripe' }),
         metadata: { christlink_user_id: users.stranger.id },
       }),
     );

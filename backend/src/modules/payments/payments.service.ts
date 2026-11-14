@@ -308,9 +308,9 @@ export class PaymentsService {
   // ── Stripe Connect ────────────────────────────────────────
   /**
    * The host's connected account, created on first use. New accounts have no Stripe dashboard, so hosts onboard and
-   * see payouts only through the embedded components inside Christ Link (no Stripe sign-in or redirect). The platform
-   * is liable for negative balances and collects requirements, which the embedded onboarding and notification banner
-   * do for us (Stripe Connect platform profile, confirmed 2026-11-14).
+   * see payouts only through the embedded components inside Christ Link (no Stripe sign-in or redirect). Stripe
+   * collects the verification details and is liable for negative balances on host accounts (Stripe Connect platform
+   * profile, 2026-11-14). Refunds and chargebacks on ticket charges stay with the platform (destination charges).
    */
   private async ensureConnectAccount(user: AuthUser) {
     const existing = await this.prisma.host_stripe_accounts.findUnique({ where: { user_id: user.id } });
@@ -320,8 +320,8 @@ export class PaymentsService {
       email: user.email,
       controller: {
         stripe_dashboard: { type: 'none' },
-        requirement_collection: 'application',
-        losses: { payments: 'application' },
+        requirement_collection: 'stripe',
+        losses: { payments: 'stripe' },
         fees: { payer: 'application' },
       },
       capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
