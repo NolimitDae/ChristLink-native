@@ -313,12 +313,18 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     expect(stripe.accounts.create).toHaveBeenCalledTimes(1);
     expect(stripe.accounts.create).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        controller: expect.objectContaining({ stripe_dashboard: { type: 'none' }, losses: { payments: 'stripe' }, requirement_collection: 'stripe' }),
+        controller: expect.objectContaining({ stripe_dashboard: { type: 'none' }, losses: { payments: 'application' }, requirement_collection: 'application' }),
         metadata: { christlink_user_id: users.stranger.id },
       }),
     );
     expect(stripe.accountSessions.create).toHaveBeenLastCalledWith(
-      expect.objectContaining({ account: 'acct_new', components: expect.objectContaining({ account_onboarding: expect.objectContaining({ enabled: true }), payouts: expect.objectContaining({ enabled: true }) }) }),
+      expect.objectContaining({
+        account: 'acct_new',
+        components: expect.objectContaining({
+          account_onboarding: { enabled: true, features: { external_account_collection: true, disable_stripe_user_authentication: true } },
+          payouts: expect.objectContaining({ enabled: true }),
+        }),
+      }),
     );
     await http.post('/api/connect/account-session').set(as('stranger')).expect(200);
     expect(stripe.accounts.create).toHaveBeenCalledTimes(1);

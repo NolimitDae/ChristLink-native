@@ -307,10 +307,11 @@ export class PaymentsService {
 
   // ── Stripe Connect ────────────────────────────────────────
   /**
-   * The host's connected account, created on first use. New accounts have no Stripe dashboard, so hosts onboard and
-   * see payouts only through the embedded components inside Christ Link (no Stripe sign-in or redirect). Stripe
-   * collects the verification details and is liable for negative balances on host accounts (Stripe Connect platform
-   * profile, 2026-11-14). Refunds and chargebacks on ticket charges stay with the platform (destination charges).
+   * The host's connected account, created on first use. New accounts have no Stripe dashboard and the platform
+   * collects requirements (through Stripe's embedded onboarding and notification banner), which is the only setup
+   * where Stripe lets embedded components skip the Stripe sign-in window, so hosts never leave Christ Link. The
+   * platform is liable for negative balances (Stripe Connect platform profile, 2026-11-14; destination charges aren't
+   * covered by Stripe's Managed Risk anyway).
    */
   private async ensureConnectAccount(user: AuthUser) {
     const existing = await this.prisma.host_stripe_accounts.findUnique({ where: { user_id: user.id } });
@@ -320,8 +321,8 @@ export class PaymentsService {
       email: user.email,
       controller: {
         stripe_dashboard: { type: 'none' },
-        requirement_collection: 'stripe',
-        losses: { payments: 'stripe' },
+        requirement_collection: 'application',
+        losses: { payments: 'application' },
         fees: { payer: 'application' },
       },
       capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
@@ -354,23 +355,15 @@ export class PaymentsService {
   async connectAccountSession(user: AuthUser) {
     try {
       const { accountId } = await this.ensureConnectAccount(user);
-      const session = await this.stripe.accountSessions.create({
-        account: accountId,
-        components: {
-          account_onboarding: { enabled: true, features: { external_account_collection: true } },
-          account_management: { enabled: true, features: { external_account_collection: true } },
-          notification_banner: { enabled: true, features: { external_account_collection: true } },
-          payouts: {
-            enabled: true,
-            features: {
-              standard_payouts: true,
-              instant_payouts: false,
-              edit_payout_schedule: true,
-              external_account_collection: true,
-            },
-          },
-        },
-      });
+      // No Stripe sign-in window: allowed because the platform collects requirements (stripe@15 types lack the flag)
+      const inPlace = { external_account_collection: true, disable_stripe_user_authentication: true };
+      const components = {
+        account_onboarding: { enabled: true, features: inPlace },
+        account_management: { enabled: true, features: inPlace },
+        notification_banner: { enabled: true, features: inPlace },
+        payouts: { enabled: true, features: { ...inPlace, standard_payouts: true, instant_payouts: false, edit_payout_schedule: true } },
+      } as Stripe.AccountSessionCreateParams.Components;
+      const session = await this.stripe.accountSessions.create({ account: accountId, components });
       return { client_secret: session.client_secret, accountId };
     } catch (e) {
       this.platformSetupError(e);
