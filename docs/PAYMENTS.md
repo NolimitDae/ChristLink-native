@@ -50,9 +50,10 @@ If the attendee covers processing, the charge is grossed up to $16.84 and the ho
   (`components/host/StripeConnect.tsx` on phones via `@stripe/stripe-react-native`, `StripeConnect.web.tsx` on the
   website via Connect.js). Both get a client secret from `POST /api/connect/account-session`.
 - Accounts are created on first use with **no Stripe dashboard** (`controller.stripe_dashboard.type = none`), so
-  there is no Stripe sign-in step. Stripe collects the verification details and is liable for the account's negative
-  balances (`requirement_collection = stripe`, `losses.payments = stripe`); our platform pays Stripe's Connect fees
-  (`fees.payer = application`). Ticket charges are destination charges on the platform account (statement name
+  there is no Stripe sign-in step. Per the Connect platform profile (confirmed 2026-11-14) Christ Link is liable for
+  refunds, chargebacks and negative balances on host accounts and is responsible for requirement collection
+  (`losses.payments = application`, `requirement_collection = application`); the embedded onboarding and notification
+  banner collect what Stripe needs. Our platform pays Stripe's Connect fees (`fees.payer = application`). Ticket charges are destination charges on the platform account (statement name
   `CHRISTLINK`).
 - After onboarding the app calls `POST /api/connect-sync`; Stripe's `account.updated` webhook keeps
   `host_stripe_accounts` current too.
