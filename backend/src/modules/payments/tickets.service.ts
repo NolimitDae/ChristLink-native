@@ -153,7 +153,9 @@ export class TicketsService {
     const intent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
     if (!intent.latest_charge) throw new BadRequestException(noCharge);
     const charge = typeof intent.latest_charge === 'string' ? intent.latest_charge : intent.latest_charge.id;
-    return this.stripe.refunds.create({ charge }, { idempotencyKey: `refund-${ticketId}` });
+    // reverse_transfer: the host's share comes back from the host's Stripe balance (it's still there until the
+    // after-event payout), so a refund doesn't cost the platform the host's money
+    return this.stripe.refunds.create({ charge, reverse_transfer: true }, { idempotencyKey: `refund-${ticketId}` });
   }
 
   async hostRefund(userId: string, ticketId: string) {

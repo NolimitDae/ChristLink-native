@@ -3,6 +3,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../modules/notifications/notifications.service';
 import { queuePrayerSummaries } from '../modules/prayers/prayers.service';
 import { publishDueEvents } from '../modules/events/event-helpers';
+import { payoutEndedEvents } from '../modules/payments/payouts';
+import { STRIPE } from '../modules/payments/stripe.provider';
+import appConfig from '../config/app.config';
+import type Stripe from 'stripe';
 
 export interface RepeatableJob {
   /** Unique; also the BullMQ job scheduler id. */
@@ -35,5 +39,12 @@ export const REPEATABLE_JOBS: RepeatableJob[] = [
     name: 'publish-scheduled-events',
     pattern: '* * * * *',
     run: (prisma, ref) => publishDueEvents(prisma, ref.get(NotificationsService, { strict: false })),
+  },
+  {
+    // Pay hosts their share once their event has ended (payments/payouts.ts); hourly, at :40
+    name: 'host-payouts',
+    pattern: '40 * * * *',
+    run: async (prisma, ref) =>
+      appConfig().stripe.secret_key ? payoutEndedEvents(prisma, ref.get<Stripe>(STRIPE, { strict: false })) : 'skipped: no STRIPE_SECRET_KEY',
   },
 ];

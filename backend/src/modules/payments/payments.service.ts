@@ -161,7 +161,8 @@ export class PaymentsService {
             platform_fee: String(amounts.platformFee),
           },
           transfer_data: { destination: acct.stripe_account_id },
-          application_fee_amount: amounts.platformFee,
+          // The platform keeps its fee plus the card processing it pays Stripe, so the host gets exactly host_receives
+          application_fee_amount: amounts.chargeAmount - amounts.hostReceives,
         },
         { idempotencyKey },
       );
@@ -327,6 +328,8 @@ export class PaymentsService {
       },
       capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
       business_profile: { product_description: 'Faith events and tickets sold on Christ Link Social' },
+      // Ticket money waits in the host's balance until the worker pays it out after the event (payments/payouts.ts)
+      settings: { payouts: { schedule: { interval: 'manual' } } },
       metadata: { christlink_user_id: user.id },
     });
     await this.prisma.host_stripe_accounts.create({
@@ -361,7 +364,8 @@ export class PaymentsService {
         account_onboarding: { enabled: true, features: inPlace },
         account_management: { enabled: true, features: inPlace },
         notification_banner: { enabled: true, features: inPlace },
-        payouts: { enabled: true, features: { ...inPlace, standard_payouts: true, instant_payouts: false, edit_payout_schedule: true } },
+        // Payouts happen after each event (worker job host-payouts), so hosts can't pay out early or change the schedule
+        payouts: { enabled: true, features: { ...inPlace, standard_payouts: false, instant_payouts: false, edit_payout_schedule: false } },
       } as Stripe.AccountSessionCreateParams.Components;
       const session = await this.stripe.accountSessions.create({ account: accountId, components });
       return { client_secret: session.client_secret, accountId };
@@ -423,6 +427,12 @@ export class PaymentsService {
       },
     });
     if (account.payouts_enabled) await this.prisma.profiles.updateMany({ where: { id: row.user_id }, data: { role: 'host' } });
+    // Accounts made before after-event payouts (or changed elsewhere) go back to the manual schedule
+    if (account.controller?.requirement_collection === 'application' && account.settings?.payouts?.schedule?.interval !== 'manual') {
+      await this.stripe.accounts
+        .update(account.id, { settings: { payouts: { schedule: { interval: 'manual' } } } })
+        .catch((e) => this.logger.warn(`Could not set manual payouts on ${account.id}: ${(e as Error).message}`));
+    }
     return true;
   }
 
