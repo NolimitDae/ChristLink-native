@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,6 +11,7 @@ import type { ReportQueueItem } from '../../lib/types';
 import { AppText, Badge, Button, Card } from '../ui';
 import { errorMessage } from '../host/errors';
 import { PanelState } from './PanelState';
+import { confirmAction } from './confirm';
 import { useLoad } from './useLoad';
 
 const DAY = 86_400_000;
@@ -54,11 +55,9 @@ export function ReportsPanel() {
     }
   };
 
-  const confirmRemove = (r: ReportQueueItem) =>
-    Alert.alert('Remove this content?', 'It will be hidden for everyone and the author may be notified.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => act(r, 'remove') },
-    ]);
+  const confirmRemove = async (r: ReportQueueItem) => {
+    if (await confirmAction('Remove this content?', 'It will be hidden for everyone and the author may be notified.', 'Remove')) await act(r, 'remove');
+  };
 
   const items = state.data ?? [];
   const overdue = items.filter(r => Date.now() - new Date(r.created_at).getTime() > DAY).length;

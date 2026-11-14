@@ -41,6 +41,8 @@ Environments: `production` (untouched until the switch) and `staging` (what the 
   `refresh_tokens`, 60 days, rotated on every refresh.
 - First verify creates `users` + `profiles` rows (what Supabase's `handle_new_user` trigger did).
 - `REVIEW_EMAIL` + `REVIEW_CODE` env: a fixed code for the App Store / Play reviewer account.
+- `ADMIN_EMAILS` env (comma-separated): those accounts are set to `role = admin` each time the API starts, so the owner
+  keeps admin access after a database copy or reset. Admins can promote others in Admin → Users.
 - No `RESEND_API_KEY` (local dev only): the code is written to the log instead of emailed.
 - Website switch-over (docs/CUTOVER.md): `legacy-exchange` has the old Supabase project confirm a visitor's old session
   (`LEGACY_SUPABASE_URL` + `LEGACY_SUPABASE_ANON_KEY`; unset = off) and opens the imported account with that Supabase
@@ -107,7 +109,7 @@ Response shapes equal what the Supabase RPC / table query returned (see the SQL 
 
 ## Environment variables (set in Railway; never in the repo)
 `DATABASE_URL`, `REDIS_URL` (Railway references), `JWT_SECRET`, `CLIENT_APP_URL`, `CORS_ORIGINS`, `APP_URL`,
-`RESEND_API_KEY`, `FROM_EMAIL`, `REVIEW_EMAIL`, `REVIEW_CODE`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+`RESEND_API_KEY`, `FROM_EMAIL`, `REVIEW_EMAIL`, `REVIEW_CODE`, `ADMIN_EMAILS`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
 `STRIPE_CONNECT_WEBHOOK_SECRET`, `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`,
 `R2_PUBLIC_URL`, `EXPO_ACCESS_TOKEN` (optional), `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, `APPLE_PASS_P12_BASE64`,
 `APPLE_PASS_PASSWORD` (Wallet), `GOOGLE_WALLET_ISSUER_ID` + `GOOGLE_WALLET_KEY_JSON_BASE64` (Google Wallet, optional),

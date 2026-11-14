@@ -28,6 +28,11 @@ export default () => ({
     jwt_secret: process.env.JWT_SECRET,
     review_email: process.env.REVIEW_EMAIL?.trim().toLowerCase() || undefined,
     review_code: process.env.REVIEW_CODE?.trim() || undefined,
+    /** Comma-separated emails promoted to admin when the API starts (keeps owner access without editing the database). */
+    admin_emails: (process.env.ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
   },
   /**
    * Website switch-over (docs/CUTOVER.md): the old site's Supabase project, used only to confirm a visitor's old

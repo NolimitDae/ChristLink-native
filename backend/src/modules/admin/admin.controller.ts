@@ -52,6 +52,16 @@ export class AdminController {
     return this.admin.setRole(adminId, id, b?.role);
   }
 
+  @Get('events')
+  events(@Query() q: Record<string, string>) {
+    return this.admin.events(q.q, q.status, q.limit, q.offset);
+  }
+
+  @Get('payouts')
+  payouts() {
+    return this.admin.payouts();
+  }
+
   @Patch('events/:id/cancel')
   cancelEvent(@Param('id') id: string) {
     return this.admin.cancelEvent(id);
