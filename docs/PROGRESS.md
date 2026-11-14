@@ -950,3 +950,20 @@ and changed what applied, within the existing design system:
 **Test**
 - Set up your own payouts on christlinksocial.com, sell yourself a $1 ticket to a test event that ends today, refund a
   second one; the day after the event, Payouts → View payouts shows one payout of the remaining ticket's share.
+
+## 2026-11-14 (later) — Admin dashboard
+
+**Changed**
+- Admin (Profile → Host → shield, or Settings → Admin dashboard) is now a dashboard: members, new this week, ticket
+  sales, platform fees, events, tickets, RSVPs (with 30-day trends), "Needs attention" (open reports, pending host
+  verifications), recent activity, and sections for Reports, Host verification, **Users** (search, filter, change
+  role, disconnect a payout account), **Events** (search, filter, open, sales, cancel, delete), **Promo codes**
+  (create percent/dollar listing-fee codes with use limit and last day, turn on/off), **Host payouts** (held, due,
+  each payout and failures), **Community posts** (remove), Church claims, Verses and Tools.
+- New API: `GET /api/admin/events`, `GET /api/admin/payouts`; overview adds platform fees, new users this week, open
+  reports and pending verifications. `ADMIN_EMAILS` promotes the owner account to admin when the API starts.
+- Confirmations now work on the website too (the Reports "Remove" confirm did nothing in a browser).
+
+**Test**
+- christlinksocial.com signed in as the owner → Settings → Admin dashboard; create a promo code and use it when
+  paying a listing fee; change a test account's role.

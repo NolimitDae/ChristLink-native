@@ -641,3 +641,153 @@ export function adminVerificationDocUrl(id: string, accessToken: string): Promis
 export function adminDeletePost(postId: string, accessToken: string): Promise<unknown> {
   return apiFetch(`/api/admin/posts/${postId}`, { method: 'DELETE' }, accessToken);
 }
+
+const qs = (params: Record<string, string | number | undefined>) => {
+  const parts = Object.entries(params)
+    .filter(([, v]) => v !== undefined && v !== '')
+    .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`);
+  return parts.length ? `?${parts.join('&')}` : '';
+};
+
+export interface AdminOverview {
+  total_users: number;
+  new_users_7d: number;
+  published_events: number;
+  total_events: number;
+  total_revenue_cents: number;
+  total_platform_fee_cents: number;
+  total_tickets_sold: number;
+  total_rsvps: number;
+  open_reports: number;
+  pending_verifications: number;
+}
+
+export function adminOverview(accessToken: string): Promise<AdminOverview> {
+  return apiFetch('/api/admin/overview', {}, accessToken);
+}
+
+export function adminSignups(accessToken: string): Promise<{ data: { day: string; signups: number }[] }> {
+  return apiFetch('/api/admin/signups', {}, accessToken);
+}
+
+export function adminRevenue(accessToken: string): Promise<{ data: { day: string; tickets_sold: number; revenue_cents: number; platform_fee_cents: number }[] }> {
+  return apiFetch('/api/admin/revenue', {}, accessToken);
+}
+
+export interface AdminActivity {
+  type: 'signup' | 'event' | 'ticket';
+  time: string | null;
+  text: string;
+  sub?: string;
+}
+
+export function adminActivity(accessToken: string): Promise<{ activity: AdminActivity[] }> {
+  return apiFetch('/api/admin/activity', {}, accessToken);
+}
+
+export type AdminRole = 'attendee' | 'host' | 'admin';
+
+export interface AdminUser {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  role: string | null;
+  city: string | null;
+  created_at: string | null;
+  avatar_url: string | null;
+  avatar_color: string | null;
+  stripe_account_id: string | null;
+}
+
+export function adminUsers(accessToken: string, opts: { q?: string; role?: string; offset?: number } = {}): Promise<{ users: AdminUser[] }> {
+  return apiFetch(`/api/admin/users${qs({ q: opts.q, role: opts.role, offset: opts.offset, limit: 30 })}`, {}, accessToken);
+}
+
+export function adminSetRole(userId: string, role: AdminRole, accessToken: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/admin/users/${userId}/role`, json({ role }, 'PATCH'), accessToken);
+}
+
+export function adminDisconnectStripe(userId: string, accessToken: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/admin/connect-disconnect/${userId}`, { method: 'DELETE' }, accessToken);
+}
+
+export interface AdminEvent {
+  id: string;
+  name: string;
+  status: string | null;
+  start_date: string | null;
+  city: string | null;
+  state: string | null;
+  is_paid: boolean | null;
+  cover_url: string | null;
+  created_at: string | null;
+  host: { id: string; full_name: string | null; email: string | null } | null;
+  tickets_sold: number;
+  rsvps: number;
+}
+
+export function adminEvents(accessToken: string, opts: { q?: string; status?: string; offset?: number } = {}): Promise<{ events: AdminEvent[] }> {
+  return apiFetch(`/api/admin/events${qs({ q: opts.q, status: opts.status, offset: opts.offset, limit: 30 })}`, {}, accessToken);
+}
+
+export function adminCancelEvent(eventId: string, accessToken: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/admin/events/${eventId}/cancel`, { method: 'PATCH' }, accessToken);
+}
+
+export function adminDeleteEvent(eventId: string, accessToken: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/admin/events/${eventId}`, { method: 'DELETE' }, accessToken);
+}
+
+export interface AdminPost {
+  id: string;
+  body?: string | null;
+  content?: string | null;
+  created_at: string | null;
+  profiles?: { full_name?: string | null } | null;
+}
+
+export function adminPosts(accessToken: string, offset = 0): Promise<{ posts: AdminPost[] }> {
+  return apiFetch(`/api/admin/posts${qs({ offset, limit: 50 })}`, {}, accessToken);
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  discount_type: 'percent' | 'fixed';
+  discount_value: number;
+  max_uses: number | null;
+  uses_count: number;
+  active: boolean;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
+export function adminPromoCodes(accessToken: string): Promise<{ codes: PromoCode[] }> {
+  return apiFetch('/api/admin/listing-promo-codes', {}, accessToken);
+}
+
+export function adminCreatePromo(
+  input: { code: string; discount_type: 'percent' | 'fixed'; discount_value: number; max_uses?: number | null; expires_at?: string | null },
+  accessToken: string,
+): Promise<{ code: PromoCode }> {
+  return apiFetch('/api/admin/listing-promo-codes', json(input), accessToken);
+}
+
+export function adminSetPromoActive(id: string, active: boolean, accessToken: string): Promise<{ success: boolean }> {
+  return apiFetch(`/api/admin/listing-promo-codes/${id}`, json({ active }, 'PATCH'), accessToken);
+}
+
+export interface AdminPayout {
+  id: string;
+  user_id: string;
+  amount_cents: number;
+  status: string;
+  error: string | null;
+  stripe_payout_id: string | null;
+  created_at: string;
+  host: { id: string; full_name: string | null; email: string | null } | null;
+}
+
+export function adminPayouts(accessToken: string): Promise<{ payouts: AdminPayout[]; held_cents: number; due_cents: number }> {
+  return apiFetch('/api/admin/payouts', {}, accessToken);
+}

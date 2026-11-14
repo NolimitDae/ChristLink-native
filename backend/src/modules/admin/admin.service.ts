@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import appConfig from '../../config/app.config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -16,7 +17,7 @@ export function ticketActivityText(name: string | null | undefined, qty: number,
  * (PostgREST did the same); days are `YYYY-MM-DD` text like PostgREST's date output.
  */
 @Injectable()
-export class AdminService {
+export class AdminService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AdminService.name);
 
   constructor(
@@ -25,6 +26,75 @@ export class AdminService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  /** ADMIN_EMAILS: owner accounts are admins even if the database was reset or copied without roles. */
+  async onApplicationBootstrap() {
+    const emails = appConfig().auth.admin_emails;
+    if (!emails.length) return;
+    const { count } = await this.prisma.profiles
+      .updateMany({ where: { email: { in: emails, mode: 'insensitive' }, NOT: { role: 'admin' } }, data: { role: 'admin' } })
+      .catch((e) => {
+        this.logger.warn(`ADMIN_EMAILS promotion failed: ${(e as Error).message}`);
+        return { count: 0 };
+      });
+    if (count) this.logger.log(`Promoted ${count} ADMIN_EMAILS account(s) to admin`);
+  }
+
+  /** Events for the admin list: newest first, optional search (name/city/host) and status. */
+  async events(q: unknown, status: unknown, limitQ: unknown, offsetQ: unknown) {
+    const term = typeof q === 'string' ? q.trim() : '';
+    const rows = await this.prisma.events.findMany({
+      where: {
+        ...(term
+          ? {
+              OR: [
+                { name: { contains: term, mode: 'insensitive' } },
+                { city: { contains: term, mode: 'insensitive' } },
+                { profiles: { full_name: { contains: term, mode: 'insensitive' } } },
+              ],
+            }
+          : {}),
+        ...(typeof status === 'string' && status ? { status } : {}),
+      },
+      select: {
+        id: true, name: true, status: true, start_date: true, city: true, state: true, is_paid: true, cover_url: true, created_at: true,
+        profiles: { select: { id: true, full_name: true, email: true } },
+        _count: { select: { tickets: { where: { status: 'confirmed' } }, rsvps: { where: { status: 'confirmed' } } } },
+      },
+      orderBy: { created_at: 'desc' },
+      skip: clampInt(offsetQ, 0, 0, Number.MAX_SAFE_INTEGER),
+      take: clampInt(limitQ, 30, 1, 200),
+    });
+    const events = rows.map(({ profiles, _count, ...e }) => ({
+      ...e,
+      host: profiles,
+      tickets_sold: _count.tickets,
+      rsvps: _count.rsvps,
+    }));
+    return { events };
+  }
+
+  /** Host payouts (after-event job) plus what's waiting: due now, and held for upcoming events. */
+  async payouts() {
+    const [payouts, [waiting]] = await Promise.all([
+      this.prisma.host_payouts.findMany({
+        orderBy: { created_at: 'desc' },
+        take: 50,
+        select: { id: true, user_id: true, amount_cents: true, status: true, error: true, stripe_payout_id: true, created_at: true },
+      }),
+      this.prisma.$queryRaw<{ held_cents: number; due_cents: number }[]>`
+        select coalesce(sum(t.host_receives_cents) filter (where coalesce(e.end_date, e.start_date) >= now() - interval '24 hours'), 0)::float8 as held_cents,
+               coalesce(sum(t.host_receives_cents) filter (where coalesce(e.end_date, e.start_date) < now() - interval '24 hours'), 0)::float8 as due_cents
+        from tickets t join events e on e.id = t.event_id
+        where t.status = 'confirmed' and t.payout_id is null and t.host_receives_cents > 0`,
+    ]);
+    const hosts = await this.prisma.profiles.findMany({
+      where: { id: { in: [...new Set(payouts.map((p) => p.user_id))] } },
+      select: { id: true, full_name: true, email: true },
+    });
+    const byId = new Map(hosts.map((h) => [h.id, h]));
+    return { payouts: payouts.map((p) => ({ ...p, host: byId.get(p.user_id) ?? null })), held_cents: waiting.held_cents, due_cents: waiting.due_cents };
+  }
+
   async overview() {
     const [row] = await this.prisma.$queryRaw<Record<string, number>[]>`
       select (select count(*)::int from profiles) as total_users,
@@ -32,7 +102,11 @@ export class AdminService {
              (select count(*)::int from events) as total_events,
              (select coalesce(sum(total_charged_cents), 0)::float8 from tickets where status = 'confirmed') as total_revenue_cents,
              (select count(*)::int from tickets where status = 'confirmed') as total_tickets_sold,
-             (select count(*)::int from rsvps where status = 'confirmed') as total_rsvps`;
+             (select count(*)::int from rsvps where status = 'confirmed') as total_rsvps,
+             (select coalesce(sum(platform_fee_cents), 0)::float8 from tickets where status = 'confirmed') as total_platform_fee_cents,
+             (select count(*)::int from profiles where created_at > now() - interval '7 days') as new_users_7d,
+             (select count(*)::int from reports where status = 'open') as open_reports,
+             (select count(*)::int from identity_verifications where status = 'pending') as pending_verifications`;
     return row;
   }
 

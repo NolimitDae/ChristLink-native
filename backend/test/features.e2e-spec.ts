@@ -9,6 +9,7 @@ import { configureApi } from '../src/bootstrap';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { NotificationsService } from '../src/modules/notifications/notifications.service';
 import { queuePrayerSummaries } from '../src/modules/prayers/prayers.service';
+import { AdminService } from '../src/modules/admin/admin.service';
 
 describe('Native features (e2e)', () => {
   let app: NestExpressApplication;
@@ -61,6 +62,31 @@ describe('Native features (e2e)', () => {
     await prisma.users.deleteMany({ where: { id: host.id } });
     await prisma.verses.deleteMany({ where: { reference: `E2E ${stamp}` } });
     await app.close();
+  });
+
+  it('admin dashboard: events list, payouts summary, overview counts, ADMIN_EMAILS promotion', async () => {
+    await http.get('/api/admin/events').set(auth(ann)).expect(403);
+    const list = await http.get(`/api/admin/events?q=${encodeURIComponent(`E2E Event ${stamp}`)}`).set(auth(boss)).expect(200);
+    expect(list.body.events).toEqual([
+      expect.objectContaining({ id: eventId, status: 'published', host: expect.objectContaining({ id: ann.id }), tickets_sold: 0, rsvps: expect.any(Number) }),
+    ]);
+    const byHost = await http.get('/api/admin/events?q=ann&status=published').set(auth(boss)).expect(200);
+    expect(byHost.body.events.map((e: { id: string }) => e.id)).toContain(eventId);
+
+    const payouts = await http.get('/api/admin/payouts').set(auth(boss)).expect(200);
+    expect(payouts.body).toEqual({ payouts: expect.any(Array), held_cents: expect.any(Number), due_cents: expect.any(Number) });
+
+    const overview = await http.get('/api/admin/overview').set(auth(boss)).expect(200);
+    expect(overview.body).toEqual(
+      expect.objectContaining({ total_users: expect.any(Number), new_users_7d: expect.any(Number), open_reports: expect.any(Number), pending_verifications: expect.any(Number), total_platform_fee_cents: expect.any(Number) }),
+    );
+
+    const before = process.env.ADMIN_EMAILS;
+    process.env.ADMIN_EMAILS = ` ${cat.email.toUpperCase()} , someone-else@example.com`;
+    await app.get(AdminService).onApplicationBootstrap();
+    process.env.ADMIN_EMAILS = before;
+    expect((await prisma.profiles.findUnique({ where: { id: cat.id } }))?.role).toBe('admin');
+    await prisma.profiles.update({ where: { id: cat.id }, data: { role: 'attendee' } });
   });
 
   it('verses: public today, admin CRUD', async () => {

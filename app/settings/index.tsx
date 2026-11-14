@@ -172,7 +172,7 @@ export default function SettingsScreen() {
 
         {isAdmin ? (
           <ListGroup title="Admin">
-            <ListRow icon="construct-outline" title="Admin tools" subtitle="Reports, verifications, church claims" onPress={() => router.push('/admin')} last />
+            <ListRow icon="construct-outline" title="Admin dashboard" subtitle="Stats, users, events, promo codes, payouts, reports" onPress={() => router.push('/admin')} last />
           </ListGroup>
         ) : null}
 
