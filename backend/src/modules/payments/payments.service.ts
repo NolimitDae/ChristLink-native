@@ -308,8 +308,9 @@ export class PaymentsService {
   // ── Stripe Connect ────────────────────────────────────────
   /**
    * The host's connected account, created on first use. New accounts have no Stripe dashboard, so hosts onboard and
-   * see payouts only through the embedded components inside Christ Link (no Stripe sign-in or redirect); Stripe still
-   * collects the verification details and is liable for the account's negative balances.
+   * see payouts only through the embedded components inside Christ Link (no Stripe sign-in or redirect). The platform
+   * is liable for negative balances and collects requirements, which the embedded onboarding and notification banner
+   * do for us (Stripe Connect platform profile, confirmed 2026-11-14).
    */
   private async ensureConnectAccount(user: AuthUser) {
     const existing = await this.prisma.host_stripe_accounts.findUnique({ where: { user_id: user.id } });
@@ -319,8 +320,8 @@ export class PaymentsService {
       email: user.email,
       controller: {
         stripe_dashboard: { type: 'none' },
-        requirement_collection: 'stripe',
-        losses: { payments: 'stripe' },
+        requirement_collection: 'application',
+        losses: { payments: 'application' },
         fees: { payer: 'application' },
       },
       capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
@@ -336,6 +337,7 @@ export class PaymentsService {
   private platformSetupError(e: unknown): never {
     const msg = (e as Error)?.message ?? '';
     if (msg.toLowerCase().includes('platform profile') || msg.toLowerCase().includes('signed up for connect')) {
+      this.logger.warn(`Stripe Connect not ready: ${msg}`);
       throw new JsonError(400, {
         error:
           'Stripe Connect is not fully configured yet. The platform owner must complete the Connect platform profile in the Stripe Dashboard before hosts can set up payouts.',
@@ -360,7 +362,12 @@ export class PaymentsService {
           notification_banner: { enabled: true, features: { external_account_collection: true } },
           payouts: {
             enabled: true,
-            features: { standard_payouts: true, instant_payouts: false, edit_payout_schedule: true, external_account_collection: true },
+            features: {
+              standard_payouts: true,
+              instant_payouts: false,
+              edit_payout_schedule: true,
+              external_account_collection: true,
+            },
           },
         },
       });
