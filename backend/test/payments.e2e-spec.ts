@@ -9,6 +9,7 @@ import request = require('supertest');
 import { AppModule } from '../src/app.module';
 import { configureApi } from '../src/bootstrap';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { payoutEndedEvents } from '../src/modules/payments/payouts';
 import { STRIPE } from '../src/modules/payments/stripe.provider';
 
 const WEBHOOK_SECRET = 'whsec_test_platform';
@@ -39,9 +40,12 @@ const stripe = {
     create: jest.fn(async () => ({ id: 'acct_new' })),
     retrieve: jest.fn(async (id: string) => ({ id, details_submitted: true, payouts_enabled: true, charges_enabled: true, requirements: { currently_due: [] } })),
     createLoginLink: jest.fn(async () => ({ url: 'https://connect.stripe.com/login' })),
+    update: jest.fn(async (id: string) => ({ id })),
   },
   accountLinks: { create: jest.fn(async () => ({ url: 'https://connect.stripe.com/setup' })) },
   accountSessions: { create: jest.fn(async () => ({ client_secret: 'accs_secret_test' })) },
+  balance: { retrieve: jest.fn(async () => ({ available: [{ currency: 'usd', amount: 0 }] })) },
+  payouts: { create: jest.fn(async () => ({ id: `po_${randomUUID().slice(0, 8)}`, status: 'pending' })) },
   tax: { calculations: { create: jest.fn(async () => Promise.reject(new Error('tax off'))) } },
 };
 
@@ -123,7 +127,7 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     });
     pi1 = res.body.intentId;
     const [params, opts] = stripe.paymentIntents.create.mock.calls[0];
-    expect(params).toMatchObject({ amount: 1605, application_fee_amount: 105, transfer_data: { destination: expect.stringMatching(/^acct_/) } });
+    expect(params).toMatchObject({ amount: 1605, application_fee_amount: 182, transfer_data: { destination: expect.stringMatching(/^acct_/) } });
     expect(opts.idempotencyKey).toMatch(/^pi-/);
 
     const again = await http.post('/api/create-payment-intent').set(as('buyer')).send({ eventId, ticketTypeId: typeId, qty: 1 }).expect(200);
@@ -210,7 +214,7 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
 
     await http.post(`/api/refund-requests/${req.body.requestId}/approve`).set(as('stranger')).expect(404, { error: 'Request not found.' });
     await http.post(`/api/refund-requests/${req.body.requestId}/approve`).set(as('host')).expect(200, { success: true, refundId: 're_test1' });
-    expect(stripe.refunds.create).toHaveBeenLastCalledWith({ charge: `ch_${pi1}` }, { idempotencyKey: `refund-${t.id}` });
+    expect(stripe.refunds.create).toHaveBeenLastCalledWith({ charge: `ch_${pi1}`, reverse_transfer: true }, { idempotencyKey: `refund-${t.id}` });
     expect((await prisma.tickets.findUnique({ where: { id: t.id } })).status).toBe('refunded');
     expect(await sold()).toBe(2);
     expect(await waitForNotification(users.buyer.id, 'refund_approved')).toBeTruthy();
@@ -294,6 +298,10 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     await webhook({ id: `evt_${randomUUID()}`, type: 'account.updated', data: { object: { id: 'acct_new', details_submitted: true, payouts_enabled: false, charges_enabled: true } } }, CONNECT_SECRET).expect(200);
     expect(await prisma.host_stripe_accounts.findUnique({ where: { stripe_account_id: 'acct_new' } })).toMatchObject({ charges_enabled: true, payouts_enabled: false });
 
+    stripe.accounts.update.mockClear();
+    await webhook({ id: `evt_${randomUUID()}`, type: 'account.updated', data: { object: { id: 'acct_new', details_submitted: true, payouts_enabled: false, charges_enabled: true, controller: { requirement_collection: 'application' }, settings: { payouts: { schedule: { interval: 'daily' } } } } } }, CONNECT_SECRET).expect(200);
+    expect(stripe.accounts.update).toHaveBeenCalledWith('acct_new', { settings: { payouts: { schedule: { interval: 'manual' } } } });
+
     const sync = await http.post('/api/connect-sync').set(as('stranger')).expect(200);
     expect(sync.body).toEqual({ accountId: 'acct_new', onboardingComplete: true, payoutsEnabled: true, chargesEnabled: true, requirements: { currently_due: [] } });
     expect((await prisma.profiles.findUnique({ where: { id: users.stranger.id } })).role).toBe('host');
@@ -313,6 +321,7 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     expect(stripe.accounts.create).toHaveBeenCalledTimes(1);
     expect(stripe.accounts.create).toHaveBeenLastCalledWith(
       expect.objectContaining({
+        settings: { payouts: { schedule: { interval: 'manual' } } },
         controller: expect.objectContaining({ stripe_dashboard: { type: 'none' }, losses: { payments: 'application' }, requirement_collection: 'application' }),
         metadata: { christlink_user_id: users.stranger.id },
       }),
@@ -330,6 +339,59 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     expect(stripe.accounts.create).toHaveBeenCalledTimes(1);
     await http.post('/api/connect/account-session').expect(401);
     await http.delete('/api/connect-disconnect').set(as('stranger')).expect(200);
+  });
+
+  it('After-event payouts: pays a host their share once the event has ended, once, and retries when funds or Stripe fail', async () => {
+    const acct = `acct_${users.host.id.slice(0, 8)}`;
+    await prisma.host_stripe_accounts.update({ where: { user_id: users.host.id }, data: { payouts_enabled: true } });
+    const ended = await prisma.events.create({
+      data: { host_id: users.host.id, name: 'Ended Night', status: 'published', is_paid: true, start_date: new Date(Date.now() - 3 * 86_400_000), end_date: new Date(Date.now() - 2 * 86_400_000) },
+    });
+    const upcoming = await prisma.events.create({
+      data: { host_id: users.host.id, name: 'Later Night', status: 'published', is_paid: true, start_date: new Date(Date.now() + 86_400_000) },
+    });
+    const tt = await prisma.ticket_types.create({ data: { event_id: ended.id, name: 'GA', price_cents: 1500, quantity: 10 } });
+    const tt2 = await prisma.ticket_types.create({ data: { event_id: upcoming.id, name: 'GA', price_cents: 1500, quantity: 10 } });
+    const ticket = (event_id: string, ticket_type_id: string, status: string) => ({
+      event_id, ticket_type_id, user_id: users.buyer.id, quantity: 1, unit_price_cents: 1500, total_charged_cents: 1605,
+      platform_fee_cents: 105, stripe_fee_cents: 77, host_receives_cents: 1423, status,
+    });
+    await prisma.tickets.createMany({
+      data: [ticket(ended.id, tt.id, 'confirmed'), ticket(ended.id, tt.id, 'confirmed'), ticket(ended.id, tt.id, 'refunded'), ticket(upcoming.id, tt2.id, 'confirmed')],
+    });
+    // Other e2e tickets for the host's upcoming event aren't due either; only the two confirmed ended ones are
+    const run = () => payoutEndedEvents(prisma, stripe as unknown as Stripe);
+
+    // Funds not available yet: nothing claimed
+    expect(await run()).toEqual([{ host_id: users.host.id, cents: 2846, status: 'waiting_for_funds' }]);
+    expect(await prisma.tickets.count({ where: { event_id: ended.id, payout_id: { not: null } } })).toBe(0);
+
+    // Stripe fails: tickets released, failure recorded
+    stripe.balance.retrieve.mockResolvedValue({ available: [{ currency: 'usd', amount: 5000 }] });
+    stripe.payouts.create.mockRejectedValueOnce(new Error('Insufficient funds in Stripe account'));
+    expect(await run()).toEqual([{ host_id: users.host.id, cents: 2846, status: 'failed' }]);
+    expect(await prisma.tickets.count({ where: { event_id: ended.id, payout_id: { not: null } } })).toBe(0);
+    expect(await prisma.host_payouts.findFirst({ where: { user_id: users.host.id, status: 'failed' } })).toMatchObject({ amount_cents: 2846 });
+
+    // Paid: one payout for both confirmed tickets, on the host's account
+    expect(await run()).toEqual([{ host_id: users.host.id, cents: 2846, status: 'pending' }]);
+    expect(stripe.payouts.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({ amount: 2846, currency: 'usd' }),
+      expect.objectContaining({ stripeAccount: acct, idempotencyKey: expect.stringMatching(/^host-payout-/) }),
+    );
+    const paid = await prisma.host_payouts.findFirst({ where: { user_id: users.host.id, status: 'pending' } });
+    expect(paid?.stripe_payout_id).toMatch(/^po_/);
+    expect(await prisma.tickets.count({ where: { payout_id: paid!.id } })).toBe(2);
+
+    // Nothing is paid twice; the upcoming event waits
+    expect(await run()).toEqual([]);
+    expect(await prisma.tickets.count({ where: { event_id: upcoming.id, payout_id: null } })).toBe(1);
+
+    stripe.balance.retrieve.mockResolvedValue({ available: [{ currency: 'usd', amount: 0 }] });
+    await prisma.tickets.deleteMany({ where: { event_id: { in: [ended.id, upcoming.id] } } });
+    await prisma.host_payouts.deleteMany({ where: { user_id: users.host.id } });
+    await prisma.events.deleteMany({ where: { id: { in: [ended.id, upcoming.id] } } });
+    await prisma.host_stripe_accounts.update({ where: { user_id: users.host.id }, data: { payouts_enabled: false } });
   });
 
   describe('Apple Wallet', () => {

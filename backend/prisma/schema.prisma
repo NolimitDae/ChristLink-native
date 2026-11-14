@@ -639,14 +639,14 @@ model serve_signups {
 }
 
 model ticket_checkins {
-  id            String   @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
-  ticket_id     String   @unique @db.Uuid
-  event_id      String   @db.Uuid
-  checked_in_by String?  @db.Uuid
-  checked_in_at DateTime @default(now()) @db.Timestamptz(6)
+  id            String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  ticket_id     String    @unique @db.Uuid
+  event_id      String    @db.Uuid
+  checked_in_by String?   @db.Uuid
+  checked_in_at DateTime  @default(now()) @db.Timestamptz(6)
   profiles      profiles? @relation(fields: [checked_in_by], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  events        events   @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  tickets       tickets  @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  events        events    @relation(fields: [event_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tickets       tickets   @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model ticket_types {
@@ -688,6 +688,8 @@ model tickets {
   coupon_id              String?          @db.Uuid
   discount_cents         Int?             @default(0)
   promoter_id            String?          @db.Uuid
+  payout_id              String?          @db.Uuid
+  host_payouts           host_payouts?    @relation(fields: [payout_id], references: [id], onUpdate: NoAction)
   refund_requests        refund_requests?
   ticket_checkins        ticket_checkins?
   coupons                coupons?         @relation(fields: [coupon_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -699,6 +701,22 @@ model tickets {
   @@index([event_id], map: "idx_tickets_event_id")
   @@index([status], map: "idx_tickets_status")
   @@index([user_id], map: "idx_tickets_user_id")
+}
+
+/// One Stripe payout to a host after their event (worker job host-payouts). Tickets point at the payout that paid them.
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model host_payouts {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String    @db.Uuid
+  stripe_account_id String
+  stripe_payout_id  String?   @unique
+  amount_cents      Int
+  status            String    @default("pending")
+  error             String?
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  tickets           tickets[]
+
+  @@index([user_id, created_at], map: "idx_host_payouts_user")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
