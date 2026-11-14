@@ -135,7 +135,7 @@ export default function PayoutsScreen() {
       body: 'Add your bank account and confirm your identity, right here. It takes about five minutes, and Stripe keeps your details secure.',
     },
     incomplete: { badge: 'Setup incomplete', tone: 'gold' as const, title: 'Finish payout setup', body: 'Stripe needs a few more details before it can send payouts. Pick up where you left off.' },
-    active: { badge: 'Payouts active', tone: 'success' as const, title: 'You’re ready to sell tickets', body: 'Ticket revenue is paid out to your bank automatically, usually a few business days after each sale.' },
+    active: { badge: 'Payouts active', tone: 'success' as const, title: 'You’re ready to sell tickets', body: 'Your ticket revenue is paid to your bank automatically, the day after each event ends.' },
   }[status];
 
   // Existing accounts start the embedded views right away (so Stripe's notices can show); new ones wait for a tap
@@ -223,7 +223,11 @@ export default function PayoutsScreen() {
               body="Minus card processing (2.9% + 30¢), unless you choose to pass processing on to attendees when you create the event."
             />
             <FeeItem icon="pricetag-outline" title={`${formatCents(LISTING_FEE_CENTS)} listing fee`} body="A one-time fee per paid event, charged when you publish. Free events are always free." />
-            <FeeItem icon="calendar-outline" title="Automatic payouts" body="Usually a few business days after each sale, straight to the bank account you add here." />
+            <FeeItem
+              icon="calendar-outline"
+              title="Paid after your event"
+              body="Ticket money is held until your event has happened, then paid to your bank the next day. Refunds before then come out of the held amount."
+            />
           </Card>
 
           {status !== 'none' ? (

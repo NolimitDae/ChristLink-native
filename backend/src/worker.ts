@@ -6,10 +6,11 @@ import { HealthService } from './health/health.service';
 import { EmailProcessor } from './worker/email.processor';
 import { JobsProcessor } from './worker/jobs.processor';
 import { PushProcessor } from './worker/push.processor';
+import { stripeProvider } from './modules/payments/stripe.provider';
 
 @Module({
   imports: [CoreModule],
-  providers: [PushProcessor, EmailProcessor, JobsProcessor],
+  providers: [PushProcessor, EmailProcessor, JobsProcessor, stripeProvider],
 })
 export class WorkerModule {}
 

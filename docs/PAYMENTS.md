@@ -40,8 +40,9 @@ If the attendee covers processing, the charge is grossed up to $16.84 and the ho
 - Host: Sales screen → **Approve / Deny** (`POST /api/refund-requests/:id/approve|deny`) or refund any confirmed
   ticket directly (`POST /api/tickets/:id/refund`). A refunded ticket's status becomes `refunded`; it no longer
   scans as valid.
-- Refund after payout: Stripe debits the host's connected account balance (it can go negative and is recovered from
-  future payouts). The Sales screen shows refunds as a separate line and **net payout excludes refunded tickets**
+- Every refund uses `reverse_transfer`: the host's share comes back from the host's Stripe balance. Before the
+  after-event payout the money is still there; after it, the host's balance goes negative and Stripe recovers it from
+  their next sales (Christ Link is liable if it can't). The Sales screen shows refunds as a separate line and **net payout excludes refunded tickets**
   (`summarizeSales`, tested).
 
 ## Host payouts (Stripe Connect, embedded)
@@ -54,12 +55,23 @@ If the attendee covers processing, the charge is grossed up to $16.84 and the ho
   the embedded onboarding and notification banner), which is what lets Account Sessions set
   `disable_stripe_user_authentication`. Christ Link is liable for refunds, chargebacks and negative balances on host
   accounts (`losses.payments = application`; Stripe's Managed Risk doesn't cover destination charges). Stripe
-  Connect platform profile: liability = Platform (2026-11-14). Our platform pays Stripe's Connect fees (`fees.payer = application`). Ticket charges are destination charges on the platform account (statement name
+  Connect platform profile: liability = Platform (2026-11-14). Our platform pays Stripe's Connect fees
+  (`fees.payer = application`). Ticket charges are destination charges on the platform account (statement name
   `CHRISTLINK`).
 - After onboarding the app calls `POST /api/connect-sync`; Stripe's `account.updated` webhook keeps
   `host_stripe_accounts` current too.
-- **View payouts** shows Stripe's embedded payouts component: balance, history, schedule and bank account. On the
-  website, Stripe's notification banner appears when Stripe needs more details.
+- **Paid after the event.** Host accounts use a manual payout schedule (set at creation; `syncAccount` puts back any
+  account that drifts). Ticket money waits in the host's Stripe balance until the worker job `host-payouts` (hourly,
+  `backend/src/modules/payments/payouts.ts`) pays out the host's share of confirmed, unpaid tickets for events that
+  ended 24 hours ago (`coalesce(end_date, start_date)`). Each payout is a `host_payouts` row and the tickets it paid
+  point at it (`tickets.payout_id`), so nothing is paid twice; when the balance isn't available yet (card funds take
+  about 2 days) or Stripe refuses, the tickets are released and retried next hour. The worker needs
+  `STRIPE_SECRET_KEY` (Railway reference to the API's).
+- **Host share = `host_receives_cents`.** `application_fee_amount = chargeAmount - hostReceives`, so Christ Link keeps
+  its 7% plus the card processing it pays Stripe, and the host gets exactly what the Sales screen shows (before
+  2026-11-14 the fee was only the 7%, so hosts would have received the card fee too; no live sales were affected).
+- **View payouts** shows Stripe's embedded payouts component: balance, history and bank account (hosts can't change the
+  schedule or pay out early). On the website, Stripe's notification banner appears when Stripe needs more details.
 - Fallback: Expo Go (its native Stripe module has no Connect views) and app builds from before 2026-11-13 use
   `POST /api/connect-onboard` (Stripe-hosted page).
 - Paid events require: identity verified (Host → Verify) **and** payouts enabled.

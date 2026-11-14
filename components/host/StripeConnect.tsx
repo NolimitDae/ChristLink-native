@@ -90,7 +90,10 @@ export function PayoutHistory({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Stripe's "action required" notices are part of PayoutSetup on phones; the website shows them inline. */
+/**
+ * Stripe's "action required" notices: on phones Stripe's banner isn't exported by @stripe/stripe-react-native yet, so
+ * outstanding requests show as "Finish payout setup" (payouts_enabled false) and PayoutSetup collects them.
+ */
 export function PayoutNotices() {
   return null;
 }

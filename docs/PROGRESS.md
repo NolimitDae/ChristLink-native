@@ -930,3 +930,23 @@ and changed what applied, within the existing design system:
 - christlinksocial.com → Host → Payouts → Set up payouts: the Stripe form appears in the page; finish it with your
   real details and bank; status turns "Payouts active"; View payouts shows your balance.
 - After the next build, the same on the phone.
+
+## 2026-11-14 — Payout setup without leaving Christ Link; hosts paid after their event
+
+**Changed**
+- Stripe Connect platform profile finished (embedded onboarding, no Stripe dashboard, liability = Platform, site links
+  → christlinksocial.com/host/payouts). Host accounts are platform-liable with Stripe's sign-in window disabled:
+  verified live on christlinksocial.com with the App Review account (form in the page, no popup).
+- Hosts are paid the day after their event: manual payout schedule + worker job `host-payouts`, new table
+  `host_payouts` and `tickets.payout_id` (migration 20261114000000_host_payouts).
+- Refunds take the host's share back (`reverse_transfer`); the platform keeps its 7% plus card processing
+  (`application_fee_amount`), so hosts get exactly what the Sales screen shows.
+
+**Not finished / needs you**
+- Statement name `CHRISTLINK` in Stripe → Settings → Business → Public details.
+- An old, unused test account from the App Review account (acct_1UbZ1W…) can be deleted in Stripe → Connect.
+- Phone app needs a new build for the embedded payout screens.
+
+**Test**
+- Set up your own payouts on christlinksocial.com, sell yourself a $1 ticket to a test event that ends today, refund a
+  second one; the day after the event, Payouts → View payouts shows one payout of the remaining ticket's share.
