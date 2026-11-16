@@ -31,6 +31,18 @@ export function listingDiscountCents(discountType: string, discountValue: number
     : Math.min(Math.round(discountValue * 100), HOST_LISTING_FEE);
 }
 
+/** Stripe refuses card charges under 50 cents (USD). */
+export const STRIPE_MIN_CHARGE = 50;
+
+/**
+ * Listing fee left to pay after a promo discount. A remainder under Stripe's minimum can't be charged, so it is waived
+ * (a 99% code leaves 20 cents: the listing is free).
+ */
+export function listingFeeAfter(discountCents: number): number {
+  const remaining = Math.max(0, HOST_LISTING_FEE - discountCents);
+  return remaining < STRIPE_MIN_CHARGE ? 0 : remaining;
+}
+
 /** Event coupon discount per ticket in cents (server.js create-payment-intent). */
 export function couponDiscountCents(discountType: string, discountValue: number, priceCents: number): number {
   return discountType === 'percent'

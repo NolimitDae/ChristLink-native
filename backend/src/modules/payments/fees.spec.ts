@@ -1,4 +1,4 @@
-import { calcAmounts, couponDiscountCents, listingDiscountCents } from './fees';
+import { calcAmounts, couponDiscountCents, listingDiscountCents, listingFeeAfter } from './fees';
 // The app's client-side mirror; the server must agree with it to the cent.
 import { computeBreakdown } from '../../../../lib/fees';
 
@@ -36,6 +36,15 @@ describe('discounts', () => {
     expect(listingDiscountCents('percent', 50)).toBe(1000);
     expect(listingDiscountCents('fixed', 5)).toBe(500);
     expect(listingDiscountCents('fixed', 50)).toBe(1999);
+  });
+
+  it('listing fee after a promo: a remainder under Stripe\'s 50-cent minimum is waived', () => {
+    expect(listingFeeAfter(0)).toBe(1999);
+    expect(listingFeeAfter(1000)).toBe(999);
+    expect(listingFeeAfter(listingDiscountCents('percent', 99))).toBe(0); // leaves 20 cents
+    expect(listingFeeAfter(1949)).toBe(50);
+    expect(listingFeeAfter(1950)).toBe(0);
+    expect(listingFeeAfter(5000)).toBe(0);
   });
   it('event coupon', () => {
     expect(couponDiscountCents('percent', 10, 1500)).toBe(150);
