@@ -249,6 +249,9 @@ export default function CreateEventScreen() {
           });
           if (error || !paymentMethod) throw new Error(error?.message ?? 'Your card could not be processed.');
           paymentMethodId = paymentMethod.id;
+        } else {
+          // Free with a promo: no card. The server re-checks the code and says so if it no longer makes it free.
+          paymentMethodId = '__promo_free__';
         }
         const res = await chargeListingFee({ paymentMethodId, eventId: id, hostEmail: user.email ?? undefined, promoCode: appliedPromo ?? undefined }, token);
         if (!res.success) throw new Error(res.error ?? 'The listing fee payment didn’t go through.');

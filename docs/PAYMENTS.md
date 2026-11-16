@@ -82,6 +82,10 @@ Create event → Review → $19.99 listing fee with optional promo code → the 
 (`createPaymentMethod`) → `POST /api/charge-listing-fee { paymentMethodId, eventId, hostEmail, promoCode }` →
 then publish (`PATCH /api/events/:id/publish`) or schedule (`PATCH /api/events/:id/schedule`).
 
+A promo that leaves less than 50 cents (Stripe's minimum card charge) makes the listing free: `listingFeeAfter` in
+`backend/src/modules/payments/fees.ts` (a 99% code leaves $0.20). Free listings need no card; the app sends
+`paymentMethodId: '__promo_free__'`.
+
 ## Tests
 
 | Test | File |

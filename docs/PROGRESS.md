@@ -967,3 +967,11 @@ and changed what applied, within the existing design system:
 **Test**
 - christlinksocial.com signed in as the owner → Settings → Admin dashboard; create a promo code and use it when
   paying a listing fee; change a test account's role.
+
+## 2026-11-16 — Fix: "Pay & publish" failed with a 99% promo code
+
+- CL99 left $0.20 to pay and Stripe refuses card charges under $0.50 ("Amount must be at least $0.50 USD" in the API
+  log, five attempts). A discount that leaves less than 50 cents now makes the listing free, on the promo check and
+  on the charge. Also fixed: a free listing (100% code) was rejected with "Payment method required" because the app
+  sent no card; the server now needs a card only when something is charged.
+- Test: Edit the draft event → Review → apply CL99 → the fee shows Free and the button says Publish → publish.

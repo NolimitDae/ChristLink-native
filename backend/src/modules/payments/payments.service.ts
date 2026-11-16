@@ -11,7 +11,7 @@ import appConfig from '../../config/app.config';
 import type { AuthUser } from '../../common/auth.decorators';
 import type { Prisma } from '../../../prisma/generated/client';
 import { STRIPE } from './stripe.provider';
-import { calcAmounts, couponDiscountCents, HOST_LISTING_FEE, listingDiscountCents } from './fees';
+import { calcAmounts, couponDiscountCents, HOST_LISTING_FEE, listingDiscountCents, listingFeeAfter } from './fees';
 import { escapeHtml, isUuid, JsonError, stripeError } from './json-error';
 
 const SALE_SELECT = {
@@ -463,14 +463,13 @@ export class PaymentsService {
       discount_type: promo.discount_type,
       discount_value: discountValue,
       discount_cents: discountCents,
-      final_cents: Math.max(0, HOST_LISTING_FEE - discountCents),
+      final_cents: listingFeeAfter(discountCents),
     };
   }
 
   async chargeListingFee(user: AuthUser, body: Record<string, any>) {
     const { paymentMethodId, eventId, hostEmail, promoCode } = body ?? {};
     if (!eventId) throw new BadRequestException('Event ID required.');
-    if (!paymentMethodId || typeof paymentMethodId !== 'string') throw new BadRequestException('Payment method required.');
     const ev = isUuid(eventId)
       ? await this.prisma.events.findFirst({ where: { id: eventId, host_id: user.id }, select: { id: true, name: true, listing_fee_paid: true } })
       : null;
@@ -482,13 +481,15 @@ export class PaymentsService {
     if (typeof promoCode === 'string' && promoCode.trim()) {
       const promo = await this.findPromo(promoCode);
       if (promo && !(promo.expires_at && new Date() > promo.expires_at) && (promo.max_uses === null || promo.uses_count < promo.max_uses)) {
-        chargeAmount = Math.max(0, HOST_LISTING_FEE - listingDiscountCents(promo.discount_type, Number(promo.discount_value)));
+        chargeAmount = listingFeeAfter(listingDiscountCents(promo.discount_type, Number(promo.discount_value)));
         appliedPromoId = promo.id;
       }
     }
     if (paymentMethodId === '__promo_free__' && chargeAmount > 0) {
       throw new JsonError(400, { error: 'Promo code could not be applied. Please re-enter your card details and try again.', resetCard: true });
     }
+    // A card is needed only when something is charged (a promo can make the listing free)
+    if (chargeAmount > 0 && (!paymentMethodId || typeof paymentMethodId !== 'string')) throw new BadRequestException('Payment method required.');
 
     const markPaid = async (paymentId: string) => {
       await this.prisma.events.update({ where: { id: eventId }, data: { listing_fee_paid: true, listing_payment_id: paymentId } });

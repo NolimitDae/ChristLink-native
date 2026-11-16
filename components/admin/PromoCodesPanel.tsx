@@ -155,7 +155,7 @@ export function PromoCodesPanel() {
               value={draft.value}
               onChangeText={value => setDraft({ ...draft, value })}
               error={errors.value}
-              hint={draft.kind === 'percent' ? '100% makes the listing free.' : `The listing fee is ${formatCents(LISTING_FEE_CENTS)}.`}
+              hint={`The listing fee is ${formatCents(LISTING_FEE_CENTS)}. If a code leaves less than $0.50 to pay, the listing is free (cards can’t be charged less).`}
             />
             <Field label="Use limit (optional)" placeholder="No limit" keyboardType="number-pad" value={draft.maxUses} onChangeText={maxUses => setDraft({ ...draft, maxUses })} error={errors.maxUses} />
             <Field label="Last day (optional)" placeholder="YYYY-MM-DD" autoCorrect={false} value={draft.expires} onChangeText={expires => setDraft({ ...draft, expires })} error={errors.expires} />

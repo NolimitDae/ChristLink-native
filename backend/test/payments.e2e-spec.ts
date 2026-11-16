@@ -261,8 +261,20 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
       data: [
         { code: 'E2EPAYFREE', discount_type: 'percent', discount_value: 100 },
         { code: 'E2EPAYHALF', discount_type: 'percent', discount_value: 50, max_uses: 5 },
+        { code: 'E2EPAY99', discount_type: 'percent', discount_value: 99 },
       ],
     });
+    // 99% leaves 20 cents, under Stripe's 50-cent minimum: the listing is free and needs no card
+    const nearlyFree = await http.post('/api/validate-listing-promo').set(as('host')).send({ code: 'E2EPAY99' }).expect(200);
+    expect(nearlyFree.body).toMatchObject({ discount_cents: 1979, final_cents: 0 });
+    const draft99 = await prisma.events.create({ data: { host_id: users.host.id, name: 'Paid Draft 99', is_paid: true } });
+    const intentsBefore = stripe.paymentIntents.create.mock.calls.length;
+    await http.post('/api/charge-listing-fee').set(as('host')).send({ eventId: draft99.id, promoCode: 'E2EPAY99' }).expect(200, { success: true, intentId: 'promo_free' });
+    expect(stripe.paymentIntents.create.mock.calls.length).toBe(intentsBefore);
+    expect(await prisma.events.findUnique({ where: { id: draft99.id } })).toMatchObject({ listing_fee_paid: true, listing_payment_id: 'promo_free' });
+    // Without a promo there is something to charge, so a card is required
+    const draftNoCard = await prisma.events.create({ data: { host_id: users.host.id, name: 'Paid Draft no card', is_paid: true } });
+    await http.post('/api/charge-listing-fee').set(as('host')).send({ eventId: draftNoCard.id }).expect(400, { error: 'Payment method required.' });
     await http.post('/api/validate-listing-promo').set(as('host')).send({ code: 'e2epayhalf' }).expect(200, {
       valid: true,
       promo_id: (await prisma.listing_promo_codes.findUnique({ where: { code: 'E2EPAYHALF' } })).id,
