@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Platform, View } from 'react-native';
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { dismissBootShell } from '../lib/bootShell';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -61,6 +62,7 @@ function RootNavigator() {
   useEffect(() => {
     if (loading || onboardingDone === null) return;
     SplashScreen.hideAsync().catch(() => undefined);
+    dismissBootShell();
     const first = segments[0] as string | undefined;
     // The website doesn't force onboarding (it's mostly phone permissions); visitors land where the link points.
     if (!onboardingDone && Platform.OS !== 'web' && first !== 'onboarding' && first !== 'auth' && first !== 'legal') {

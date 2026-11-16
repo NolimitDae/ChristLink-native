@@ -8,6 +8,7 @@ import { useFriendsGoing } from '../../hooks/useFriendsGoing';
 import { useShareCard } from '../../components/ShareCard';
 import { CompactTitleBar, EmptyState, SectionHeader, useCollapsingTitle } from '../../components/ui';
 import { HomeHeader } from '../../components/home/HomeHeader';
+import { GuestHero } from '../../components/home/GuestHero';
 import { VerseCard } from '../../components/home/VerseCard';
 import { WeekStrip } from '../../components/home/WeekStrip';
 import { TonightCarousel } from '../../components/home/TonightCarousel';
@@ -23,7 +24,8 @@ import { EVENT_TYPES, type EventType } from '../../lib/constants';
 import { rankByInterest } from '../../lib/interests';
 import { storage } from '../../lib/storage';
 import { isTonight } from '../../lib/format';
-import type { Verse } from '../../lib/verses';
+import { bundledVerseOfTheDay, type Verse } from '../../lib/verses';
+import { VERSE_KEY, localDay, peekCache, readCache, writeCache } from '../../lib/viewCache';
 import type { Event } from '../../lib/types';
 import { useTabBarClearance } from '../../components/TabBar';
 
@@ -40,10 +42,16 @@ export default function HomeScreen() {
   const { scrollY, onScroll, scrollRef, scrollToTop } = useCollapsingTitle();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const share = useShareCard();
   const { events, error, plans, plansLoaded, churchEventIds, homeChurchId, refreshing, refreshKey, refresh, retry } = useHomeData();
-  const [verse, setVerse] = useState<Verse | null>(null);
+  // Today's verse as last shown, so the card isn't a skeleton on every visit. Signed-out visitors have no plans to
+  // theme it by, so they get the bundled verse of the day at once (the same rotation the server uses).
+  const [verse, setVerse] = useState<Verse | null>(() => {
+    const cached = peekCache<{ day: string; verse: Verse }>(VERSE_KEY);
+    if (cached?.day === localDay()) return cached.verse;
+    return !authLoading && !session ? bundledVerseOfTheDay(null) : null;
+  });
   const [interests, setInterests] = useState<string[]>([]);
 
   // Re-read on focus so a change in Settings → Interests shows up when coming back.
@@ -66,10 +74,22 @@ export default function HomeScreen() {
   const verseReady = plansLoaded && (events !== null || error !== null);
 
   useEffect(() => {
+    let cancelled = false;
+    readCache<{ day: string; verse: Verse }>(VERSE_KEY).then(cached => {
+      if (!cancelled && cached?.day === localDay()) setVerse(prev => prev ?? cached.verse);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!verseReady) return;
     let cancelled = false;
     getVerseOfTheDay(verseTheme).then(v => {
-      if (!cancelled) setVerse(v);
+      if (cancelled) return;
+      setVerse(v);
+      writeCache(VERSE_KEY, { day: localDay(), verse: v });
     });
     return () => {
       cancelled = true;
@@ -113,7 +133,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
-        <HomeHeader />
+        {session || authLoading ? <HomeHeader /> : <GuestHero />}
 
         <View style={{ paddingHorizontal: t.space.md }}>
           <VerseCard

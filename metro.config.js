@@ -11,6 +11,8 @@ const WEB_STUBS = {
   'expo-secure-store': 'web/shims/securestore.js',
   'expo-notifications': 'web/shims/notifications.js',
   '@react-native-community/datetimepicker': 'web/shims/datetimepicker.tsx',
+  // No crash reporting on the website: the SDK was a third of the script (web/shims/sentry.js)
+  '@sentry/react-native': 'web/shims/sentry.js',
 };
 const resolve = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) =>

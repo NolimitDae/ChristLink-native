@@ -9,7 +9,7 @@
  *   POST /webhook              passed to the API, so the Stripe webhook URL of the old site keeps working
  *   /api/…                     404 JSON: the API lives on its own domain (EXPO_PUBLIC_API_BASE)
  *
- * Env: PORT (Railway sets it), WEB_ROOT (default ./dist), API_ORIGIN (e.g. the API's Railway URL; enables /webhook),
+ * Env: PORT (Railway sets it), WEB_ROOT (default ./dist), EXPO_PUBLIC_API_BASE (preconnect hint), API_ORIGIN (e.g. the API's Railway URL; enables /webhook),
  * APPLE_TEAM_ID, IOS_BUNDLE_ID, ANDROID_PACKAGE, ANDROID_SHA256_FINGERPRINTS (comma-separated),
  * CANONICAL_HOST (e.g. christlinksocial.com: other hosts such as www. get a 301 there).
  * No dependencies: Node's http, fs and zlib only.
@@ -111,11 +111,52 @@ export function cacheControlFor(urlPath) {
   return 'no-cache';
 }
 
+// The API address browsers use (the same public value the app is built with), for a preconnect hint
+const PUBLIC_API = /^https:\/\/[a-z0-9.-]+$/i.test(process.env.EXPO_PUBLIC_API_BASE || '') ? process.env.EXPO_PUBLIC_API_BASE : '';
+
 const compressed = new Map(); // `${file}:${encoding}` → Buffer (the build is immutable while this process runs)
+
+// Fonts the first screen needs. The app only asks for them after its script has run, and waits for them before
+// drawing; preloading starts those downloads with the page instead (and lets Cloudflare send 103 Early Hints).
+const FIRST_PAINT_FONTS = /(Newsreader_500Medium|InstrumentSans_(400Regular|500Medium|600SemiBold|700Bold)|Ionicons)\.[0-9a-f]+\.ttf$/;
+const preloadCache = new Map(); // root → Link header value
+
+/** `Link` header for the app page: font preloads plus a preconnect to the API. Empty string when nothing applies. */
+export function preloadLinks(root = ROOT, apiOrigin = PUBLIC_API) {
+  const key = `${root}|${apiOrigin}`;
+  if (preloadCache.has(key)) return preloadCache.get(key);
+  const links = [];
+  if (apiOrigin) links.push(`<${apiOrigin}>; rel=preconnect; crossorigin`);
+  const walk = dir => {
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (FIRST_PAINT_FONTS.test(e.name)) {
+        // encodeURI keeps "@" as the app's own font URLs have it, so the browser reuses the preloaded file
+        const href = encodeURI(`/${path.relative(root, full).split(path.sep).join('/')}`);
+        links.push(`<${href}>; rel=preload; as=font; type="font/ttf"; crossorigin`);
+      }
+    }
+  };
+  walk(path.join(root, 'assets'));
+  const value = links.sort().join(', ');
+  preloadCache.set(key, value);
+  return value;
+}
 
 function send(req, res, status, file, urlPath) {
   const ext = path.extname(file).toLowerCase();
   const headers = { ...SECURITY_HEADERS, 'Content-Type': TYPES[ext] || 'application/octet-stream', 'Cache-Control': cacheControlFor(urlPath) };
+  if (urlPath === '/index.html') {
+    const link = preloadLinks();
+    if (link) headers.Link = link;
+  }
   let body = fs.readFileSync(file);
   if (COMPRESSIBLE.has(ext) && body.length > 1024) {
     const accept = String(req.headers['accept-encoding'] || '');

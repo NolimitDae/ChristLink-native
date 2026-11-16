@@ -4,6 +4,7 @@ import { useAppData } from '../../contexts/AppDataContext';
 import { getEvents, getMyRsvps, getMyTickets } from '../../lib/api';
 import { getChurchEventIds } from '../../lib/features';
 import type { Event } from '../../lib/types';
+import { EVENTS_DEFAULT_KEY, peekCache, readCache, writeCache } from '../../lib/viewCache';
 import { errorMessage } from '../church/churchFormat';
 import type { Plan } from './types';
 
@@ -13,7 +14,8 @@ export function useHomeData() {
   const token = session?.access_token;
   const homeChurchId = settings?.home_church_id ?? null;
 
-  const [events, setEvents] = useState<Event[] | null>(null);
+  // Starts from the last list seen (memory, then the device) and refreshes in the background
+  const [events, setEvents] = useState<Event[] | null>(() => peekCache<Event[]>(EVENTS_DEFAULT_KEY));
   const [error, setError] = useState<string | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoaded, setPlansLoaded] = useState(false);
@@ -26,6 +28,7 @@ export function useHomeData() {
       const res = await getEvents({ limit: 60 });
       setEvents(res.events);
       setError(null);
+      writeCache(EVENTS_DEFAULT_KEY, res.events);
     } catch (err) {
       setError(errorMessage(err, 'Could not load events.'));
     }
@@ -68,6 +71,9 @@ export function useHomeData() {
   }, [homeChurchId]);
 
   useEffect(() => {
+    readCache<Event[]>(EVENTS_DEFAULT_KEY).then(cached => {
+      if (cached) setEvents(prev => prev ?? cached);
+    });
     loadEvents();
   }, [loadEvents]);
 

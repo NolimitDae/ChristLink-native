@@ -132,8 +132,9 @@ Data and Performance Data, not linked, App Functionality.
    list something *in the app* as a digital service that must use In-App Purchase (Guideline 3.1.1); ticket sales
    themselves are fine. Lowest-risk options: waive the listing fee for events created in the iOS app, or take it
    out of ticket sales instead of charging the host up front. Decide before submitting.
-3. **Privacy policy and terms say "Draft — pending legal review"** at the top (`LEGAL_DRAFT_NOTICE` in
-   content/legal.ts). Have them reviewed, then set the notice to an empty string.
+3. **Privacy policy and terms haven't been reviewed by a lawyer.** The "Draft — pending legal review" label was removed
+   on 2026-11-16 (it sat on the live terms people agree to at sign-in); a review is still recommended before launch.
+   To show a notice again, set `LEGAL_DRAFT_NOTICE` in content/legal.ts.
 4. **Moderation within 24 hours**: someone must watch Admin → Reports (Guideline 1.2).
 
 ## On your phone (TestFlight build)

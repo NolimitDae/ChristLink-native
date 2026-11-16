@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useFriendsGoing } from '../../hooks/useFriendsGoing';
 import { getEvents, type GetEventsParams } from '../../lib/api';
+import { EVENTS_DEFAULT_KEY, peekCache, writeCache } from '../../lib/viewCache';
 import { EVENT_TYPES, type EventType } from '../../lib/constants';
 import { isWithinDays } from '../../lib/format';
 import type { Event } from '../../lib/types';
@@ -35,7 +36,8 @@ export function EventsTab({ initialType, bottomInset, onScroll = onScrollTabBar 
   const [thisWeek, setThisWeek] = useState(false);
   const [near, setNear] = useState<Coords | null>(null);
   const [locating, setLocating] = useState(false);
-  const [events, setEvents] = useState<Event[] | null>(null);
+  // With no filters this is the same list Discover shows, so it starts from the shared copy (lib/viewCache.ts)
+  const [events, setEvents] = useState<Event[] | null>(() => (toEventType(initialType) === 'All' ? peekCache<Event[]>(EVENTS_DEFAULT_KEY) : null));
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -61,9 +63,11 @@ export function EventsTab({ initialType, bottomInset, onScroll = onScrollTabBar 
       ...(near ? { lat: near.lat, lng: near.lng, radius: 50 } : {}),
     };
     setError(null);
+    const unfiltered = !debounced && category === 'All' && price === 'any' && !online && !near;
     getEvents(params)
       .then(res => {
         setEvents(res.events);
+        if (unfiltered) writeCache(EVENTS_DEFAULT_KEY, res.events);
       })
       .catch(err => {
         if (controller.signal.aborted) return;

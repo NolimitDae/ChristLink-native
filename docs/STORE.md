@@ -42,7 +42,7 @@ Expo (push), Sentry (crashes, if enabled).
 2. **EAS production environment:** `EXPO_PUBLIC_API_BASE` and `EXPO_PUBLIC_STRIPE_PK` (`pk_live_…`) are set; optional
    `EXPO_PUBLIC_SENTRY_DSN`. docs/BUILDS.md.
 3. **Content:** a few real upcoming events and Prayer Wall posts in production, so reviewers don't see empty lists.
-4. **Legal:** privacy policy and terms reviewed, then clear `LEGAL_DRAFT_NOTICE` in content/legal.ts.
+4. **Legal:** have the privacy policy and terms reviewed (the Draft label is already off; content/legal.ts).
 5. Build both platforms (`eas build --profile production --platform all`), submit to TestFlight and Play internal
    testing.
 6. On your own phone: buy a **$1 real ticket** to your own test event with Apple Pay / Google Pay, check it in with
