@@ -975,3 +975,29 @@ and changed what applied, within the existing design system:
   on the charge. Also fixed: a free listing (100% code) was rejected with "Payment method required" because the app
   sent no card; the server now needs a card only when something is charged.
 - Test: Edit the draft event → Review → apply CL99 → the fee shows Free and the button says Publish → publish.
+
+## 2026-11-16 (later) — First visit: explainer, faster start, no Draft label
+
+Feedback: a stranger saw "Welcome / Monday, November 16" with no idea what Christ Link is, a blank cream screen then
+skeletons for seconds, and "Draft — pending legal review" on the terms.
+
+**Changed**
+- **Explainer.** Signed-out visitors get a hero at the top of Discover (logo, "Faith events and community, in
+  person.", three plain points, Join free / Browse events) instead of the Welcome header. The website also paints a
+  short explainer from plain HTML the moment the page arrives, before any script (`public/index.html`), removed when
+  the first screen is ready.
+- **Faster start.** Measured first: nothing showed until a 982 KB (compressed) script and five fonts had loaded.
+  The website no longer bundles the Sentry SDK (a third of the script; not enabled in production): 671 KB now.
+  Fonts are preloaded with the page and the API connection is opened early (`Link` header from `web/server.mjs`).
+  Discover and the Events tab start from the last events list seen, and the verse of the day shows at once
+  (`lib/viewCache.ts`), so return visits have no skeletons.
+- **Legal.** The Draft label is gone from Terms, Privacy, Host terms and Guidelines. The text still hasn't had a
+  lawyer's review.
+
+**Not finished**
+- zod (form validation) is another ~10% of the web script; replacing it needs care with the event form rules.
+- Production still has no upcoming events: Discover shows "No upcoming events yet" under the hero.
+
+**Test**
+- Open christlinksocial.com in a private window: the explainer appears at once, then the hero; Join free → sign-in;
+  Browse events → Events tab. Reload: no loading skeletons. Terms page: no Draft line.

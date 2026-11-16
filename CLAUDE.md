@@ -19,10 +19,14 @@ app's web build (`web/server.mjs`, Railway service ChristLink-Web; docs/CUTOVER.
   never leave the app; accounts have no Stripe dashboard). See docs/PAYMENTS.md.
 - Push: Expo push tokens → `push_tokens`; the backend worker pushes every new `notifications` row.
   Event/serve reminders are local scheduled notifications (`lib/notifications.ts`).
-- Monitoring: Sentry (`EXPO_PUBLIC_SENTRY_DSN`).
+- Monitoring: Sentry (`EXPO_PUBLIC_SENTRY_DSN`) in the iOS/Android apps only; the website maps it to a no-op shim
+  (it was a third of the web script).
 - Website: the same app exported for the browser (`npm run web:build`). Native-only packages map to `web/shims/` on web
   (metro.config.js): Stripe.js payments, localStorage sessions, browser date/time inputs, no-op notifications, no map.
   Keep new native-only modules web-safe (add a shim or a `Platform.OS === 'web'` path) and run `npm run test:web`.
+  First paint: `public/index.html` shows a plain-HTML explainer until the first screen is ready (`lib/bootShell.ts`);
+  `web/server.mjs` preloads the fonts; Discover and Events start from the last list seen (`lib/viewCache.ts`, public
+  data only). Keep the web script small: check what a new dependency adds before importing it in shared code.
 
 ## Run locally
 1. `npm install` (`.npmrc` sets legacy-peer-deps)

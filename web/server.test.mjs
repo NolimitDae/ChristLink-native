@@ -12,6 +12,10 @@ fs.mkdirSync(path.join(root, '_expo/static/js/web'), { recursive: true });
 fs.writeFileSync(path.join(root, 'index.html'), `<!doctype html><title>Christ Link Social</title>${' '.repeat(2000)}`);
 fs.writeFileSync(path.join(root, '_expo/static/js/web/entry-abc123.js'), `console.log("app");${'x'.repeat(5000)}`);
 fs.writeFileSync(path.join(os.tmpdir(), 'cl-secret.txt'), 'secret');
+const fontDir = path.join(root, 'assets/node_modules/@expo-google-fonts/newsreader/500Medium');
+fs.mkdirSync(fontDir, { recursive: true });
+fs.writeFileSync(path.join(fontDir, 'Newsreader_500Medium.0123abcd.ttf'), 'font');
+fs.writeFileSync(path.join(fontDir, 'Newsreader_700Bold.0123abcd.ttf'), 'unused weight');
 
 let api; // fake API receiving forwarded webhooks
 let apiHits = [];
@@ -75,6 +79,19 @@ test('app routes get index.html, revalidated', async () => {
     assert.match(await res.text(), /Christ Link Social/);
     assert.equal(res.headers.get('cache-control'), 'no-cache');
   }
+});
+
+test('the app page preloads the first-paint fonts and preconnects to the API', async () => {
+  const { preloadLinks } = await import('./server.mjs');
+  const link = preloadLinks(root, 'https://api.example.com');
+  assert.equal(
+    link,
+    '</assets/node_modules/@expo-google-fonts/newsreader/500Medium/Newsreader_500Medium.0123abcd.ttf>; rel=preload; as=font; type="font/ttf"; crossorigin, <https://api.example.com>; rel=preconnect; crossorigin',
+  );
+  const res = await get('/event/123');
+  assert.match(res.headers.get('link'), /Newsreader_500Medium\.0123abcd\.ttf>; rel=preload; as=font/);
+  assert.doesNotMatch(res.headers.get('link'), /700Bold/);
+  assert.equal((await get('/_expo/static/js/web/entry-abc123.js')).headers.get('link'), null);
 });
 
 test('hashed build files are cached forever and compressed', async () => {

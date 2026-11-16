@@ -43,11 +43,116 @@
         height: 100%;
         flex: 1;
       }
+      /* First paint: what Christ Link is, shown from the HTML alone while the app's script loads.
+         app/_layout.tsx removes it when the first screen is ready (lib/bootShell.ts). */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        padding: 32px 28px;
+        text-align: center;
+        background: #0e0c0a;
+        color: #f6efe3;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        transition: opacity 0.2s ease;
+      }
+      #boot.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #boot svg {
+        width: 54px;
+        height: 72px;
+      }
+      #boot .name {
+        margin: 6px 0 0;
+        font: 500 15px/1.2 system-ui, -apple-system, 'Segoe UI', sans-serif;
+        letter-spacing: 0.02em;
+        color: #b3a895;
+      }
+      #boot h1 {
+        margin: 0;
+        max-width: 15em;
+        font: 500 30px/1.15 Newsreader, Georgia, 'Times New Roman', serif;
+        letter-spacing: -0.01em;
+      }
+      #boot p.what {
+        margin: 0;
+        max-width: 23em;
+        font-size: 16px;
+        line-height: 1.45;
+        color: #b3a895;
+      }
+      #boot .bar {
+        position: relative;
+        width: 120px;
+        height: 2px;
+        margin-top: 14px;
+        overflow: hidden;
+        border-radius: 2px;
+        background: rgba(201, 168, 76, 0.2);
+      }
+      #boot .bar::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        width: 40%;
+        border-radius: 2px;
+        background: #c9a84c;
+        animation: boot-slide 1.1s ease-in-out infinite alternate;
+      }
+      @keyframes boot-slide {
+        from {
+          transform: translateX(-20%);
+        }
+        to {
+          transform: translateX(170%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot .bar::after {
+          animation: none;
+          width: 100%;
+          opacity: 0.6;
+        }
+        #boot {
+          transition: none;
+        }
+      }
+      @media (prefers-color-scheme: light) {
+        #boot {
+          background: #f7f2e8;
+          color: #1c160e;
+        }
+        #boot .name,
+        #boot p.what {
+          color: #5f5546;
+        }
+        #boot .ink {
+          fill: #1c160e;
+        }
+      }
     </style>
   </head>
 
   <body>
     <noscript>Christ Link Social needs JavaScript. Turn it on, or get the app on the App Store or Google Play.</noscript>
     <div id="root"></div>
+    <div id="boot">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="740 335 520 690" role="img" aria-label="Christ Link Social">
+        <path class="ink" fill="#F6EFE3" d="M915 910L795 738A250 250 0 1 1 1205 738L1085 910C1075 900 1070 885 1070 870L1070 769A188 188 0 1 0 930 769L930 870C930 885 925 900 915 910Z" />
+        <path fill="#C9A84C" d="M864 563H1134A12 12 0 0 1 1146 575V611A12 12 0 0 1 1134 623H864A12 12 0 0 1 852 611V575A12 12 0 0 1 864 563Z" />
+        <path fill="#C9A84C" d="M970 457Q970 445 982 445L1018 445Q1030 445 1030 457L1030 880C1030 915 1050 932 1050 960A50 50 0 0 1 950 960C950 932 970 915 970 880Z" />
+      </svg>
+      <p class="name">Christ Link Social</p>
+      <h1>Faith events and community, in person.</h1>
+      <p class="what">Find worship nights, Bible studies and retreats near you, pray with your community, and find a church to call home.</p>
+      <div class="bar" role="progressbar" aria-label="Loading"></div>
+    </div>
   </body>
 </html>

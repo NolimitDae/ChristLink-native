@@ -36,9 +36,11 @@ export default function LegalScreen() {
         <AppText variant="caption" tone="muted" style={{ marginTop: 6 }}>
           Last updated {content.updated}
         </AppText>
-        <AppText variant="callout" tone="gold" style={{ marginTop: t.space.sm, fontStyle: 'italic' }}>
-          {LEGAL_DRAFT_NOTICE}
-        </AppText>
+        {LEGAL_DRAFT_NOTICE ? (
+          <AppText variant="callout" tone="gold" style={{ marginTop: t.space.sm, fontStyle: 'italic' }}>
+            {LEGAL_DRAFT_NOTICE}
+          </AppText>
+        ) : null}
         <View style={{ height: 1, backgroundColor: t.c.goldHairline, marginVertical: t.space.md }} />
         <AppText variant="body">{content.intro}</AppText>
 

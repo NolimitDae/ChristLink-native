@@ -15,7 +15,12 @@ export interface LegalDoc {
 }
 
 export const LEGAL_UPDATED = 'November 12, 2026';
-export const LEGAL_DRAFT_NOTICE = 'Draft — pending legal review';
+/**
+ * Shown under the title of every legal page when set. Empty since 2026-11-16: these are the terms people agree to at
+ * sign-in, and a "Draft" label on live terms undermined trust. The text has not been reviewed by a lawyer yet
+ * (docs/APP-STORE.md); set a notice here again if that should be visible.
+ */
+export const LEGAL_DRAFT_NOTICE: string = '';
 
 export const LEGAL_DOC_KEYS: readonly LegalDocKey[] = ['privacy', 'terms', 'host', 'guidelines'];
 
