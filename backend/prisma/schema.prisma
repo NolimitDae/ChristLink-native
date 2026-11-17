@@ -298,6 +298,11 @@ model events {
   sales_cutoff       DateTime?           @db.Timestamptz(6)
   requires_approval  Boolean             @default(false)
   view_count         Int                 @default(0)
+  /// Shared by a member from another platform (reposts.service.ts): host_id is the sharer, organizer_name the host
+  is_repost          Boolean             @default(false)
+  source_url         String?
+  ticket_url         String?
+  organizer_name     String?
   church_events      church_events[]
   coupons            coupons[]
   event_forum_posts  event_forum_posts[]

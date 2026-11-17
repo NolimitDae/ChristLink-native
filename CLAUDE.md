@@ -98,6 +98,12 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
   `Button` and `IconButton` stay silent by default. Rows in a sheet are menu items (no chevron). Event cards open
   `openEventActions` on long press (components/EventQuickActions.tsx).
 
+## Reposts
+- A member can share an event listed on another platform (docs/REPOSTS.md): an `events` row with `is_repost = true`,
+  `host_id` = the sharer, `organizer_name`, `source_url`, `ticket_url`. Never ticketed here; "I'm going" is an RSVP.
+  Don't treat `host_*` as the organizer when `is_repost` is set, and keep the link reader's address checks
+  (`backend/src/modules/events/link-preview.ts`) when changing it.
+
 ## Store compliance (keep working)
 - In-app account deletion (Settings → Delete account → `DELETE /api/account`), keeps ticket/payment records.
 - Report + block on posts, replies, forum messages, prayers, profiles, events, churches; admin queue in `/admin`.
@@ -112,7 +118,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 
 ## Docs
 docs/LAUNCH.pdf (plan) · docs/CUTOVER.md (website switch, keeping accounts) · docs/BACKEND.md · docs/BUILDS.md (EAS builds + updates) · docs/ICONS.md · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
-docs/REVIEW.md (developer review packet) · docs/APP-STORE.md (iOS submission sheet) · docs/STORE.md (Google Play + launch checklist) · docs/WEB-PREVIEW.md (browser preview with sample data) · docs/deeplinks/
+docs/REPOSTS.md (sharing events from other platforms) · docs/REVIEW.md (developer review packet) · docs/APP-STORE.md (iOS submission sheet) · docs/STORE.md (Google Play + launch checklist) · docs/WEB-PREVIEW.md (browser preview with sample data) · docs/deeplinks/
 
 ## End of every session
 Answer "Summarize what you changed, what you didn't finish, and anything I should test" in docs/PROGRESS.md.

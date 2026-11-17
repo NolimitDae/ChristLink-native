@@ -104,6 +104,15 @@ export interface Event {
   /** Confirmed RSVPs + tickets, normalized from the API's `confirmed_rsvps`. */
   going_count: number;
   ticket_types: TicketType[];
+  /**
+   * Shared by a member from another platform, not posted by its organizer: `host_*` is the member who shared it,
+   * `organizer_name` is who runs it, and the links go to the original listing and its tickets / RSVP page.
+   * Reposts are never ticketed here; "I'm going" is an ordinary RSVP.
+   */
+  is_repost?: boolean;
+  organizer_name?: string | null;
+  source_url?: string | null;
+  ticket_url?: string | null;
 }
 
 export type PostType = 'prayer' | 'praise' | 'testimony' | 'encouragement' | 'answered';

@@ -91,6 +91,11 @@ export default function CreateEventScreen() {
     setLoadError(null);
     try {
       const ev = await getEvent(editId, token);
+      // A repost (shared from another platform) has its own short form
+      if (ev.is_repost) {
+        router.replace(`/event/repost?id=${editId}`);
+        return;
+      }
       if (user && ev.host_id !== user.id) throw new Error('You can only edit events you host.');
       setExisting(ev);
       setDraft(draftFromEvent(ev));
@@ -99,7 +104,7 @@ export default function CreateEventScreen() {
     } finally {
       setLoading(false);
     }
-  }, [editId, token, user]);
+  }, [editId, token, user, router]);
 
   useEffect(() => {
     load();

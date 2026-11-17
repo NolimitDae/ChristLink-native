@@ -1,5 +1,5 @@
 import React, { forwardRef, useState } from 'react';
-import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle, type TextInputInstance } from 'react-native';
+import { StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle, type TextInputInstance, Platform, type TextStyle } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppText } from './AppText';
 
@@ -63,6 +63,8 @@ export const Field = forwardRef<TextInputInstance, FieldProps>(function Field(
               paddingTop: multiline ? 12 : 0,
               minHeight: minHeight !== undefined ? Math.max(0, minHeight - 2) : 48,
             },
+            // Web: the box's gold border is the focus indicator; the browser's own ring doubled it inside the field
+            WEB_NO_OUTLINE,
             style,
           ]}
           {...rest}
@@ -80,6 +82,8 @@ export const Field = forwardRef<TextInputInstance, FieldProps>(function Field(
     </View>
   );
 });
+
+const WEB_NO_OUTLINE = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : null;
 
 const styles = StyleSheet.create({
   box: { flexDirection: 'row', borderWidth: 1, paddingHorizontal: 14, gap: 8 },

@@ -6,7 +6,9 @@ export function minTicketPrice(event: Pick<Event, 'is_paid' | 'ticket_types'>): 
   return Math.min(...event.ticket_types.map(t => t.price_cents));
 }
 
-export function priceLabel(event: Pick<Event, 'is_paid' | 'ticket_types'>): string {
+export function priceLabel(event: Pick<Event, 'is_paid' | 'ticket_types' | 'is_repost'>): string {
+  // A repost's price lives on the original listing; the chip says what kind of post this is instead
+  if (event.is_repost) return 'Repost';
   if (!event.is_paid) return 'Free';
   const min = minTicketPrice(event);
   if (min === null) return 'Tickets';
@@ -49,4 +51,22 @@ export function eventGlyph(event: Pick<Event, 'emoji' | 'event_type'>): string {
     outreach: '💛',
   };
   return map[(event.event_type ?? '').toLowerCase()] ?? '✝️';
+}
+
+/** Where "edit" goes: reposts have their own short form, hosted events the full editor. */
+export function editEventPath(event: Pick<Event, 'id' | 'is_repost'>): string {
+  return event.is_repost ? `/event/repost?id=${event.id}` : `/event/create?id=${event.id}`;
+}
+
+/** The link to open for tickets or RSVP on a repost's original listing, and the original post if it's a different page. */
+export function repostLinks(event: Pick<Event, 'source_url' | 'ticket_url'>): { tickets: string | null; original: string | null } {
+  const tickets = event.ticket_url || event.source_url || null;
+  const original = event.source_url && event.source_url !== tickets ? event.source_url : null;
+  return { tickets, original };
+}
+
+/** "eventbrite.com" from a listing link, for button captions. Empty when the link can't be read. */
+export function linkHost(link?: string | null): string {
+  const m = /^https?:\/\/([^/?#]+)/i.exec(link ?? '');
+  return m ? m[1].replace(/^www\./i, '').toLowerCase() : '';
 }

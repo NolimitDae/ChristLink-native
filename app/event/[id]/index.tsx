@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Linking, Pressable, RefreshControl, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, Linking, Platform, Pressable, RefreshControl, Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,8 @@ import { useToast } from '../../../contexts/ToastContext';
 import { ApiError, cancelRsvp, getEvent, getEventAttendees, getForum, getWaitlist, joinWaitlist, leaveWaitlist, rsvpToEvent, type WaitlistStatus } from '../../../lib/api';
 import { FeatureError, getOpenShifts } from '../../../lib/features';
 import { eventFormatLabel, eventTiming, formatDateShort, formatTimeRange, pluralize } from '../../../lib/format';
-import { eventShareUrl, isSoldOut, locationLabel, priceLabel } from '../../../lib/eventHelpers';
+import { editEventPath, eventShareUrl, isSoldOut, linkHost, locationLabel, priceLabel, repostLinks } from '../../../lib/eventHelpers';
+import { confirmAction } from '../../../components/admin/confirm';
 import { haptic } from '../../../lib/haptics';
 import { addToCalendar } from '../../../lib/calendar';
 import { openInMaps } from '../../../lib/maps';
@@ -22,8 +23,10 @@ import { useShareCard } from '../../../components/ShareCard';
 import { Avatar } from '../../../components/Avatar';
 import {
   AppText,
+  Badge,
   BottomSheet,
   Button,
+  Card,
   Chip,
   EmptyState,
   Glass,
@@ -192,25 +195,32 @@ export default function EventDetailScreen() {
     }
   };
 
+  /** Alert.alert shows nothing in a browser, so the website asks with the browser's own confirm. */
+  const confirmDestructive = (title: string, body: string, keep: string, go: string, onConfirm: () => void) => {
+    if (Platform.OS === 'web') {
+      confirmAction(title, body, go).then(ok => {
+        if (ok) onConfirm();
+      });
+      return;
+    }
+    Alert.alert(title, body, [
+      { text: keep, style: 'cancel' },
+      { text: go, style: 'destructive', onPress: onConfirm },
+    ]);
+  };
+
   const confirmLeaveLine = () => {
     const tk = requireAuth();
     if (!tk || !event) return;
-    Alert.alert('Leave the waitlist?', 'If you join again later, you’ll go to the back of the line.', [
-      { text: 'Stay in line', style: 'cancel' },
-      {
-        text: 'Leave',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await leaveWaitlist(event.id, tk);
-            setWaitlist(w => (w ? { ...w, joined: false, status: null, position: null } : w));
-            showToast('You left the waitlist', 'info');
-          } catch (err) {
-            showToast(err instanceof Error ? err.message : 'Could not leave the waitlist', 'error');
-          }
-        },
-      },
-    ]);
+    confirmDestructive('Leave the waitlist?', 'If you join again later, you’ll go to the back of the line.', 'Stay in line', 'Leave', async () => {
+      try {
+        await leaveWaitlist(event.id, tk);
+        setWaitlist(w => (w ? { ...w, joined: false, status: null, position: null } : w));
+        showToast('You left the waitlist', 'info');
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Could not leave the waitlist', 'error');
+      }
+    });
   };
 
   const onRefresh = async () => {
@@ -259,29 +269,29 @@ export default function EventDetailScreen() {
   const confirmCancel = () => {
     const tk = requireAuth();
     if (!tk || !event) return;
-    Alert.alert('Cancel your RSVP?', 'You can RSVP again any time while spots are open.', [
-      { text: 'Keep RSVP', style: 'cancel' },
-      {
-        text: 'Cancel RSVP',
-        style: 'destructive',
-        onPress: async () => {
-          setRsvpBusy(true);
-          try {
-            await cancelRsvp(event.id, tk);
-            attendance.setRsvp(false);
-            setEvent(e => (e ? { ...e, going_count: Math.max(0, e.going_count - 1) } : e));
-            await clearEventReminders(event.id);
-            haptic.light();
-            showToast('RSVP cancelled', 'info');
-            loadPeople();
-          } catch (err) {
-            showToast(err instanceof Error ? err.message : 'Could not cancel', 'error');
-          } finally {
-            setRsvpBusy(false);
-          }
-        },
+    const repost = !!event.is_repost;
+    confirmDestructive(
+      repost ? 'Not going any more?' : 'Cancel your RSVP?',
+      repost ? 'You can mark yourself as going again any time.' : 'You can RSVP again any time while spots are open.',
+      repost ? 'Still going' : 'Keep RSVP',
+      repost ? 'Not going' : 'Cancel RSVP',
+      async () => {
+        setRsvpBusy(true);
+        try {
+          await cancelRsvp(event.id, tk);
+          attendance.setRsvp(false);
+          setEvent(e => (e ? { ...e, going_count: Math.max(0, e.going_count - 1) } : e));
+          await clearEventReminders(event.id);
+          haptic.light();
+          showToast(repost ? 'Marked as not going' : 'RSVP cancelled', 'info');
+          loadPeople();
+        } catch (err) {
+          showToast(err instanceof Error ? err.message : 'Could not cancel', 'error');
+        } finally {
+          setRsvpBusy(false);
+        }
       },
-    ]);
+    );
   };
 
   const onPurchased = (_code: string | undefined, qty: number) => {
@@ -354,6 +364,10 @@ export default function EventDetailScreen() {
   const friends = friendsMap[event.id];
   const showBar = !cancelled && (published || isHost);
   const hostVerified = event.host_role === 'verified' || event.host_role === 'admin';
+  // Shared from another platform: the "host" is the member who shared it; tickets and sign-ups stay on the original
+  const repost = !!event.is_repost;
+  const links = repostLinks(event);
+  const openLink = (link: string) => Linking.openURL(link).catch(() => showToast('Could not open link', 'error'));
   const place = [event.address, event.city, event.state].filter(Boolean).join(', ');
 
   const mapPlace = { parts: [event.venue_name, event.address, event.city, event.state, event.zip], lat: event.lat, lng: event.lng };
@@ -414,6 +428,19 @@ export default function EventDetailScreen() {
   const renderActions = () => {
     const invite =
       token && published && !ended ? <IconButton icon="person-add-outline" label="Invite friends" onPress={() => setSheet('invite')} size={44} /> : null;
+    if (repost) {
+      if (ended) return <Button title="Event ended" variant="secondary" disabled />;
+      return (
+        <>
+          {invite}
+          {attendance.rsvp ? (
+            <Button title="Going" icon="checkmark-circle" variant="secondary" onPress={confirmCancel} loading={rsvpBusy} accessibilityHint="Opens a prompt to mark yourself as not going" />
+          ) : (
+            <Button title="I’m going" icon="checkmark" onPress={rsvp} loading={rsvpBusy} haptics={false} />
+          )}
+        </>
+      );
+    }
     if (isHost) {
       return (
         <>
@@ -464,7 +491,13 @@ export default function EventDetailScreen() {
     );
   };
 
-  const barTitle = isHost
+  const barTitle = repost
+    ? attendance.rsvp
+      ? 'You’re going'
+      : event.going_count > 0
+        ? `${pluralize(event.going_count, 'person', 'people')} going`
+        : 'Going?'
+    : isHost
     ? 'Your event'
     : soldOut && !attendance.attending && !ended
       ? event.is_paid
@@ -475,7 +508,13 @@ export default function EventDetailScreen() {
       : !event.is_paid && attendance.rsvp
         ? 'You’re going'
         : priceLabel(event);
-  const barCaption = isHost
+  const barCaption = repost
+    ? attendance.rsvp
+      ? 'Saved to your Tickets'
+      : links.tickets
+        ? `Details on ${linkHost(links.tickets)}`
+        : 'Shared by a member'
+    : isHost
     ? `${pluralize(event.going_count, 'guest')}${event.status !== 'published' ? ` · ${event.status}` : ''}`
     : soldOut && !attendance.attending && !ended
       ? onLine && waitlist?.position
@@ -522,11 +561,12 @@ export default function EventDetailScreen() {
             <AppText variant="overline" tone="gold">
               {event.event_type ?? 'Gathering'}
             </AppText>
-            {event.age_group ? (
+            {event.age_group && !repost ? (
               <AppText variant="overline" tone="faint">
                 · {event.age_group}
               </AppText>
             ) : null}
+            {repost ? <Badge label="Repost" tone="neutral" style={{ marginLeft: 4 }} /> : null}
           </View>
           <AppText variant="title1" style={{ marginTop: t.space.xxs }}>
             {event.name}
@@ -535,19 +575,27 @@ export default function EventDetailScreen() {
           <Pressable
             onPress={() => router.push(`/user/${event.host_id}`)}
             accessibilityRole="button"
-            accessibilityLabel={`Hosted by ${event.host_name ?? 'host'}${hostVerified ? ', verified host' : ''}. View profile`}
+            accessibilityLabel={`${repost ? 'Shared' : 'Hosted'} by ${event.host_name ?? (repost ? 'a member' : 'host')}${hostVerified && !repost ? ', verified host' : ''}. View profile`}
             style={({ pressed }) => [s.hostRow, { opacity: pressed ? 0.7 : 1 }]}
           >
             <Avatar uri={event.host_avatar_url} name={event.host_name} color={event.host_avatar_color} size={36} />
             <AppText variant="callout" tone="muted" style={{ flexShrink: 1 }} numberOfLines={1}>
-              Hosted by{' '}
+              {repost ? 'Shared by' : 'Hosted by'}{' '}
               <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
-                {event.host_name ?? 'a Christ Link host'}
+                {event.host_name ?? (repost ? 'a member' : 'a Christ Link host')}
               </AppText>
             </AppText>
-            {hostVerified ? <Ionicons name="checkmark-circle" size={16} color={t.c.goldText} accessibilityLabel="Verified" /> : null}
+            {hostVerified && !repost ? <Ionicons name="checkmark-circle" size={16} color={t.c.goldText} accessibilityLabel="Verified" /> : null}
             <Ionicons name="chevron-forward" size={16} color={t.c.textFaint} />
           </Pressable>
+          {repost && event.organizer_name ? (
+            <AppText variant="callout" tone="muted" style={{ marginTop: t.space.xs }}>
+              Hosted by{' '}
+              <AppText variant="bodyStrong" style={{ fontSize: 14 }}>
+                {event.organizer_name}
+              </AppText>
+            </AppText>
+          ) : null}
           {attendance.attending && !isHost && !ended && !cancelled && event.start_date ? (
             <View style={s.planRow}>
               <Chip label="Add to calendar" icon="calendar-outline" onPress={saveToCalendar} />
@@ -567,13 +615,25 @@ export default function EventDetailScreen() {
             onPress={canOpenPlace ? (online ? openJoinLink : () => openMaps()) : undefined}
             hint={online ? 'Opens the join link' : 'Opens maps'}
           />
-          <InfoTile
-            icon="pricetag-outline"
-            label="Price"
-            value={priceLabel(event)}
-            sub={event.is_paid ? (soldOut ? 'Sold out' : '+ 7% service fee') : 'No ticket needed'}
-            subTone={soldOut ? 'gold' : 'muted'}
-          />
+          {repost ? (
+            <InfoTile
+              icon="pricetag-outline"
+              label="Tickets"
+              value={links.tickets ? 'Original listing' : 'Ask the host'}
+              sub={links.tickets ? linkHost(links.tickets) : 'No link was shared'}
+              subTone={links.tickets ? 'gold' : 'muted'}
+              onPress={links.tickets ? () => openLink(links.tickets as string) : undefined}
+              hint="Opens the organizer’s page"
+            />
+          ) : (
+            <InfoTile
+              icon="pricetag-outline"
+              label="Price"
+              value={priceLabel(event)}
+              sub={event.is_paid ? (soldOut ? 'Sold out' : '+ 7% service fee') : 'No ticket needed'}
+              subTone={soldOut ? 'gold' : 'muted'}
+            />
+          )}
           <InfoTile
             icon="people-outline"
             label="Going"
@@ -581,6 +641,19 @@ export default function EventDetailScreen() {
             sub={event.max_capacity ? `of ${event.max_capacity} spots` : event.going_count === 1 ? 'person' : 'people'}
           />
         </InfoGrid>
+
+        {repost ? (
+          <View style={s.section}>
+            <Card style={{ gap: t.space.sm }}>
+              <AppText variant="callout" tone="muted">
+                {event.host_name ?? 'A member'} shared this event from another site. It’s run by {event.organizer_name ?? 'its organizer'}, not by Christ Link Social.
+                {links.tickets ? ' Tickets and official sign-ups are on the organizer’s page.' : ''}
+              </AppText>
+              {links.tickets ? <Button title={links.original ? 'Tickets or RSVP' : 'Open the original listing'} onPress={() => openLink(links.tickets as string)} fullWidth /> : null}
+              {links.original ? <Button title="Original post" variant="secondary" onPress={() => openLink(links.original as string)} fullWidth /> : null}
+            </Card>
+          </View>
+        ) : null}
 
         {online || hybrid ? (
           canSeePrivate && event.online_url ? (
@@ -655,6 +728,9 @@ export default function EventDetailScreen() {
 
       <BottomSheet visible={sheet === 'menu'} onClose={() => setSheet(null)} title="Event options">
         <ListGroup>
+          {repost && isHost ? (
+            <ListRow icon="create-outline" title="Edit or take down" subtitle="You shared this event" onPress={() => afterMenu(() => router.push(editEventPath(event) as never))} />
+          ) : null}
           {!ended && !cancelled && event.start_date ? (
             <ListRow icon="calendar-outline" title="Add to calendar" onPress={() => afterMenu(saveToCalendar)} />
           ) : null}

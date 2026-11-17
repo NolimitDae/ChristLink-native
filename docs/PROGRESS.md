@@ -1012,3 +1012,25 @@ skeletons for seconds, and "Draft — pending legal review" on the terms.
 - The instant HTML splash stays up until the welcome page is on screen, so Discover doesn't flash in between.
 - Test: private window → christlinksocial.com → welcome page → Look around first → Discover; reload stays on
   Discover. Private window → an event link → the event, no welcome page.
+
+## 2026-11-17 (later) — Reposts: share an event from another platform
+
+**Changed**
+- Any signed-in member can share an event that's listed elsewhere (docs/REPOSTS.md). "Share an event" form: paste the
+  listing link to fill in the title, date, place, description and picture; or add a flyer; or type it in. The page is
+  tagged **Repost**, shows "Shared by" and "Hosted by", links to the original listing and its tickets / RSVP, has an
+  **I'm going** button and a discussion. Sharing the same listing twice opens the existing page. 5 shares a day each.
+- Entry points: Events tab, Discover's empty state, Host tab.
+- Flyer reading (details read off a flyer photo) is built but off until `ANTHROPIC_API_KEY` is set on the API service.
+  Privacy policy updated to name Anthropic for it.
+- Fixed on the website: cancelling an RSVP or leaving a waitlist did nothing (the confirmation box doesn't exist in
+  browsers); the description box showed a second focus ring.
+- Fixed a backend test left failing by the admin dashboard change (overview fields).
+
+**Not finished / needs you**
+- Flyer reading: add an Anthropic API key in Railway → ChristLink-API → Variables as `ANTHROPIC_API_KEY`.
+- Facebook event links can't be read automatically (Facebook blocks it); the form is filled in by hand for those.
+
+**Test**
+- Events tab → Share an event → paste an Eventbrite link → Get details → Share event. Open the page signed in as
+  someone else → I'm going → Discussion. Try sharing the same link again.
