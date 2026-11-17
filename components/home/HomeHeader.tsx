@@ -44,7 +44,7 @@ export function HomeHeader() {
         hitSlop={4}
       >
         {session ? (
-          <Avatar uri={profile?.avatar_url} name={profile?.full_name} color={profile?.avatar_color} size={38} ringColor={t.c.gold} />
+          <Avatar uri={profile?.avatar_url} name={profile?.full_name} color={profile?.avatar_color} size={38} ringColor={profile?.avatar_ring_color || t.c.border} />
         ) : (
           <View style={[styles.guest, { borderColor: t.c.gold, backgroundColor: t.c.surface2 }]}>
             <Ionicons name="person-outline" size={20} color={t.c.goldText} />
