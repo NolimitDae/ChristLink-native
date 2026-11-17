@@ -70,6 +70,8 @@ Response shapes equal what the Supabase RPC / table query returned (see the SQL 
 | getVerseOfTheDay | `GET /api/verses/today?theme=` (public) → `{ reference, text, translation } \| null` |
 | listVerses / saveVerse | `GET /api/admin/verses`, `POST /api/admin/verses`, `PATCH /api/admin/verses/:id` (admin) |
 | getSettings / updateSettings | `GET /api/settings` → `UserSettings \| null`; `PATCH /api/settings` → `UserSettings` |
+| getGettingStarted | `GET /api/getting-started` → `{ steps:[{id,done}], done, total, welcome, show, celebrate, completed_at }`. Steps (photo, cover, bio, interests, church, post, event) are worked out from the person's data; `welcome` = account under 14 days old that hasn't seen the tour |
+| celebrateSetup / markWelcomed / hideSetupChecklist | `POST /api/getting-started/celebrate` → `{ celebrate }` (true once, when every step is done; also sends the `setup_complete` notification) · `POST /api/getting-started/welcomed` · `POST /api/getting-started/hide` (both → the status above) |
 | savePushToken | `POST /api/push-tokens { token, platform }` (re-assigns the token to the caller) |
 | (sign-out) | `DELETE /api/push-tokens/:token` |
 | deleteMyAccount | `DELETE /api/account` (same effect as SQL `delete_my_account()`: keeps ticket/payment rows) |

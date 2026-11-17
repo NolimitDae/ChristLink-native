@@ -23,3 +23,4 @@ export { Segmented } from './Segmented';
 export { StatTile } from './StatTile';
 export { ListRow, ListGroup } from './ListRow';
 export { Screen } from './Screen';
+export { ProgressBar } from './ProgressBar';

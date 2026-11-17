@@ -24,6 +24,8 @@ import { STRIPE_PK, SENTRY_DSN, STRIPE_MERCHANT_ID } from '../lib/constants';
 import { storage } from '../lib/storage';
 import { registerForPushNotifications, routeForNotification, useLastNotificationResponse } from '../lib/notifications';
 import { EventQuickActionsHost } from '../components/EventQuickActions';
+import { GettingStartedHost } from '../components/setup/GettingStartedHost';
+import { GettingStartedProvider } from '../contexts/GettingStartedContext';
 import { legacyHashRoute } from '../lib/legacyLinks';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
@@ -137,12 +139,14 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
+        <Stack.Screen name="get-started" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="auth" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ticket/[id]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="host/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
       </Stack>
       <OfflineBanner />
       <EventQuickActionsHost />
+      <GettingStartedHost />
     </>
   );
 }
@@ -164,7 +168,9 @@ function RootLayout() {
           <AuthProvider>
             <AppDataProvider>
               <ToastProvider>
-                <RootNavigator />
+                <GettingStartedProvider>
+                  <RootNavigator />
+                </GettingStartedProvider>
               </ToastProvider>
             </AppDataProvider>
           </AuthProvider>

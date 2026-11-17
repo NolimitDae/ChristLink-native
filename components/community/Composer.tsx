@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useGettingStarted } from '../../contexts/GettingStartedContext';
 import { createCommunityPost } from '../../lib/api';
 import { setPostType } from '../../lib/features';
 import { haptic } from '../../lib/haptics';
@@ -21,6 +22,7 @@ export function Composer({ onPosted }: { onPosted: (post: CommunityPost) => void
   const router = useRouter();
   const { session, profile } = useAuth();
   const { showToast } = useToast();
+  const { refresh: refreshSetup } = useGettingStarted();
   const [type, setType] = useState<ComposerType | null>(null);
   const [content, setContent] = useState('');
   const [busy, setBusy] = useState(false);
@@ -53,6 +55,7 @@ export function Composer({ onPosted }: { onPosted: (post: CommunityPost) => void
       const post = await createCommunityPost(parsed.data.content, session.access_token);
       await setPostType(post.id, type);
       haptic.success();
+      refreshSetup();
       onPosted({
         ...post,
         post_type: type,

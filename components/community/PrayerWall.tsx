@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
+import { useGettingStarted } from '../../contexts/GettingStartedContext';
 import { cancelReminders, scheduledReminderKeys, schedulePrayerReminders } from '../../lib/notifications';
 import { prayerReminderKey } from '../../lib/reminderTimes';
 import { FeatureError, createPrayer, deletePrayer, getPrayerWall, markPrayerAnswered, prayFor } from '../../lib/features';
@@ -46,6 +47,7 @@ export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad
   const { session } = useAuth();
   const { blockedIds, settings } = useAppData();
   const { showToast } = useToast();
+  const { refresh: refreshSetup } = useGettingStarted();
   const report = useReport();
   const [filter, setFilter] = useState<PrayerFilter>('all');
   const [prayers, setPrayers] = useState<Prayer[] | null>(null);
@@ -210,6 +212,7 @@ export function PrayerWall({ bottomPad, onScroll = onScrollTabBar }: { bottomPad
       setComposeOpen(false);
       showToast('Your prayer is on the wall', 'success');
       load();
+      refreshSetup();
     } catch (err) {
       showToast(errorMessage(err, 'Could not share prayer'), 'error');
     } finally {

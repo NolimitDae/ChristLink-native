@@ -11,6 +11,7 @@ import type {
   Church,
   ChurchRecurringEvent,
   FriendActivity,
+  GettingStarted,
   FriendsGoing,
   PersonSummary,
   PostType,
@@ -100,6 +101,24 @@ export async function getSettings(): Promise<UserSettings | null> {
 
 export function updateSettings(patch: Partial<Omit<UserSettings, 'user_id'>>): Promise<UserSettings> {
   return call<UserSettings>('updateSettings', '/api/settings', body(patch, 'PATCH'));
+}
+
+// ── Getting started (welcome tour + setup checklist) ─────────
+export function getGettingStarted(): Promise<GettingStarted> {
+  return call<GettingStarted>('getGettingStarted', '/api/getting-started');
+}
+
+/** Only the first call after every step is done answers `celebrate: true` (and sends the "all set" notification). */
+export function celebrateSetup(): Promise<{ celebrate: boolean }> {
+  return call<{ celebrate: boolean }>('celebrateSetup', '/api/getting-started/celebrate', body({}));
+}
+
+export function markWelcomed(): Promise<GettingStarted> {
+  return call<GettingStarted>('markWelcomed', '/api/getting-started/welcomed', body({}));
+}
+
+export function hideSetupChecklist(): Promise<GettingStarted> {
+  return call<GettingStarted>('hideSetupChecklist', '/api/getting-started/hide', body({}));
 }
 
 export function acceptTerms(): Promise<UserSettings> {

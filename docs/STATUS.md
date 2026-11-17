@@ -22,6 +22,7 @@ must be applied (development project first).
 | Refund request / host approve / host refund | Done | app/ticket/[id].tsx, app/event/[id]/sales.tsx | /request-refund, /refund-requests, /tickets/:id/refund |
 | Check-in scanner (tickets + volunteer passes) | Done | app/host/scan.tsx | /api/tickets/verify, /attendance; serve_check_in() |
 | Create/edit event (4 steps, live preview, listing fee + promo, schedule) | Done | app/event/create.tsx | /api/events, /ticket-types, /charge-listing-fee, /validate-listing-promo, /publish, /schedule |
+| New-account welcome tour, setup checklist with progress bar (Notifications), thank-you celebration | Done | app/get-started.tsx, components/setup/*, contexts/GettingStartedContext.tsx, lib/gettingStarted.ts | /getting-started |
 | Reposts: share an event from another platform (link import, flyer, Repost tag, I'm going, forum) | Done; flyer reading needs `ANTHROPIC_API_KEY` | app/event/repost.tsx, lib/repost.ts, docs/REPOSTS.md | /reposts, /reposts/preview, /reposts/flyer |
 | Host dashboard, sales view with sparkline, payouts, ID verification | Done (payouts embedded from Stripe) | app/(tabs)/host.tsx, app/event/[id]/sales.tsx, app/host/* | /sales, /connect/account-session, /connect-onboard, /connect-sync, /identity/* |
 | Community feed (types, double-tap Amen, replies, share) | Done | app/(tabs)/community.tsx, components/community/* | /api/community-posts*, set_post_type() (migration) |
