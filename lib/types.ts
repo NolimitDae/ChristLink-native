@@ -438,6 +438,22 @@ export interface UserSettings {
   onboarding_completed_at: string | null;
 }
 
+/** A new account's setup checklist (GET /api/getting-started; backend getting-started.service.ts). */
+export type SetupStepId = 'photo' | 'cover' | 'bio' | 'interests' | 'church' | 'post' | 'event';
+
+export interface GettingStarted {
+  steps: { id: SetupStepId; done: boolean }[];
+  done: number;
+  total: number;
+  /** Show the welcome tour (a new account that hasn't seen it). */
+  welcome: boolean;
+  /** Show the checklist (not finished, not hidden). */
+  show: boolean;
+  /** Everything is done and the thank-you hasn't been shown: claim it with celebrateSetup(). */
+  celebrate: boolean;
+  completed_at: string | null;
+}
+
 export type NotificationType =
   | 'tickets'
   | 'reminders'

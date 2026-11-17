@@ -5,7 +5,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/AppDataContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../../contexts/ToastContext';
-import { getEvent, getMyEvents, updateProfile, uploadAvatar, uploadBanner } from '../../lib/api';
+import { useGettingStarted } from '../../contexts/GettingStartedContext';
+import { getEvent, getMyEvents } from '../../lib/api';
 import { getChurch, getHoursServed } from '../../lib/features';
 import { logger } from '../../lib/logger';
 import type { Event } from '../../lib/types';
@@ -17,7 +18,7 @@ import { ProfileHero } from '../../components/profile/ProfileHero';
 import { StatsRow } from '../../components/profile/StatsRow';
 import { PinnedPrayerCard, ProfileVerseCard } from '../../components/profile/VerseCard';
 import { ProfileDetails } from '../../components/profile/ProfileDetails';
-import { pickImageDataUrl } from '../../components/profile/pickImage';
+import { uploadProfileImage } from '../../components/profile/uploadProfileImage';
 import { useTabBarClearance } from '../../components/TabBar';
 
 type Tab = 'saved' | 'hosting';
@@ -35,6 +36,7 @@ export default function MyProfileScreen() {
   const { session, profile, refreshProfile } = useAuth();
   const { savedIds, settings } = useAppData();
   const { showToast } = useToast();
+  const { refresh: refreshSetup } = useGettingStarted();
   const { open: openShare, sheet: shareSheet } = useShareCard();
   const token = session?.access_token;
 
@@ -92,12 +94,9 @@ export default function MyProfileScreen() {
   const pick = async (kind: 'banner' | 'avatar') => {
     if (!token) return;
     try {
-      const dataUrl = await pickImageDataUrl(kind === 'banner' ? [3, 1] : [1, 1]);
-      if (!dataUrl) return;
-      setUploading(kind);
-      const { url } = kind === 'banner' ? await uploadBanner(dataUrl, token) : await uploadAvatar(dataUrl, token);
-      await updateProfile(kind === 'banner' ? { banner_url: url } : { avatar_url: url }, token);
+      if (!(await uploadProfileImage(kind, token, () => setUploading(kind)))) return;
       await refreshProfile();
+      refreshSetup();
       showToast(kind === 'banner' ? 'Banner updated' : 'Photo updated', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Upload failed', 'error');
@@ -245,7 +244,10 @@ export default function MyProfileScreen() {
       </Animated.ScrollView>
       <CompactTitleBar title="Profile" scrollY={scrollY} onPress={scrollToTop} />
 
-      <EditProfileSheet visible={editing} onClose={() => setEditing(false)} profile={profile} token={token} onSaved={refreshProfile} />
+      <EditProfileSheet visible={editing} onClose={() => setEditing(false)} profile={profile} token={token} onSaved={async () => {
+          await refreshProfile();
+          refreshSetup();
+        }} />
       {shareSheet}
     </Screen>
   );

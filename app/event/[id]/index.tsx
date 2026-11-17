@@ -7,6 +7,7 @@ import * as Clipboard from 'expo-clipboard';
 import { makeStyles, useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
+import { useGettingStarted } from '../../../contexts/GettingStartedContext';
 import { ApiError, cancelRsvp, getEvent, getEventAttendees, getForum, getWaitlist, joinWaitlist, leaveWaitlist, rsvpToEvent, type WaitlistStatus } from '../../../lib/api';
 import { FeatureError, getOpenShifts } from '../../../lib/features';
 import { eventFormatLabel, eventTiming, formatDateShort, formatTimeRange, pluralize } from '../../../lib/format';
@@ -74,6 +75,7 @@ export default function EventDetailScreen() {
   const { session, user } = useAuth();
   const token = session?.access_token;
   const { showToast } = useToast();
+  const { refresh: refreshSetup } = useGettingStarted();
   const report = useReport();
   const shareCard = useShareCard();
   const attendance = useAttendance(id);
@@ -258,6 +260,7 @@ export default function EventDetailScreen() {
       setEvent(e => (e ? { ...e, going_count: e.going_count + 1 } : e));
       celebrate('You’re going!');
       loadPeople();
+      refreshSetup();
     } catch (err) {
       haptic.error();
       showToast(err instanceof Error ? err.message : 'Could not RSVP', 'error');
@@ -298,6 +301,7 @@ export default function EventDetailScreen() {
     setEvent(e => (e ? { ...e, going_count: e.going_count + qty } : e));
     attendance.refresh();
     celebrate('Ticket purchased');
+    refreshSetup();
   };
 
   const afterMenu = (fn: () => void) => {

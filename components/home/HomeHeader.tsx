@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useGettingStarted } from '../../contexts/GettingStartedContext';
+import { setupPending } from '../../lib/gettingStarted';
 import { firstName, greeting } from '../../lib/format';
 import { Avatar } from '../Avatar';
 import { AppText, IconButton } from '../ui';
@@ -12,6 +14,7 @@ export function HomeHeader() {
   const t = useTheme();
   const router = useRouter();
   const { session, profile } = useAuth();
+  const { status: setup } = useGettingStarted();
   const first = firstName(profile?.full_name);
   const title = session ? `${greeting()}${first ? `, ${first}` : ''}` : 'Welcome';
   const dateLine = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -27,7 +30,12 @@ export function HomeHeader() {
         </AppText>
       </View>
       {session ? (
-        <IconButton icon="notifications-outline" label="Notifications" onPress={() => router.push('/notifications')} />
+        <IconButton
+          icon="notifications-outline"
+          label={setupPending(setup) ? 'Notifications, setup steps waiting' : 'Notifications'}
+          badge={setupPending(setup)}
+          onPress={() => router.push('/notifications')}
+        />
       ) : null}
       <Pressable
         onPress={() => router.push(session ? '/profile' : '/auth')}

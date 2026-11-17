@@ -1042,3 +1042,28 @@ skeletons for seconds, and "Draft — pending legal review" on the terms.
 - Fixed after the live check: a Facebook event link redirected to Facebook's login page and the form was filled
   with "Facebook". A redirect to a sign-in page now counts as unreadable, so the person sees the "fill it in
   yourself" note instead.
+
+## 2026-11-17 (later) — Welcome tour, setup checklist and thank-you
+
+**Changed**
+- **Welcome tour** (`app/get-started.tsx`): a new account (made in the last 14 days) sees it once, right after its
+  first sign-in, on the phone and the website: Welcome → events → prayer → church and serving → "Let's set up your
+  account" (Start setup / Later). Each page has its own picture and a gold light burst.
+- **Setup checklist** at the top of Notifications, with a progress bar: profile photo, cover photo, bio, interests,
+  home church, a first post (Community post or prayer request) and an RSVP (or ticket). Each row opens the place where
+  it's done; photo and cover open the picker right there, bio and interests open the profile editor. Steps tick
+  themselves (the server checks what the person has actually done, so it's right on every device). "Hide checklist"
+  hides it. The bell on Discover gets a dot while steps are waiting.
+- **Thank-you** when the last step is done: a popup with confetti, a gold burst and a check that pops in ("You're all
+  set, {name}!"), a success haptic, and a "You're all set up" notification (also pushed to the phone). Shown once per
+  account. Reduce Motion: no confetti, a plain fade.
+- Older accounts see the checklist too if their profile isn't complete; an account that was already complete is
+  marked done quietly (no thank-you for nothing).
+- Backend: `GET /api/getting-started`, `POST /api/getting-started/{celebrate,welcomed,hide}`; migration
+  `20261118000000_getting_started` (4 date columns on `user_settings`).
+
+**Test**
+- Sign in with a new email → the tour opens → Start setup → Notifications shows "Get set up 0/7". Add a photo from
+  the checklist, write a bio, pick a hobby, choose a church (Events → Churches), post in Community, RSVP to an event
+  → the thank-you pops up. Reload: no second thank-you, checklist gone, "You're all set up" in the list.
+- Turn on Reduce Motion and repeat the last step on a second test account: no confetti.

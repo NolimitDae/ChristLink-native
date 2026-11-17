@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
+import { useGettingStarted } from '../contexts/GettingStartedContext';
 import { makeStyles, useTheme } from '../contexts/ThemeContext';
 import { getNotifications, markAllNotificationsRead } from '../lib/api';
 import { timeAgo } from '../lib/format';
@@ -10,6 +11,8 @@ import type { AppNotification } from '../lib/types';
 import { AppText, EmptyState, ListSkeleton, Screen } from '../components/ui';
 import { AppIcon, type AppIconName } from '../components/icons/AppIcon';
 import { LoadError } from '../components/LoadError';
+import { EditProfileSheet } from '../components/profile/EditProfileSheet';
+import { SetupChecklist } from '../components/setup/SetupChecklist';
 import { loadFailure, type LoadFailure } from '../lib/loadFailure';
 
 type IconName = AppIconName;
@@ -28,14 +31,24 @@ const ICONS: Record<string, IconName> = {
   waitlist_spot: 'ticket-outline',
   serve_message: 'serve-outline',
   church_claim: 'church-outline',
+  setup_complete: 'checkmark-circle-outline',
 };
 
 export default function NotificationsScreen() {
   const t = useTheme();
   const s = useStyles();
   const router = useRouter();
-  const { session } = useAuth();
+  const { session, profile, refreshProfile } = useAuth();
+  const { status: setup, refresh: refreshSetup } = useGettingStarted();
+  const [editing, setEditing] = useState(false);
   const token = session?.access_token;
+
+  // Steps are often finished on another screen: look again each time this one comes back into view
+  useFocusEffect(
+    useCallback(() => {
+      refreshSetup();
+    }, [refreshSetup]),
+  );
   const [items, setItems] = useState<AppNotification[] | null>(null);
   const [failed, setFailed] = useState<LoadFailure | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -60,7 +73,7 @@ export default function NotificationsScreen() {
 
   const refresh = async () => {
     setRefreshing(true);
-    await load();
+    await Promise.all([load(), refreshSetup()]);
     setRefreshing(false);
   };
 
@@ -80,13 +93,17 @@ export default function NotificationsScreen() {
   return (
     <Screen back title="Notifications">
       {items === null && !failed ? (
-        <ListSkeleton rows={5} />
+        <>
+          {setup?.show ? <SetupChecklist status={setup} onEditProfile={() => setEditing(true)} /> : null}
+          <ListSkeleton rows={5} />
+        </>
       ) : (
         <FlatList
           data={items ?? []}
           keyExtractor={n => n.id}
           contentContainerStyle={{ paddingBottom: 48 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
+          ListHeaderComponent={setup?.show ? <SetupChecklist status={setup} onEditProfile={() => setEditing(true)} /> : undefined}
           ListEmptyComponent={
             failed ? (
               <LoadError failure={failed} what="notifications" art="bell" onRetry={load} />
@@ -122,6 +139,18 @@ export default function NotificationsScreen() {
           )}
         />
       )}
+      {profile && token ? (
+        <EditProfileSheet
+          visible={editing}
+          onClose={() => setEditing(false)}
+          profile={profile}
+          token={token}
+          onSaved={async () => {
+            await refreshProfile();
+            await refreshSetup();
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }
