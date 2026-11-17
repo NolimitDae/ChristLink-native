@@ -24,6 +24,8 @@ app's web build (`web/server.mjs`, Railway service ChristLink-Web; docs/CUTOVER.
 - Website: the same app exported for the browser (`npm run web:build`). Native-only packages map to `web/shims/` on web
   (metro.config.js): Stripe.js payments, localStorage sessions, browser date/time inputs, no-op notifications, no map.
   Keep new native-only modules web-safe (add a shim or a `Platform.OS === 'web'` path) and run `npm run test:web`.
+  First visit: a signed-out visitor who opens the home page gets `app/welcome.tsx` once per browser (the gate is in
+  `app/_layout.tsx`; links to any other page open that page). The phone apps use `app/onboarding.tsx` instead.
   First paint: `public/index.html` shows a plain-HTML explainer until the first screen is ready (`lib/bootShell.ts`);
   `web/server.mjs` preloads the fonts; Discover and Events start from the last list seen (`lib/viewCache.ts`, public
   data only). Keep the web script small: check what a new dependency adds before importing it in shared code.
