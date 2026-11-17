@@ -43,6 +43,8 @@ if (SENTRY_DSN) {
   });
 }
 
+const locationHash = () => (globalThis as { location?: { hash?: string } }).location?.hash ?? '';
+
 function RootNavigator() {
   const t = useTheme();
   const { session, loading } = useAuth();
@@ -62,9 +64,25 @@ function RootNavigator() {
   useEffect(() => {
     if (loading || onboardingDone === null) return;
     SplashScreen.hideAsync().catch(() => undefined);
-    dismissBootShell();
     const first = segments[0] as string | undefined;
-    // The website doesn't force onboarding (it's mostly phone permissions); visitors land where the link points.
+    // Website: a new, signed-out visitor who opens the home page gets the welcome page first (app/welcome.tsx), once
+    // per browser. Links to an event, church or any other page open that page; the phone onboarding below (mostly
+    // permissions) isn't used on the web.
+    if (Platform.OS === 'web' && !onboardingDone && !session && pathname === '/' && !legacyHashRoute(locationHash())) {
+      // Re-check storage first: leaving the welcome page saves the flag and navigates in the same moment, so this
+      // state can still say "not done" and would send the visitor straight back.
+      storage.getOnboardingDone().then(done => {
+        if (done) {
+          setOnboardingDone(true);
+          dismissBootShell();
+          return;
+        }
+        // The HTML splash stays up until the welcome page itself is on screen, so Discover never flashes in between
+        router.replace('/welcome');
+      });
+      return;
+    }
+    dismissBootShell();
     if (!onboardingDone && Platform.OS !== 'web' && first !== 'onboarding' && first !== 'auth' && first !== 'legal') {
       // Re-check storage first: finishing onboarding saves the flag and navigates in the same moment, so this
       // state can still say "not done" and would send people through onboarding a second time.
@@ -88,7 +106,7 @@ function RootNavigator() {
   // Old website links (christlinksocial.com/#event/<id>) open the matching page of the new web app
   useEffect(() => {
     if (Platform.OS !== 'web' || loading) return;
-    const to = legacyHashRoute((globalThis as { location?: { hash?: string } }).location?.hash ?? '');
+    const to = legacyHashRoute(locationHash());
     if (to) router.replace(to as never);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
@@ -118,6 +136,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.c.bg }, animation: 'slide_from_right' }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="onboarding" options={{ animation: 'fade', gestureEnabled: false }} />
+        <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
         <Stack.Screen name="auth" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ticket/[id]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="host/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />

@@ -8,7 +8,7 @@ import { useFriendsGoing } from '../../hooks/useFriendsGoing';
 import { useShareCard } from '../../components/ShareCard';
 import { CompactTitleBar, EmptyState, SectionHeader, useCollapsingTitle } from '../../components/ui';
 import { HomeHeader } from '../../components/home/HomeHeader';
-import { GuestHero } from '../../components/home/GuestHero';
+import { GuestHeader } from '../../components/home/GuestHero';
 import { VerseCard } from '../../components/home/VerseCard';
 import { WeekStrip } from '../../components/home/WeekStrip';
 import { TonightCarousel } from '../../components/home/TonightCarousel';
@@ -133,7 +133,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={t.c.gold} colors={[t.c.gold]} />}
       >
-        {session || authLoading ? <HomeHeader /> : <GuestHero />}
+        {session || authLoading ? <HomeHeader /> : <GuestHeader />}
 
         <View style={{ paddingHorizontal: t.space.md }}>
           <VerseCard

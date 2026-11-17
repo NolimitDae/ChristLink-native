@@ -1001,3 +1001,14 @@ skeletons for seconds, and "Draft — pending legal review" on the terms.
 **Test**
 - Open christlinksocial.com in a private window: the explainer appears at once, then the hero; Join free → sign-in;
   Browse events → Events tab. Reload: no loading skeletons. Terms page: no Draft line.
+
+## 2026-11-17 — Website welcome page
+
+- The introduction is now its own page (`/welcome`): logo, "Faith events and community, in person.", three points,
+  **Join free** and **Look around first**. A signed-out visitor who opens christlinksocial.com for the first time
+  lands there, once per browser; either button goes on to Discover (Join free opens sign-in over it). Links to an
+  event, church, legal page or any other page still open that page. Signed-in people never see it.
+- Discover for signed-out visitors is back to a small header (logo, tagline, Join free) instead of the long intro.
+- The instant HTML splash stays up until the welcome page is on screen, so Discover doesn't flash in between.
+- Test: private window → christlinksocial.com → welcome page → Look around first → Discover; reload stays on
+  Discover. Private window → an event link → the event, no welcome page.
