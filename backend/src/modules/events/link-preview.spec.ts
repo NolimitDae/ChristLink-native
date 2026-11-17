@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { decodeEntities, isPrivateAddress, normalizeListingUrl, parseEventPage, publicHttpUrl } from './link-preview';
+import { decodeEntities, isPrivateAddress, isSignInWall, normalizeListingUrl, parseEventPage, publicHttpUrl } from './link-preview';
 
 const page = (head: string) => `<!doctype html><html><head>${head}</head><body></body></html>`;
 
@@ -36,6 +36,15 @@ describe('link preview: which links may be fetched', () => {
     expect(normalizeListingUrl('https://www.Eventbrite.com/e/worship-123/?utm_source=ig&aff=x#tickets')).toBe('https://eventbrite.com/e/worship-123');
     expect(normalizeListingUrl('https://eventbrite.com/e/worship-123')).toBe('https://eventbrite.com/e/worship-123');
     expect(normalizeListingUrl('https://site.org/events?id=7&fbclid=abc')).toBe('https://site.org/events?id=7');
+  });
+
+  it('spots a redirect to a sign-in page', () => {
+    for (const u of ['https://www.facebook.com/login', 'https://www.facebook.com/login.php?next=x', 'https://www.instagram.com/accounts/login/', 'https://site.org/signin', 'https://m.facebook.com/checkpoint/']) {
+      expect(isSignInWall(new URL(u))).toBe(true);
+    }
+    for (const u of ['https://eventbrite.com/e/worship-night-123', 'https://church.org/events/login-free-lunch', 'https://site.org/blog/authentic-worship']) {
+      expect(isSignInWall(new URL(u))).toBe(false);
+    }
   });
 });
 

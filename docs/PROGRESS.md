@@ -1034,3 +1034,11 @@ skeletons for seconds, and "Draft — pending legal review" on the terms.
 **Test**
 - Events tab → Share an event → paste an Eventbrite link → Get details → Share event. Open the page signed in as
   someone else → I'm going → Discussion. Try sharing the same link again.
+
+**Live on production (checked 2026-11-17)**
+- Migration `20261117000000_event_reposts` applied on staging and production; API, worker and website deployed.
+- Real Eventbrite listings filled in completely (title, organizer, date and time with time zone, venue, address,
+  description, picture copied to our storage). An internal network address was refused.
+- Fixed after the live check: a Facebook event link redirected to Facebook's login page and the form was filled
+  with "Facebook". A redirect to a sign-in page now counts as unreadable, so the person sees the "fill it in
+  yourself" note instead.
