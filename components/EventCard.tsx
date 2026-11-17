@@ -60,6 +60,16 @@ function SaveHeart({ eventId, onImage }: { eventId: string; onImage?: boolean })
 function PriceChip({ event }: { event: Event }) {
   const t = useTheme();
   const free = !event.is_paid;
+  // Reposts (shared from another platform) carry a neutral "Repost" tag where the price would be
+  if (event.is_repost) {
+    return (
+      <View style={[styles.price, { backgroundColor: t.c.surface2, borderColor: t.c.borderStrong }]}>
+        <AppText variant="caption" color={t.c.text} style={{ fontSize: 12 }}>
+          {priceLabel(event)}
+        </AppText>
+      </View>
+    );
+  }
   return (
     <View style={[styles.price, { backgroundColor: free ? t.c.successDim : t.c.gold, borderColor: free ? t.c.success : t.c.gold }]}>
       <AppText variant="caption" color={free ? t.c.success : t.c.onGold} style={{ fontSize: 12 }}>

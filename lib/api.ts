@@ -598,6 +598,57 @@ export function uploadEventImage(dataUrl: string, type: 'cover' | 'gallery', acc
   return apiFetch('/api/upload-event-image', json({ dataUrl, type }), accessToken);
 }
 
+// ── Reposts: sharing an event that's listed on another platform ──
+export interface RepostInput {
+  name: string;
+  organizer_name: string;
+  start_date: string;
+  end_date?: string | null;
+  format: 'in_person' | 'online' | 'hybrid';
+  description?: string | null;
+  event_type?: string | null;
+  venue_name?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  online_url?: string | null;
+  cover_url?: string | null;
+  source_url?: string | null;
+  ticket_url?: string | null;
+}
+
+/** What a listing link gave us. Dates are as the page wrote them (no time zone means the visitor's local time). */
+export type RepostPreview = Partial<Omit<RepostInput, 'start_date' | 'end_date'>> & { start_date?: string; end_date?: string; source_url: string };
+
+export async function createRepost(payload: RepostInput, accessToken: string): Promise<Event> {
+  const res = await apiFetch<{ event: RawEvent }>('/api/reposts', json(payload), accessToken);
+  return normalizeEvent(res.event);
+}
+
+export async function updateRepost(id: string, payload: Partial<RepostInput>, accessToken: string): Promise<Event> {
+  const res = await apiFetch<{ event: RawEvent }>(`/api/reposts/${id}`, json(payload, 'PATCH'), accessToken);
+  return normalizeEvent(res.event);
+}
+
+/**
+ * A flyer photo for the share form: stored as the event's picture and, when flyer reading is set up on the server,
+ * read for its details (`read` is false when nothing could be filled in).
+ */
+export function uploadRepostFlyer(dataUrl: string, accessToken: string): Promise<{ preview: Partial<RepostPreview> & { cover_url: string }; read: boolean }> {
+  return apiFetch('/api/reposts/flyer', json({ dataUrl }), accessToken);
+}
+
+/** Takes a repost down (the member who shared it). Nothing was sold, so it is simply removed. */
+export function removeRepost(id: string, accessToken: string): Promise<{ success: boolean; action: string }> {
+  return apiFetch(`/api/events/${id}`, { method: 'DELETE' }, accessToken);
+}
+
+export async function previewRepostLink(url: string, accessToken: string): Promise<RepostPreview> {
+  const res = await apiFetch<{ preview: RepostPreview }>('/api/reposts/preview', json({ url }), accessToken);
+  return res.preview;
+}
+
 export function createTicketType(
   payload: { event_id: string; name: string; price_cents: number; quantity?: number },
   accessToken: string,

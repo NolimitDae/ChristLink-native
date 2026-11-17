@@ -207,7 +207,8 @@ export class EventsService {
     // Soft-cancel instead of deleting when tickets exist, so payment records survive (server.js: published only)
     const hasTickets = !!(await this.prisma.tickets.findFirst({ where: { event_id: id }, select: { id: true } }));
     await this.cache.bump('events');
-    if (ev.status === 'published' || hasTickets) {
+    // Taking a repost down removes it: "cancelled" would wrongly say the organizer's event is off
+    if ((ev.status === 'published' && !ev.is_repost) || hasTickets) {
       await this.prisma.events.update({ where: { id }, data: { status: 'cancelled' } });
       return { success: true, action: 'cancelled' };
     }
@@ -384,6 +385,8 @@ export class EventsService {
     if (!event_id || !name || !price_cents) throw new BadRequestException('event_id, name, price_cents required.');
     const ev = isUuid(event_id) ? await this.prisma.events.findFirst({ where: { id: event_id, host_id: userId } }) : null;
     if (!ev) throw new ForbiddenException('Not your event.');
+    // A repost points at tickets on another platform; nothing is sold for it here
+    if (ev.is_repost) throw new BadRequestException('Tickets can’t be sold for a shared event. Link to the original instead.');
     if (typeof name !== 'string') throw new BadRequestException('Invalid name.');
     const price = toInt(price_cents, 'price_cents')!;
     if (price < 0) throw new BadRequestException('price_cents must be zero or more.');

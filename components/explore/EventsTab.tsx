@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View, type ListRenderItemInfo, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useFriendsGoing } from '../../hooks/useFriendsGoing';
 import { getEvents, type GetEventsParams } from '../../lib/api';
@@ -9,7 +10,7 @@ import { EVENT_TYPES, type EventType } from '../../lib/constants';
 import { isWithinDays } from '../../lib/format';
 import type { Event } from '../../lib/types';
 import { EventCard } from '../EventCard';
-import { Appear, Chip, ChipRow, EmptyState, Field, ListSkeleton } from '../ui';
+import { Appear, AppText, Button, Chip, ChipRow, EmptyState, Field, ListSkeleton } from '../ui';
 import { errorMessage } from '../church/churchFormat';
 import { useUserLocation, type Coords } from './useUserLocation';
 import { onScrollTabBar } from '../../lib/tabBarMotion';
@@ -27,6 +28,7 @@ function toEventType(v?: string): EventType {
 
 export function EventsTab({ initialType, bottomInset, onScroll = onScrollTabBar }: { initialType?: string; bottomInset: number; onScroll?: (e: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const t = useTheme();
+  const router = useRouter();
   const location = useUserLocation('Turn on location to see worship nights, studies and gatherings within about 50 miles of you.');
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -176,8 +178,24 @@ export function EventsTab({ initialType, bottomInset, onScroll = onScrollTabBar 
                 onAction={clearAll}
               />
             ) : (
-              <EmptyState art="calendar" title="No upcoming events" body="Check back soon — new gatherings are added every week." />
+              <EmptyState
+                art="calendar"
+                title="No upcoming events"
+                body="Know of a gathering listed on another site? Share it here so others can find it."
+                actionLabel="Share an event"
+                onAction={() => router.push('/event/repost')}
+              />
             )
+          }
+          ListFooterComponent={
+            visible.length > 0 ? (
+              <View style={{ alignItems: 'center', paddingTop: t.space.lg }}>
+                <AppText variant="callout" tone="muted" align="center">
+                  Know of an event that isn’t here?
+                </AppText>
+                <Button title="Share an event" variant="ghost" onPress={() => router.push('/event/repost')} />
+              </View>
+            ) : undefined
           }
         />
       )}

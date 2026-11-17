@@ -173,9 +173,9 @@ export default function HomeScreen() {
           <EmptyState
             art="calendar"
             title="No upcoming events yet"
-            body="New gatherings appear here as hosts publish them. Have something in mind?"
-            actionLabel="Host an event"
-            onAction={() => router.push('/(tabs)/host')}
+            body="Know of a gathering listed on another site? Share it here so others can find it. Hosting your own starts from your profile."
+            actionLabel="Share an event"
+            onAction={() => router.push('/event/repost')}
           />
         ) : (
           sections.categories.map(s => (

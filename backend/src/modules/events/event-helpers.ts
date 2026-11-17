@@ -87,7 +87,8 @@ export function eventsWithDetails(where: Prisma.Sql, tail: Prisma.Sql = Prisma.e
       coalesce((select json_agg(t.* order by t.sort_order, t.price_cents) from public.ticket_types t
                  where t.event_id = e.id), '[]'::json) as ticket_types,
       (select count(*) from public.rsvps r where r.event_id = e.id and r.status = 'confirmed')::int as confirmed_rsvps,
-      e.rsvp_count, e.requires_approval, e.view_count, e.sales_cutoff
+      e.rsvp_count, e.requires_approval, e.view_count, e.sales_cutoff,
+      e.is_repost, e.source_url, e.ticket_url, e.organizer_name
     from public.events e join public.profiles p on p.id = e.host_id
     where ${where} ${tail}`;
 }

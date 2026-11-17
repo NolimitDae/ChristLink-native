@@ -203,6 +203,8 @@ describe('Social + admin (e2e)', () => {
     expect(ov.body).toEqual({
       total_users: expect.any(Number), published_events: expect.any(Number), total_events: expect.any(Number),
       total_revenue_cents: expect.any(Number), total_tickets_sold: expect.any(Number), total_rsvps: expect.any(Number),
+      total_platform_fee_cents: expect.any(Number), new_users_7d: expect.any(Number), open_reports: expect.any(Number),
+      pending_verifications: expect.any(Number),
     });
     const su = await http.get('/api/admin/signups').set(auth(boss)).expect(200);
     expect(su.body.data[0]).toEqual({ day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), signups: expect.any(Number) });

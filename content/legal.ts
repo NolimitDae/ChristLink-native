@@ -14,7 +14,7 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
-export const LEGAL_UPDATED = 'November 12, 2026';
+export const LEGAL_UPDATED = 'November 17, 2026';
 /**
  * Shown under the title of every legal page when set. Empty since 2026-11-16: these are the terms people agree to at
  * sign-in, and a "Draft" label on live terms undermined trust. The text has not been reviewed by a lawyer yet
@@ -77,7 +77,7 @@ const privacy: LegalDoc = {
       heading: '5. Who we share information with',
       paragraphs: [
         'Other members see your public profile and the content you post. Hosts see the name and email of people who RSVP or buy tickets to their events so they can manage attendance and contact guests about the event.',
-        'Service providers process data on our behalf under contract: Railway (servers and database), Cloudflare (file storage and website delivery), Stripe (payments and host payouts), Resend (sign-in codes and other email), Sentry (crash reports) and Expo (push notification delivery). Supabase, which hosted our previous website, keeps a copy of data from before November 2026 only until we delete it after the move to our new systems.',
+        'Service providers process data on our behalf under contract: Railway (servers and database), Cloudflare (file storage and website delivery), Stripe (payments and host payouts), Resend (sign-in codes and other email), Sentry (crash reports), Expo (push notification delivery) and Anthropic (when you share an event from another site and add a flyer, the flyer image may be sent to Anthropic to read the event details from it; nothing else about you is sent). Supabase, which hosted our previous website, keeps a copy of data from before November 2026 only until we delete it after the move to our new systems.',
         'We may disclose information if required by law, to protect the safety of any person, or as part of a merger or acquisition, in which case this policy will continue to apply.',
       ],
     },

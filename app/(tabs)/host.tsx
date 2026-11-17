@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { duplicateEvent, getEventSales, getHostStats, getMyEvents, publishEvent } from '../../lib/api';
 import { formatCents, salesPerDay, summarizeSales } from '../../lib/fees';
+import { editEventPath } from '../../lib/eventHelpers';
 import { haptic } from '../../lib/haptics';
 import { pluralize } from '../../lib/format';
 import type { Event, HostStats, Ticket } from '../../lib/types';
@@ -93,7 +94,9 @@ export default function HostTab() {
       setLoading(false);
       return;
     }
-    const list = evRes.value.events;
+    // Events shared from another site aren't hosted here (no check-in, sales or volunteers): they live on the
+    // sharer's profile and their own page
+    const list = evRes.value.events.filter(e => !e.is_repost);
     setEvents(list);
     setLoading(false);
     loaded.current = true;
@@ -142,7 +145,7 @@ export default function HostTab() {
     } catch (err) {
       haptic.error();
       Alert.alert('Couldn’t publish', errorMessage(err), [
-        { text: 'Open editor', onPress: () => router.push(`/event/create?id=${e.id}`) },
+        { text: 'Open editor', onPress: () => router.push(editEventPath(e) as never) },
         { text: 'OK', style: 'cancel' },
       ]);
     } finally {
@@ -169,7 +172,7 @@ export default function HostTab() {
   const rowActions = (e: Event): RowAction[] => {
     const salesAction: RowAction = { key: 'sales', label: 'Sales', icon: 'stats-chart-outline', onPress: () => router.push(`/event/${e.id}/sales`) };
     const checkin: RowAction = { key: 'checkin', label: 'Check-in', icon: 'qr-code-outline', onPress: () => router.push(`/host/scan?eventId=${e.id}`), primary: true };
-    const edit: RowAction = { key: 'edit', label: 'Edit', icon: 'create-outline', onPress: () => router.push(`/event/create?id=${e.id}`) };
+    const edit: RowAction = { key: 'edit', label: 'Edit', icon: 'create-outline', onPress: () => router.push(editEventPath(e) as never) };
     if (tab === 'drafts') return [{ key: 'publish', label: 'Publish', icon: 'rocket-outline', onPress: () => runPublish(e), primary: true }, edit];
     if (tab === 'past') return [salesAction, { key: 'dup', label: 'Duplicate', icon: 'copy-outline', onPress: () => runDuplicate(e) }];
     return [checkin, salesAction, edit];
@@ -264,6 +267,7 @@ export default function HostTab() {
 
         <View style={s.section}>
           <Button title="Create an event" icon="add-circle-outline" size="lg" fullWidth onPress={() => router.push('/event/create')} />
+          <Button title="Share an event from another site" variant="ghost" fullWidth onPress={() => router.push('/event/repost')} style={{ marginTop: t.space.xs }} />
         </View>
 
         <SectionHeader title="My events" style={{ marginTop: t.space.sm }} />
@@ -326,7 +330,7 @@ export default function HostTab() {
         {sheetEvent ? (
           <View style={s.sheetGroup}>
             <ListRow icon="eye-outline" title="View event page" onPress={() => { setSheetEvent(null); router.push(`/event/${sheetEvent.id}`); }} />
-            <ListRow icon="create-outline" title="Edit details" onPress={() => { setSheetEvent(null); router.push(`/event/create?id=${sheetEvent.id}`); }} />
+            <ListRow icon="create-outline" title="Edit details" onPress={() => { setSheetEvent(null); router.push(editEventPath(sheetEvent) as never); }} />
             {sheetEvent.status !== 'draft' ? (
               <ListRow icon="stats-chart-outline" title="Sales & guests" onPress={() => { setSheetEvent(null); router.push(`/event/${sheetEvent.id}/sales`); }} />
             ) : null}
