@@ -59,7 +59,9 @@ export function ProfileHero({ profile, editable, onPickBanner, onPickAvatar, upl
           accessibilityLabel={editable ? 'Change profile photo' : `${profile.full_name}'s photo`}
           style={s.avatarWrap}
         >
-          <Avatar uri={profile.avatar_url} name={profile.full_name} color={profile.avatar_color} size={AVATAR} ringColor={t.c.gold} ringWidth={3} />
+          {/* The ring the person picked in Edit profile; "No ring" keeps a background-coloured edge so the photo still
+              stands off the banner and the layout doesn't move */}
+          <Avatar uri={profile.avatar_url} name={profile.full_name} color={profile.avatar_color} size={AVATAR} ringColor={profile.avatar_ring_color || t.c.bg} ringWidth={3} />
           {editable ? (
             <View style={s.avatarEdit}>
               {uploading === 'avatar' ? <ActivityIndicator color={t.c.onGold} size="small" /> : <Ionicons name="camera" size={14} color={t.c.onGold} />}

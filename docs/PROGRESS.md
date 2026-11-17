@@ -1067,3 +1067,10 @@ skeletons for seconds, and "Draft — pending legal review" on the terms.
   the checklist, write a bio, pick a hobby, choose a church (Events → Churches), post in Community, RSVP to an event
   → the thank-you pops up. Reload: no second thank-you, checklist gone, "You're all set up" in the list.
 - Turn on Reduce Motion and repeat the last step on a second test account: no confetti.
+
+## 2026-11-17 (later) — Profile ring fix
+
+- The ring picked in Edit profile was saved but never drawn: the profile header and the Discover header always used
+  gold. Both now use the chosen ring (other people's profiles too). "No ring" shows a background-coloured edge on the
+  profile header so the photo still stands off the banner, and a hairline in the Discover header.
+- Test: Profile → Edit profile → pick a ring → Save → the ring on your profile and the Discover avatar changes.
