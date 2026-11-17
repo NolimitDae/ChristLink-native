@@ -175,7 +175,13 @@ async function safeGet(start: URL, maxBytes: number, accept: string): Promise<Fe
 export async function fetchListingHtml(url: URL): Promise<{ html: string; finalUrl: URL }> {
   const res = await safeGet(url, MAX_HTML_BYTES, 'text/html,application/xhtml+xml');
   if (!/html|xml/i.test(res.type)) throw new Error('not a page');
+  if (res.url.pathname !== url.pathname && isSignInWall(res.url)) throw new Error('redirected to a sign-in page');
   return { html: res.body.toString('utf8'), finalUrl: res.url };
+}
+
+/** A page that a listing redirected to because it wants a sign-in (Facebook, Instagram, ...): nothing to read there. */
+export function isSignInWall(url: URL): boolean {
+  return /(^|\/)(log-?in|sign-?in|signup|auth|checkpoint|accounts\/login)(\/|\.php|$)/i.test(url.pathname);
 }
 
 /** Downloads a listing's picture as a data URL (for our own storage; listings' image links expire or block hotlinks). */
