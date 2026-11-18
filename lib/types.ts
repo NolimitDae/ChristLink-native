@@ -1,3 +1,5 @@
+import type { RepeatRule } from './eventRepeat';
+
 export type Role = 'attendee' | 'host' | 'admin' | 'verified';
 
 export interface HostStripeAccount {
@@ -113,6 +115,30 @@ export interface Event {
   organizer_name?: string | null;
   source_url?: string | null;
   ticket_url?: string | null;
+  /** One date of a repeating free event (docs/RECURRING.md); index 0 is the first date. */
+  series_id?: string | null;
+  series_index?: number | null;
+  /** The series' rule while it is still repeating (null once it has ended). */
+  repeat_rule?: RepeatRule | null;
+  /** Event page only: the rule and the next dates. */
+  series?: EventSeries | null;
+}
+
+export interface EventSeries {
+  id: string;
+  rule: RepeatRule;
+  timezone: string;
+  until: string | null;
+  ended: boolean;
+  dates: { id: string; start_date: string; status: string }[];
+}
+
+export interface RepeatPayload {
+  rule: RepeatRule;
+  /** IANA zone of the host's device, so dates stay at the same local time. */
+  timezone: string;
+  /** Last day it may happen ("YYYY-MM-DD"), or null to keep going (up to a year). */
+  until?: string | null;
 }
 
 export type PostType = 'prayer' | 'praise' | 'testimony' | 'encouragement' | 'answered';
@@ -211,6 +237,10 @@ export interface CreateEventPayload {
   cover_url?: string;
   gallery_urls?: string[];
   publish_at?: string;
+  /** Make it repeat (free events only); null removes the rule while the first date is a draft. */
+  repeat?: RepeatPayload | null;
+  /** With an edit to one date of a series: make the same changes to this and all later dates. */
+  apply_to?: 'series';
 }
 
 export interface EventsResponse {

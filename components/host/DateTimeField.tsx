@@ -15,6 +15,8 @@ interface DateTimeFieldProps {
   suggested?: () => Date;
   error?: string | null;
   hint?: string;
+  /** 'date' picks a day only (the time of `value` is kept). */
+  mode?: 'datetime' | 'date';
 }
 
 export function nextRoundHour(offsetHours = 24): Date {
@@ -23,7 +25,7 @@ export function nextRoundHour(offsetHours = 24): Date {
   return d;
 }
 
-export function DateTimeField({ label, value, onChange, minimumDate, suggested, error, hint }: DateTimeFieldProps) {
+export function DateTimeField({ label, value, onChange, minimumDate, suggested, error, hint, mode = 'datetime' }: DateTimeFieldProps) {
   const t = useTheme();
   const s = useStyles();
   const base = () => value ?? suggested?.() ?? nextRoundHour();
@@ -38,6 +40,10 @@ export function DateTimeField({ label, value, onChange, minimumDate, suggested, 
         if (e.type !== 'set' || !date) return;
         const picked = new Date(date);
         picked.setHours(start.getHours(), start.getMinutes(), 0, 0);
+        if (mode === 'date') {
+          onChange(picked);
+          return;
+        }
         DateTimePickerAndroid.open({
           value: picked,
           mode: 'time',
@@ -52,7 +58,13 @@ export function DateTimeField({ label, value, onChange, minimumDate, suggested, 
     });
   };
 
-  const display = value ? `${formatDateShort(value.toISOString())} · ${formatTime(value.toISOString())}` : 'Choose date & time';
+  const display = value
+    ? mode === 'date'
+      ? formatDateShort(value.toISOString())
+      : `${formatDateShort(value.toISOString())} · ${formatTime(value.toISOString())}`
+    : mode === 'date'
+      ? 'Choose a date'
+      : 'Choose date & time';
 
   return (
     <View style={{ gap: 6 }}>
@@ -66,7 +78,7 @@ export function DateTimeField({ label, value, onChange, minimumDate, suggested, 
           <View style={{ flex: 1 }} />
           <DateTimePicker
             value={value}
-            mode="datetime"
+            mode={mode}
             display="compact"
             minimumDate={minimumDate}
             themeVariant={t.scheme}

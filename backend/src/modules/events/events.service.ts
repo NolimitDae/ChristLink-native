@@ -16,6 +16,7 @@ import {
   toDate,
   toInt,
 } from './event-helpers';
+import { applyToUpcoming, createSeries, parseRepeat, seriesSummary, syncDraftSeries, topUpSeries } from './series';
 
 type Body = Record<string, unknown>;
 type EventRow = Record<string, unknown> & { id: string; lat: number | null; lng: number | null };
@@ -93,6 +94,14 @@ export class EventsService {
       where.push(Prisma.sql`(e.end_date >= now() or e.start_date >= now() or (e.start_date is null and e.end_date is null))`);
     }
     if (is_paid !== undefined) where.push(Prisma.sql`e.is_paid = ${is_paid === 'true'}`);
+    if (!host_id) {
+      // A repeating event is listed once, at its next date; the event page shows the others
+      where.push(Prisma.sql`(e.series_id is null or e.id = (
+        select e2.id from public.events e2
+        where e2.series_id = e.series_id and e2.status = 'published'
+          and (e2.end_date >= now() or e2.start_date >= now())
+        order by e2.start_date asc, e2.id limit 1))`);
+    }
     if (search) {
       const like = `%${search}%`;
       where.push(Prisma.sql`(e.name ilike ${like} or e.description ilike ${like} or e.city ilike ${like} or e.event_type ilike ${like})`);
@@ -119,19 +128,28 @@ export class EventsService {
       const viewer = viewerId ? await this.prisma.profiles.findUnique({ where: { id: viewerId }, select: { role: true } }) : null;
       if (viewer?.role !== 'admin') throw new NotFoundException('Event not found.');
     }
+    if (ev.series_id) ev.series = await seriesSummary(this.prisma, ev.series_id as string, ev.status === 'draft');
     return ev;
   }
 
   async create(userId: string, body: Body) {
     if (!body.name) throw new BadRequestException('Event name is required.');
     const f = pickEventFields(body, [...PATCH_FIELDS, 'is_paid', 'absorb_stripe_fee', 'publish_at']);
+    const repeat = parseRepeat(body.repeat, (f.start_date as Date | null) ?? null);
+    if (repeat) {
+      if (f.is_paid) throw new BadRequestException('Repeating events are free to attend. Make it a one-time event to sell tickets.');
+      if (!f.start_date) throw new BadRequestException('Choose when it starts before making it repeat.');
+    }
     await this.prisma.profiles.updateMany({ where: { id: userId, role: 'attendee' }, data: { role: 'host' } });
     // Geocode the address for Near Me radius search
     const coords = f.format !== 'online' ? await geocodeAddress([f.address, f.city, f.state, f.zip]) : null;
     return dbBadRequest(
-      this.prisma.events.create({
+      this.prisma.$transaction(async (tx) => {
+        const series = repeat ? await createSeries(tx, userId, repeat, f.start_date as Date, (f.end_date as Date | null) ?? null) : null;
+        return tx.events.create({
         data: {
           ...f,
+          ...(series ? { series_id: series.id, series_index: 0 } : {}),
           host_id: userId,
           name: f.name as string,
           cover_url: (f.cover_url as string) || null,
@@ -147,6 +165,7 @@ export class EventsService {
           lat: coords?.lat || null,
           lng: coords?.lng || null,
         },
+        });
       }),
     );
   }
@@ -166,10 +185,25 @@ export class EventsService {
     return ev;
   }
 
+  /**
+   * `repeat` changes the rule while a repeating event's first date is still a draft. `apply_to: 'series'` also makes the
+   * same changes to every later date of a live series (series.ts applyToUpcoming).
+   */
   async update(id: string, userId: string, body: Body) {
-    await this.ownEvent(id, userId);
+    const ev = await this.ownEvent(id, userId);
     const updates: Record<string, unknown> = pickEventFields(body, PATCH_FIELDS);
-    if (!Object.keys(updates).length) throw new BadRequestException('No fields to update.');
+    const repeat = body.repeat === undefined ? undefined : parseRepeat(body.repeat, (updates.start_date as Date | undefined) ?? ev.start_date);
+    if (!Object.keys(updates).length && repeat === undefined) throw new BadRequestException('No fields to update.');
+    if (repeat !== undefined) {
+      if (ev.status !== 'draft' || (ev.series_index ?? 0) !== 0) {
+        throw new BadRequestException('Repeat settings can only change before the event is published. Use “Cancel this and later dates” to stop it.');
+      }
+      if (repeat && ev.is_paid) throw new BadRequestException('Repeating events are free to attend. Make it a one-time event to sell tickets.');
+    }
+    if (!Object.keys(updates).length) {
+      await syncDraftSeries(this.prisma, ev, repeat);
+      return this.prisma.events.findUnique({ where: { id } });
+    }
     const addrChanged = ['address', 'city', 'state', 'zip', 'venue_name'].some((k) => body[k] !== undefined);
     if (addrChanged && body.format !== 'online') {
       const coords = await geocodeAddress([body.address, body.city, body.state, body.zip]);
@@ -177,6 +211,13 @@ export class EventsService {
     }
     updates.updated_at = new Date();
     const updated = await dbBadRequest(this.prisma.events.update({ where: { id }, data: updates }));
+    if (ev.status === 'draft' && (ev.series_index ?? 0) === 0 && (ev.series_id || repeat)) {
+      await syncDraftSeries(this.prisma, updated, repeat);
+    } else if (body.apply_to === 'series' && ev.series_id) {
+      const { updated_at: _u, ...fields } = updates;
+      const others = await applyToUpcoming(this.prisma, { ...ev, series_id: ev.series_id }, fields);
+      for (const o of others.ids) if ('max_capacity' in updates) void this.waitlist.spotsOpened(o);
+    }
     await this.cache.bump('events');
     if ('max_capacity' in updates) void this.waitlist.spotsOpened(id);
     return updated;
@@ -187,6 +228,8 @@ export class EventsService {
     if (ev.status !== 'draft') throw new BadRequestException('Only draft events can be published.');
     if (ev.is_paid && !ev.listing_fee_paid) throw new HttpException('Listing fee required.', 402);
     const updated = await this.prisma.events.update({ where: { id }, data: { status: 'published', publish_at: null } });
+    // A repeating event's other dates appear as soon as its first date is live
+    if (updated.series_id) await topUpSeries(this.prisma, updated.series_id);
     await this.cache.bump('events');
     void notifyFollowersOfEvent(this.prisma, this.notifications, updated);
     return updated;
@@ -202,18 +245,44 @@ export class EventsService {
     return this.prisma.events.update({ where: { id }, data: { publish_at: date } });
   }
 
-  async remove(id: string, userId: string) {
+  /**
+   * `scope: 'following'` on a repeating event cancels this date and every later one, and stops new dates being added.
+   */
+  async remove(id: string, userId: string, scope?: string) {
     const ev = await this.ownEvent(id, userId);
+    if (scope === 'following' && ev.series_id) {
+      const from = ev.start_date ?? new Date();
+      const later = await this.prisma.events.findMany({
+        where: { series_id: ev.series_id, status: { in: ['published', 'draft'] }, start_date: { gte: from } },
+        select: { id: true },
+      });
+      await this.prisma.event_series.update({ where: { id: ev.series_id }, data: { ended_at: new Date() } });
+      let cancelled = 0;
+      for (const o of later) {
+        await this.removeOne(o.id);
+        cancelled++;
+      }
+      await this.cache.bump('events');
+      return { success: true, action: 'series_ended', dates: cancelled };
+    }
+    const action = await this.removeOne(id);
+    await this.cache.bump('events');
+    return { success: true, action };
+  }
+
+  /** Cancels (published, or has tickets) or deletes (draft) one event. */
+  private async removeOne(id: string): Promise<'cancelled' | 'deleted'> {
+    const ev = await this.prisma.events.findUniqueOrThrow({ where: { id } });
     // Soft-cancel instead of deleting when tickets exist, so payment records survive (server.js: published only)
     const hasTickets = !!(await this.prisma.tickets.findFirst({ where: { event_id: id }, select: { id: true } }));
-    await this.cache.bump('events');
-    // Taking a repost down removes it: "cancelled" would wrongly say the organizer's event is off
-    if ((ev.status === 'published' && !ev.is_repost) || hasTickets) {
+    // Taking a repost down removes it: "cancelled" would wrongly say the organizer's event is off. A date of a live
+    // series is cancelled, never deleted, so its place in the series isn't filled again.
+    if ((ev.status === 'published' && !ev.is_repost) || hasTickets || (ev.series_id && (ev.series_index ?? 0) > 0)) {
       await this.prisma.events.update({ where: { id }, data: { status: 'cancelled' } });
-      return { success: true, action: 'cancelled' };
+      return 'cancelled';
     }
     await this.prisma.events.delete({ where: { id } });
-    return { success: true, action: 'deleted' };
+    return 'deleted';
   }
 
   async toggleVisibility(id: string, userId: string) {
@@ -229,7 +298,7 @@ export class EventsService {
   async duplicate(id: string, userId: string) {
     const ev = await this.hostedEvent(id, userId);
     // Fresh draft: no ids, timestamps, listing payment, counters or schedule
-    const { id: _id, created_at, updated_at, listing_fee_paid, listing_payment_id, ...rest } = ev;
+    const { id: _id, created_at, updated_at, listing_fee_paid, listing_payment_id, series_id: _s, series_index: _si, ...rest } = ev;
     const event = await this.prisma.$transaction(async (tx) => {
       const copy = await tx.events.create({
         data: {
@@ -387,6 +456,7 @@ export class EventsService {
     if (!ev) throw new ForbiddenException('Not your event.');
     // A repost points at tickets on another platform; nothing is sold for it here
     if (ev.is_repost) throw new BadRequestException('Tickets can’t be sold for a shared event. Link to the original instead.');
+    if (ev.series_id) throw new BadRequestException('Repeating events are free to attend. Make it a one-time event to sell tickets.');
     if (typeof name !== 'string') throw new BadRequestException('Invalid name.');
     const price = toInt(price_cents, 'price_cents')!;
     if (price < 0) throw new BadRequestException('price_cents must be zero or more.');

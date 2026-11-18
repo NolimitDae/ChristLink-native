@@ -260,6 +260,23 @@ model event_waitlist {
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// A repeating free event: the rule and the host's time zone; its dates are events rows (series.ts)
+model event_series {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  host_id          String    @db.Uuid
+  rule             String
+  timezone         String
+  anchor_start     DateTime  @db.Timestamptz(6)
+  duration_minutes Int?
+  until            DateTime? @db.Timestamptz(6)
+  ended_at         DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  events           events[]
+  profiles         profiles  @relation(fields: [host_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_event_series_active", where: raw("(ended_at IS NULL)"))
+}
+
 model events {
   id                 String              @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   host_id            String              @db.Uuid
@@ -303,6 +320,9 @@ model events {
   source_url         String?
   ticket_url         String?
   organizer_name     String?
+  /// One date of a repeating free event (series.ts); series_index 0 is the first date
+  series_id          String?             @db.Uuid
+  series_index       Int?
   church_events      church_events[]
   coupons            coupons[]
   event_forum_posts  event_forum_posts[]
@@ -310,6 +330,7 @@ model events {
   event_promoters    event_promoters[]
   event_waitlist     event_waitlist[]
   profiles           profiles            @relation(fields: [host_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  event_series       event_series?       @relation(fields: [series_id], references: [id], onUpdate: NoAction)
   refund_requests    refund_requests[]
   rsvps              rsvps[]
   serve_roles        serve_roles[]
@@ -317,6 +338,7 @@ model events {
   ticket_types       ticket_types[]
   tickets            tickets[]
 
+  @@unique([series_id, series_index], map: "events_series_index_key", where: raw("(series_id IS NOT NULL)"))
   @@index([city])
   @@index([start_date], map: "events_date_idx")
   @@index([name(ops: raw("gin_trgm_ops"))], map: "events_name_trgm", type: Gin)
@@ -479,6 +501,7 @@ model profiles {
   event_promoters                                                     event_promoters[]
   event_waitlist                                                      event_waitlist[]
   events                                                              events[]
+  event_series                                                        event_series[]
   host_stripe_accounts                                                host_stripe_accounts?
   identity_verifications_identity_verifications_reviewed_byToprofiles identity_verifications[] @relation("identity_verifications_reviewed_byToprofiles")
   identity_verifications_identity_verifications_user_idToprofiles     identity_verifications?  @relation("identity_verifications_user_idToprofiles")

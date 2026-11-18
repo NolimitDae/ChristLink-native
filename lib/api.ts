@@ -285,6 +285,18 @@ export async function updateEvent(id: string, payload: Partial<CreateEventPayloa
   return normalizeEvent(res.event ?? res);
 }
 
+/**
+ * A host cancels their event (deleted instead while it is still a draft). For a repeating event, `following` cancels
+ * this date and every later one and stops new dates being added.
+ */
+export function cancelEvent(
+  id: string,
+  accessToken: string,
+  scope?: 'following',
+): Promise<{ success: boolean; action: 'cancelled' | 'deleted' | 'series_ended'; dates?: number }> {
+  return apiFetch(`/api/events/${id}${scope ? `?scope=${scope}` : ''}`, { method: 'DELETE' }, accessToken);
+}
+
 export function publishEvent(id: string, accessToken: string): Promise<unknown> {
   return apiFetch(`/api/events/${id}/publish`, { method: 'PATCH' }, accessToken);
 }

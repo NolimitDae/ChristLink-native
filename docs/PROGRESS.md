@@ -1074,3 +1074,23 @@ skeletons for seconds, and "Draft — pending legal review" on the terms.
   gold. Both now use the chosen ring (other people's profiles too). "No ring" shows a background-coloured edge on the
   profile header so the photo still stands off the banner, and a hairline in the Discover header.
 - Test: Profile → Edit profile → pick a ring → Save → the ring on your profile and the Discover avatar changes.
+
+## 2026-11-18 — Repeating free events
+
+**Changed**
+- Hosts can make a free event repeat: **Weekly**, **Every 2 weeks** or **Monthly** (same weekday: "2nd Tuesday",
+  "last Friday"), with no end date or until a chosen day (up to a year). Set on the When & where step (docs/RECURRING.md).
+- Each date is its own event (own RSVPs, reminders, check-in, forum). Publishing the first date adds three months of
+  dates; an hourly job keeps adding the next ones. Times stay the same local time across daylight saving.
+- Lists show a repeating event once, at its next date, tagged "Free · Weekly". The event page has a Repeats card with
+  chips for the next dates. The host's Upcoming list shows it once ("Weekly · 12 more dates").
+- Editing a date asks "This date only" or "This and later dates". Host menu: "Cancel this date" and "Cancel this and
+  later dates" (stops it repeating).
+- Repeating events can't be paid/ticketed.
+- Backend: migration `20261119000000_event_series` (table `event_series`, `events.series_id/series_index`), job
+  `event-series` (hourly at :25).
+
+**Test**
+- Host → Create event → When & where → Repeats: Weekly → Publish. Events shows it once with "Free · Weekly"; the
+  event page lists the next dates. RSVP to one date and check the others still say 0 going. Manage → change the
+  description → "This and later dates" → later dates change. Menu → Cancel this date / Cancel this and later dates.

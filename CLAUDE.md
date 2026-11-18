@@ -104,6 +104,12 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
   Don't treat `host_*` as the organizer when `is_repost` is set, and keep the link reader's address checks
   (`backend/src/modules/events/link-preview.ts`) when changing it.
 
+## Repeating events
+- Free events can repeat (docs/RECURRING.md): `event_series` holds the rule and host time zone; each date is its own
+  `events` row (`series_id`, `series_index`), created 90 days ahead by `backend/src/modules/events/series.ts` (on publish
+  and by the hourly `event-series` job). Public lists show a series once (its next date). Never ticketed. Church service
+  times use `lib/recurrence.ts`; event repeats use `lib/eventRepeat.ts` (don't mix them).
+
 ## Store compliance (keep working)
 - In-app account deletion (Settings → Delete account → `DELETE /api/account`), keeps ticket/payment records.
 - Report + block on posts, replies, forum messages, prayers, profiles, events, churches; admin queue in `/admin`.
@@ -118,7 +124,7 @@ Never commit directly to `main`. Work on a branch, open a PR, test on a phone, t
 
 ## Docs
 docs/LAUNCH.pdf (plan) · docs/CUTOVER.md (website switch, keeping accounts) · docs/BACKEND.md · docs/BUILDS.md (EAS builds + updates) · docs/ICONS.md · docs/STATUS.md (feature status) · docs/PROGRESS.md (session log) · docs/PAYMENTS.md · docs/SECURITY.md ·
-docs/REPOSTS.md (sharing events from other platforms) · docs/REVIEW.md (developer review packet) · docs/APP-STORE.md (iOS submission sheet) · docs/STORE.md (Google Play + launch checklist) · docs/WEB-PREVIEW.md (browser preview with sample data) · docs/deeplinks/
+docs/REPOSTS.md (sharing events from other platforms) · docs/RECURRING.md (repeating events) · docs/REVIEW.md (developer review packet) · docs/APP-STORE.md (iOS submission sheet) · docs/STORE.md (Google Play + launch checklist) · docs/WEB-PREVIEW.md (browser preview with sample data) · docs/deeplinks/
 
 ## End of every session
 Answer "Summarize what you changed, what you didn't finish, and anything I should test" in docs/PROGRESS.md.

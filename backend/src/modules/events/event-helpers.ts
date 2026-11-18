@@ -2,6 +2,7 @@ import { BadRequestException, Logger } from '@nestjs/common';
 import { Prisma } from '../../../prisma/generated/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { topUpSeries } from './series';
 
 const log = new Logger('Events');
 
@@ -88,8 +89,10 @@ export function eventsWithDetails(where: Prisma.Sql, tail: Prisma.Sql = Prisma.e
                  where t.event_id = e.id), '[]'::json) as ticket_types,
       (select count(*) from public.rsvps r where r.event_id = e.id and r.status = 'confirmed')::int as confirmed_rsvps,
       e.rsvp_count, e.requires_approval, e.view_count, e.sales_cutoff,
-      e.is_repost, e.source_url, e.ticket_url, e.organizer_name
+      e.is_repost, e.source_url, e.ticket_url, e.organizer_name,
+      e.series_id, e.series_index, es.rule as repeat_rule
     from public.events e join public.profiles p on p.id = e.host_id
+      left join public.event_series es on es.id = e.series_id and es.ended_at is null
     where ${where} ${tail}`;
 }
 
@@ -117,7 +120,7 @@ export async function notifyFollowersOfEvent(
 export async function publishDueEvents(prisma: PrismaService, notifications: NotificationsService) {
   const due = await prisma.events.findMany({
     where: { status: 'draft', publish_at: { lte: new Date() } },
-    select: { id: true, name: true, host_id: true, is_paid: true, listing_fee_paid: true },
+    select: { id: true, name: true, host_id: true, is_paid: true, listing_fee_paid: true, series_id: true },
   });
   let published = 0;
   for (const ev of due) {
@@ -130,6 +133,8 @@ export async function publishDueEvents(prisma: PrismaService, notifications: Not
     if (!count) continue;
     published++;
     await notifyFollowersOfEvent(prisma, notifications, ev);
+    // A repeating event's other dates appear once its first date is live
+    if (ev.series_id) await topUpSeries(prisma, ev.series_id).catch((e) => log.error(`series ${ev.series_id}: ${(e as Error).message}`));
   }
   return published;
 }

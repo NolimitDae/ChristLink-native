@@ -32,9 +32,10 @@ export class EventsController {
     return this.events.update(id, userId, body ?? {});
   }
 
+  /** `?scope=following` on a repeating event: this date and every later one (series.ts). */
   @Delete('events/:id')
-  remove(@Param('id') id: string, @CurrentUser('id') userId: string) {
-    return this.events.remove(id, userId);
+  remove(@Param('id') id: string, @CurrentUser('id') userId: string, @Query('scope') scope?: string) {
+    return this.events.remove(id, userId, scope);
   }
 
   @Patch('events/:id/publish')
