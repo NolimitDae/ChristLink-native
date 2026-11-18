@@ -22,6 +22,8 @@ interface HostEventRowProps {
   actions: RowAction[];
   onOpen: () => void;
   onMore: () => void;
+  /** A repeating event: "Weekly · 12 more dates". */
+  repeatNote?: string;
 }
 
 export function statusBadge(e: Event): { label: string; tone: 'neutral' | 'gold' | 'success' | 'danger' } {
@@ -32,7 +34,7 @@ export function statusBadge(e: Event): { label: string; tone: 'neutral' | 'gold'
   return { label: 'Published', tone: 'success' };
 }
 
-export function HostEventRow({ event, actions, onOpen, onMore }: HostEventRowProps) {
+export function HostEventRow({ event, actions, onOpen, onMore, repeatNote }: HostEventRowProps) {
   const t = useTheme();
   const s = useStyles();
   const badge = statusBadge(event);
@@ -56,6 +58,11 @@ export function HostEventRow({ event, actions, onOpen, onMore }: HostEventRowPro
           <AppText variant="caption" tone="gold">
             {stat} · {priceLabel(event)}
           </AppText>
+          {repeatNote ? (
+            <AppText variant="caption" tone="muted">
+              {repeatNote}
+            </AppText>
+          ) : null}
         </View>
         <IconButton icon="ellipsis-horizontal" label={`More actions for ${event.name}`} size={36} tone="plain" onPress={onMore} />
       </Pressable>

@@ -24,7 +24,7 @@ import { LISTING_FEE_CENTS } from '../../lib/fees';
 import { haptic } from '../../lib/haptics';
 import type { Event } from '../../lib/types';
 import { EventCard } from '../../components/EventCard';
-import { AppText, Button, EmptyState, LightBurst, Screen, Skeleton, SkeletonGroup } from '../../components/ui';
+import { AppText, Button, EmptyState, LightBurst, Screen, Segmented, Skeleton, SkeletonGroup } from '../../components/ui';
 import { StepProgress } from '../../components/host/StepProgress';
 import { CreateBasics } from '../../components/host/CreateBasics';
 import { CreateWhenWhere } from '../../components/host/CreateWhenWhere';
@@ -37,6 +37,7 @@ import {
   draftToPayload,
   draftToPreviewEvent,
   emptyDraft,
+  repeatPayload,
   errorsForStep,
   firstErrorStep,
   ticketCents,
@@ -75,6 +76,8 @@ export default function CreateEventScreen() {
   const [cardComplete, setCardComplete] = useState(false);
   const [busy, setBusy] = useState<Busy>(null);
   const [burst, setBurst] = useState(0);
+  // Editing one date of a live repeating event: change just it, or it and every later date
+  const [applyTo, setApplyTo] = useState<'one' | 'series'>('series');
   const scrollRef = useRef<ScrollViewInstance>(null);
   const createdId = useRef<string | null>(null);
   // Draft tier key → server tier, so a retry after a partial failure or declined fee never duplicates tiers.
@@ -114,6 +117,9 @@ export default function CreateEventScreen() {
 
   const allErrors = useMemo(() => validateDraft(draft, { editing }), [draft, editing]);
   const visibleErrors = useMemo(() => (attempted.has(step) ? errorsForStep(allErrors, step) : {}), [allErrors, attempted, step]);
+
+  const laterDates = existing?.series?.dates.filter(d => d.status !== 'cancelled' && existing.start_date && d.start_date > existing.start_date).length ?? 0;
+  const seriesLive = !!existing?.series_id && !(existing.status === 'draft' && (existing.series_index ?? 0) === 0) && laterDates > 0;
 
   const acct = profile?.host_stripe_accounts?.[0];
   const payoutsReady = !!acct?.payouts_enabled;
@@ -191,7 +197,12 @@ export default function CreateEventScreen() {
 
   const persist = async (): Promise<string> => {
     if (!token) throw new Error('Please sign in again.');
-    const payload = draftToPayload(draft);
+    const repeat = repeatPayload(draft, existing ?? (createdId.current ? { status: 'draft', series_id: null, series_index: 0 } : null));
+    const payload = {
+      ...draftToPayload(draft),
+      ...(repeat !== undefined ? { repeat } : {}),
+      ...(seriesLive && applyTo === 'series' ? { apply_to: 'series' as const } : {}),
+    };
     let id = existing?.id ?? createdId.current;
     if (id) {
       await updateEvent(id, payload, token);
@@ -353,7 +364,7 @@ export default function CreateEventScreen() {
           </AppText>
 
           {step === 0 && token ? <CreateBasics draft={draft} update={update} errors={visibleErrors} editing={editing} token={token} /> : null}
-          {step === 1 ? <CreateWhenWhere draft={draft} update={update} errors={visibleErrors} editing={editing} /> : null}
+          {step === 1 ? <CreateWhenWhere draft={draft} update={update} errors={visibleErrors} editing={editing} existing={existing} /> : null}
           {step === 2 ? (
             <CreateTickets
               draft={draft}
@@ -367,6 +378,26 @@ export default function CreateEventScreen() {
               payoutsReady={payoutsReady}
               hasStripeAccount={!!acct?.stripe_account_id}
             />
+          ) : null}
+          {step === 3 && seriesLive ? (
+            <View style={{ gap: t.space.xs, marginBottom: t.space.lg }}>
+              <AppText variant="label" tone="muted">
+                Apply changes to
+              </AppText>
+              <Segmented
+                options={[
+                  { value: 'one', label: 'This date only' },
+                  { value: 'series', label: 'This and later dates' },
+                ]}
+                value={applyTo}
+                onChange={v => setApplyTo(v as 'one' | 'series')}
+              />
+              <AppText variant="caption" tone="faint">
+                {applyTo === 'series'
+                  ? `Updates this date and the ${laterDates} after it. A new time moves them all to that time.`
+                  : 'Only this date changes; the others stay as they are.'}
+              </AppText>
+            </View>
           ) : null}
           {step === 3 ? (
             <CreateReview

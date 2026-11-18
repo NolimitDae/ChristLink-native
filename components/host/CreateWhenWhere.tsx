@@ -2,17 +2,25 @@ import React from 'react';
 import { View } from 'react-native';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { EVENT_FORMATS } from '../../lib/constants';
-import { Field, ListRow } from '../ui';
+import { REPEAT_CHOICES, REPEAT_CHOICE_LABELS, repeatSentence, type RepeatChoice } from '../../lib/eventRepeat';
+import type { Event } from '../../lib/types';
+import { AppText, Field, ListRow } from '../ui';
 import { ChipWrap, Label } from './CreateBasics';
 import { DateTimeField, nextRoundHour } from './DateTimeField';
 import type { StepProps } from './eventDraft';
 
 const FORMAT_LABELS = { in_person: 'In person', online: 'Online', hybrid: 'Hybrid' } as const;
 
-export function CreateWhenWhere({ draft, update, errors, editing }: StepProps) {
+/**
+ * `existing` is the event being edited: once a repeating event's first date is published, its rule can't change here
+ * (later dates are edited with "This and later dates" on save, and ended from the event page).
+ */
+export function CreateWhenWhere({ draft, update, errors, editing, existing }: StepProps & { existing?: Event | null }) {
   const t = useTheme();
   const s = useStyles();
   const now = new Date();
+  const repeatLocked = !!existing && !(existing.status === 'draft' && (existing.series_index ?? 0) === 0);
+  const repeating = draft.repeat !== 'none';
   const showPlace = draft.format === 'in_person' || draft.format === 'hybrid';
   const showOnline = draft.format === 'online' || draft.format === 'hybrid';
 
@@ -39,6 +47,66 @@ export function CreateWhenWhere({ draft, update, errors, editing }: StepProps) {
         error={errors.end_date}
         hint="Optional. Defaults to two hours after the start."
       />
+
+      {repeatLocked ? (
+        existing?.series_id && draft.repeat !== 'none' ? (
+          <View style={{ gap: 4 }}>
+            <Label>Repeats</Label>
+            <AppText variant="body">{draft.start ? repeatSentence(draft.repeat, draft.start) : REPEAT_CHOICE_LABELS[draft.repeat]}</AppText>
+            <AppText variant="caption" tone="faint">
+              When you save, you can apply changes to this date only or to this and later dates. To stop it, open the event and choose
+              “Cancel this and later dates”.
+            </AppText>
+          </View>
+        ) : null
+      ) : (
+        <View style={{ gap: t.space.sm }}>
+          <Label>Repeats</Label>
+          <ChipWrap
+            options={REPEAT_CHOICES}
+            value={draft.repeat}
+            labels={REPEAT_CHOICE_LABELS}
+            onChange={repeat => update(repeat === 'none' ? { repeat } : { repeat, is_paid: false })}
+          />
+          {repeating ? (
+            <>
+              <AppText variant="callout" tone="muted">
+                {draft.start ? `${repeatSentence(draft.repeat as Exclude<RepeatChoice, 'none'>, draft.start)}. ` : ''}
+                Each date gets its own RSVPs and reminders. Repeating events are free to attend.
+              </AppText>
+              <View>
+                <Label>Ends</Label>
+                <ChipWrap
+                  options={['never', 'on'] as const}
+                  value={draft.repeat_until ? 'on' : 'never'}
+                  labels={{ never: 'No end date', on: 'On a date' }}
+                  onChange={v =>
+                    update({
+                      repeat_until:
+                        v === 'never' ? null : draft.repeat_until ?? new Date((draft.start ?? now).getTime() + 90 * 86_400_000),
+                    })
+                  }
+                />
+              </View>
+              {draft.repeat_until ? (
+                <DateTimeField
+                  label="Last date"
+                  mode="date"
+                  value={draft.repeat_until}
+                  minimumDate={draft.start ?? now}
+                  onChange={repeat_until => update({ repeat_until })}
+                  error={errors.repeat_until}
+                  hint="It can run for up to a year."
+                />
+              ) : (
+                <AppText variant="caption" tone="faint">
+                  New dates keep appearing three months ahead, for up to a year. You can stop it any time.
+                </AppText>
+              )}
+            </>
+          ) : null}
+        </View>
+      )}
 
       <View>
         <Label>Format</Label>

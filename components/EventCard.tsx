@@ -8,6 +8,7 @@ import { useAppData } from '../contexts/AppDataContext';
 import { haptic } from '../lib/haptics';
 import { formatDateShort, formatTime, friendsGoingLabel } from '../lib/format';
 import { eventGlyph, locationLabel, priceLabel } from '../lib/eventHelpers';
+import { isRepeatRule, repeatTag } from '../lib/eventRepeat';
 import { shadow } from '../lib/theme';
 import type { Event, FriendsGoing } from '../lib/types';
 import { AppText } from './ui/AppText';
@@ -70,10 +71,13 @@ function PriceChip({ event }: { event: Event }) {
       </View>
     );
   }
+  // A repeating free event says how often: "Free · Weekly"
+  const repeat = free && isRepeatRule(event.repeat_rule) ? ` · ${repeatTag(event.repeat_rule)}` : '';
   return (
     <View style={[styles.price, { backgroundColor: free ? t.c.successDim : t.c.gold, borderColor: free ? t.c.success : t.c.gold }]}>
       <AppText variant="caption" color={free ? t.c.success : t.c.onGold} style={{ fontSize: 12 }}>
         {priceLabel(event)}
+        {repeat}
       </AppText>
     </View>
   );

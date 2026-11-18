@@ -1,5 +1,6 @@
 import { createEventSchema } from '../../lib/validation';
 import { parseDollarsToCents } from '../../lib/fees';
+import { deviceTimeZone, isRepeatRule, localDay, type RepeatChoice } from '../../lib/eventRepeat';
 import type { CreateEventPayload, Event, EventFormat, TicketType } from '../../lib/types';
 
 export interface TicketDraft {
@@ -32,6 +33,10 @@ export interface EventDraft {
   is_paid: boolean;
   absorb: boolean;
   tickets: TicketDraft[];
+  /** Repeating free event (docs/RECURRING.md). Set while creating; fixed once the first date is published. */
+  repeat: RepeatChoice;
+  /** Last day it may happen; null = keeps going (the server stops after a year). */
+  repeat_until: Date | null;
 }
 
 export type DraftErrors = Partial<Record<string, string>>;
@@ -68,6 +73,8 @@ export function emptyDraft(): EventDraft {
     is_paid: false,
     absorb: true,
     tickets: [newTicket('General admission')],
+    repeat: 'none',
+    repeat_until: null,
   };
 }
 
@@ -97,7 +104,17 @@ export function draftFromEvent(e: Event): EventDraft {
     is_paid: e.is_paid,
     absorb: e.absorb_stripe_fee ?? true,
     tickets: [],
+    repeat: isRepeatRule(e.series?.rule) ? e.series.rule : isRepeatRule(e.repeat_rule) ? e.repeat_rule : 'none',
+    repeat_until: toDate(e.series?.until),
   };
+}
+
+/** The repeat part of a save: only for a new event or a first date that is still a draft (the rule is fixed after). */
+export function repeatPayload(d: EventDraft, existing?: Pick<Event, 'status' | 'series_id' | 'series_index'> | null): CreateEventPayload['repeat'] {
+  const canSet = !existing || (existing.status === 'draft' && (existing.series_index ?? 0) === 0);
+  if (!canSet) return undefined;
+  if (d.repeat === 'none' || d.is_paid) return existing?.series_id ? null : undefined;
+  return { rule: d.repeat, timezone: deviceTimeZone(), until: d.repeat_until ? localDay(d.repeat_until) : null };
 }
 
 const opt = (s: string) => (s.trim() ? s.trim() : undefined);
@@ -190,7 +207,7 @@ function zodErrors(d: EventDraft): DraftErrors {
 
 const STEP_FIELDS: Record<number, string[]> = {
   0: ['name', 'description', 'event_type', 'age_group'],
-  1: ['start_date', 'end_date', 'publish_at', 'venue_name', 'address', 'city', 'state', 'zip', 'online_url', 'max_capacity', 'format'],
+  1: ['start_date', 'end_date', 'publish_at', 'venue_name', 'address', 'city', 'state', 'zip', 'online_url', 'max_capacity', 'format', 'repeat_until'],
   2: ['tickets'],
 };
 
@@ -209,6 +226,15 @@ export function validateDraft(d: EventDraft, opts: { editing: boolean; now?: num
     if (!d.publish_at) errs.publish_at = 'Choose when to publish';
     else if (d.publish_at.getTime() <= now) errs.publish_at = 'Publish time must be in the future';
     else if (d.start && d.publish_at.getTime() >= d.start.getTime()) errs.publish_at = 'Publish before the event starts';
+  }
+  if (d.repeat !== 'none') {
+    if (d.is_paid) errs.tickets = 'Repeating events are free to attend. Make it a one-time event to sell tickets.';
+    if (d.repeat_until && d.start) {
+      const lastDay = new Date(d.repeat_until);
+      lastDay.setHours(23, 59, 59, 999);
+      if (lastDay.getTime() < d.start.getTime()) errs.repeat_until = 'The last date must be on or after the first';
+      else if (lastDay.getTime() > d.start.getTime() + 366 * 86_400_000) errs.repeat_until = 'A repeating event can run for up to a year';
+    }
   }
   if (d.is_paid && !opts.editing) {
     if (d.tickets.length === 0) errs.tickets = 'Add at least one ticket type';

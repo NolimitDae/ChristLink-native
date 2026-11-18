@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { duplicateEvent, getEventSales, getHostStats, getMyEvents, publishEvent } from '../../lib/api';
 import { formatCents, salesPerDay, summarizeSales } from '../../lib/fees';
 import { editEventPath } from '../../lib/eventHelpers';
+import { isRepeatRule, nextOfEachSeries, repeatTag } from '../../lib/eventRepeat';
 import { haptic } from '../../lib/haptics';
 import { pluralize } from '../../lib/format';
 import type { Event, HostStats, Ticket } from '../../lib/types';
@@ -43,14 +44,16 @@ function endMs(e: Event): number {
   return Number.POSITIVE_INFINITY;
 }
 
-function bucket(events: Event[], now = Date.now()): Record<Tab, Event[]> {
+function bucket(events: Event[], now = Date.now()): Record<Tab, Event[]> & { laterDates: Map<string, number> } {
   const drafts = events.filter(e => e.status === 'draft').sort((a, b) => b.created_at.localeCompare(a.created_at));
   const rest = events.filter(e => e.status !== 'draft');
   const past = rest
     .filter(e => e.status === 'completed' || e.status === 'cancelled' || endMs(e) < now)
     .sort((a, b) => (b.start_date ?? '').localeCompare(a.start_date ?? ''));
   const upcoming = rest.filter(e => !past.includes(e)).sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''));
-  return { upcoming, drafts, past };
+  // A repeating event shows once, at its next date ("Weekly · 12 more dates")
+  const once = nextOfEachSeries(upcoming);
+  return { upcoming: once.events, drafts, past, laterDates: once.more };
 }
 
 interface SalesSnapshot {
@@ -128,6 +131,8 @@ export default function HostTab() {
   };
 
   const buckets = useMemo(() => bucket(events), [events]);
+  const repeatNote = (e: Event) =>
+    e.series_id && isRepeatRule(e.repeat_rule) ? `${repeatTag(e.repeat_rule)} · ${pluralize(buckets.laterDates.get(e.series_id) ?? 0, 'more date')}` : undefined;
   const totalGoing = buckets.upcoming.reduce((n, e) => n + (e.going_count ?? 0), 0);
   const acct = profile?.host_stripe_accounts?.[0];
   const payoutsReady = !!acct?.payouts_enabled;
@@ -305,7 +310,14 @@ export default function HostTab() {
             />
           ) : (
             list.map(e => (
-              <HostEventRow key={e.id} event={e} actions={rowActions(e)} onOpen={() => router.push(`/event/${e.id}`)} onMore={() => setSheetEvent(e)} />
+              <HostEventRow
+                key={e.id}
+                event={e}
+                repeatNote={tab === 'upcoming' ? repeatNote(e) : undefined}
+                actions={rowActions(e)}
+                onOpen={() => router.push(`/event/${e.id}`)}
+                onMore={() => setSheetEvent(e)}
+              />
             ))
           )}
         </View>

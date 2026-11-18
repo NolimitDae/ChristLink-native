@@ -49,8 +49,13 @@ export function CreateTickets(p: TicketsProps) {
           { value: 'paid', label: 'Paid' },
         ]}
         value={draft.is_paid ? 'paid' : 'free'}
-        onChange={v => !editing && update({ is_paid: v === 'paid' })}
+        onChange={v => !editing && (draft.repeat === 'none' || v === 'free') && update({ is_paid: v === 'paid' })}
       />
+      {draft.repeat !== 'none' ? (
+        <AppText variant="caption" tone={errors.tickets ? 'danger' : 'faint'}>
+          Repeating events are free to attend. To sell tickets, set Repeats to “Doesn’t repeat” on the When & where step.
+        </AppText>
+      ) : null}
       {editing ? (
         <AppText variant="caption" tone="faint">
           Pricing can’t be switched after an event is created. Duplicate the event to change it.

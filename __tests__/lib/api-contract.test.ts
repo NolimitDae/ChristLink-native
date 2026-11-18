@@ -21,6 +21,8 @@ const cases: Case[] = [
   ['createEvent', () => api.createEvent({ name: 'X', format: 'online', is_paid: false }, T), 'POST', '/api/events'],
   ['updateEvent', () => api.updateEvent('e1', { name: 'Y' }, T), 'PATCH', '/api/events/e1'],
   ['publishEvent', () => api.publishEvent('e1', T), 'PATCH', '/api/events/e1/publish'],
+  ['cancelEvent', () => api.cancelEvent('e1', T), 'DELETE', '/api/events/e1'],
+  ['cancelEvent (this and later dates)', () => api.cancelEvent('e1', T, 'following'), 'DELETE', '/api/events/e1?scope=following'],
   ['scheduleEvent', () => api.scheduleEvent('e1', '2026-12-01T10:00:00Z', T), 'PATCH', '/api/events/e1/schedule', { publish_at: '2026-12-01T10:00:00Z' }],
   ['duplicateEvent', () => api.duplicateEvent('e1', T), 'POST', '/api/events/e1/duplicate'],
   ['toggleEventVisibility', () => api.toggleEventVisibility('e1', T), 'PATCH', '/api/events/e1/toggle-visibility'],

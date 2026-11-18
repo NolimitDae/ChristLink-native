@@ -8,7 +8,7 @@ import { makeStyles, useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { useGettingStarted } from '../../../contexts/GettingStartedContext';
-import { ApiError, cancelRsvp, getEvent, getEventAttendees, getForum, getWaitlist, joinWaitlist, leaveWaitlist, rsvpToEvent, type WaitlistStatus } from '../../../lib/api';
+import { ApiError, cancelEvent, cancelRsvp, getEvent, getEventAttendees, getForum, getWaitlist, joinWaitlist, leaveWaitlist, rsvpToEvent, type WaitlistStatus } from '../../../lib/api';
 import { FeatureError, getOpenShifts } from '../../../lib/features';
 import { eventFormatLabel, eventTiming, formatDateShort, formatTimeRange, pluralize } from '../../../lib/format';
 import { editEventPath, eventShareUrl, isSoldOut, linkHost, locationLabel, priceLabel, repostLinks } from '../../../lib/eventHelpers';
@@ -54,6 +54,7 @@ import { ACTION_BAR_HEIGHT, EventActionBar } from '../../../components/event/Eve
 import { CheckoutSheet } from '../../../components/event/CheckoutSheet';
 import { InviteSheet } from '../../../components/event/InviteSheet';
 import { RsvpCelebration } from '../../../components/event/RsvpCelebration';
+import { SeriesDates } from '../../../components/event/SeriesDates';
 import { useAttendance } from '../../../components/event/useAttendance';
 import { clearEventReminders, setupEventReminders } from '../../../components/event/reminders';
 import { LoadError } from '../../../components/LoadError';
@@ -209,6 +210,32 @@ export default function EventDetailScreen() {
       { text: keep, style: 'cancel' },
       { text: go, style: 'destructive', onPress: onConfirm },
     ]);
+  };
+
+  /** Host of a repeating event: cancel just this date, or this one and every later date (and stop repeating). */
+  const confirmCancelDates = (scope?: 'following') => {
+    const tk = requireAuth();
+    if (!tk || !event) return;
+    const following = scope === 'following';
+    confirmDestructive(
+      following ? 'Cancel this and later dates?' : 'Cancel this date?',
+      following
+        ? 'This date and every one after it will show as cancelled, and no new dates will be added. Earlier dates stay.'
+        : 'Only this date is cancelled; the other dates stay on.',
+      'Keep',
+      following ? 'Cancel dates' : 'Cancel date',
+      async () => {
+        try {
+          const res = await cancelEvent(event.id, tk, scope);
+          haptic.success();
+          showToast(following ? `Cancelled ${pluralize(res.dates ?? 1, 'date')}` : 'Date cancelled', 'info');
+          load();
+        } catch (err) {
+          haptic.error();
+          showToast(err instanceof Error ? err.message : 'Could not cancel', 'error');
+        }
+      },
+    );
   };
 
   const confirmLeaveLine = () => {
@@ -646,6 +673,12 @@ export default function EventDetailScreen() {
           />
         </InfoGrid>
 
+        {event.series ? (
+          <View style={s.section}>
+            <SeriesDates event={event} onOpen={id => router.replace(`/event/${id}`)} />
+          </View>
+        ) : null}
+
         {repost ? (
           <View style={s.section}>
             <Card style={{ gap: t.space.sm }}>
@@ -737,6 +770,20 @@ export default function EventDetailScreen() {
           ) : null}
           {!ended && !cancelled && event.start_date ? (
             <ListRow icon="calendar-outline" title="Add to calendar" onPress={() => afterMenu(saveToCalendar)} />
+          ) : null}
+          {isHost && event.series_id && published && !ended ? (
+            <>
+              <ListRow icon="close-circle-outline" title="Cancel this date" subtitle="The other dates stay on" destructive onPress={() => afterMenu(() => confirmCancelDates())} />
+              {event.series && !event.series.ended ? (
+                <ListRow
+                  icon="stop-circle-outline"
+                  title="Cancel this and later dates"
+                  subtitle="Stops it repeating"
+                  destructive
+                  onPress={() => afterMenu(() => confirmCancelDates('following'))}
+                />
+              ) : null}
+            </>
           ) : null}
           <ListRow icon="share-outline" title="Share link" onPress={() => afterMenu(shareLink)} />
           <ListRow
