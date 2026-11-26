@@ -9,6 +9,7 @@ import { FlyerReaderService } from './flyer-reader';
 import { JsonError } from '../payments/json-error';
 import { dbBadRequest, geocodeAddress, isUuid, sanitizeText, toDate } from './event-helpers';
 import { EventPreview, fetchImageDataUrl, fetchListingHtml, normalizeListingUrl, parseEventPage, publicHttpUrl } from './link-preview';
+import { assertAllowed } from '../../common/content-filter';
 
 type Body = Record<string, unknown>;
 
@@ -111,6 +112,7 @@ export class RepostsService {
     if (has('online_url')) out.online_url = repostLink(body.online_url);
     if (has('source_url')) out.source_url = repostLink(body.source_url);
     if (has('ticket_url')) out.ticket_url = repostLink(body.ticket_url);
+    assertAllowed(out.name, out.organizer_name, out.description, out.venue_name);
     return out;
   }
 

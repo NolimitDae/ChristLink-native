@@ -23,6 +23,7 @@ import { shadow } from '../../lib/theme';
 import type { Ticket } from '../../lib/types';
 import { AppText, Badge, BottomSheet, Button, EmptyState, Field, IconButton, Skeleton, SkeletonGroup, TicketPerforation } from '../../components/ui';
 import { MONO_FONT } from '../../components/tickets/WalletTicketCard';
+import { useAppConfig, walletAvailable } from '../../lib/appConfig';
 
 const QR_SIZE = 240;
 const QR_WHITE = '#FFFFFF';
@@ -112,6 +113,7 @@ export default function TicketScreen() {
   const close = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/tickets'));
 
   const [walletBusy, setWalletBusy] = useState(false);
+  const walletOn = walletAvailable(useAppConfig());
   const addToWallet = async () => {
     if (!ticket || !token || walletBusy) return;
     setWalletBusy(true);
@@ -296,7 +298,8 @@ export default function TicketScreen() {
               {venue ? <Button title="Directions" icon="navigate-outline" variant="secondary" size="md" onPress={directions} style={{ flex: 1 }} /> : null}
             </View>
           ) : null}
-          {(Platform.OS === 'ios' || Platform.OS === 'android') && token && ticket.status === 'confirmed' ? (
+          {/* Only when the server can make passes (APPLE_PASS_* / Google Wallet set): a button that fails gets apps rejected */}
+          {walletOn && token && ticket.status === 'confirmed' ? (
             <Button
               title={Platform.OS === 'ios' ? 'Add to Apple Wallet' : 'Add to Google Wallet'}
               icon="wallet-outline"

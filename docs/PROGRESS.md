@@ -1094,3 +1094,23 @@ skeletons for seconds, and "Draft — pending legal review" on the terms.
 - Host → Create event → When & where → Repeats: Weekly → Publish. Events shows it once with "Free · Weekly"; the
   event page lists the next dates. RSVP to one date and check the others still say 0 going. Manage → change the
   description → "This and later dates" → later dates change. Menu → Cancel this date / Cancel this and later dates.
+
+## 2026-11-26 — App Review hardening
+
+**Changed**
+- iOS: the listing fee for paid events is taken from the event's first ticket sales instead of a card payment in
+  the app (Guideline 3.1.1). Migration `20261126000000_listing_fee_from_sales`; `POST /api/listing-fee-from-sales`.
+- Server-side content filter on everything members post (Guideline 1.2); zero-tolerance wording in Terms and
+  Community Guidelines (updated Nov 26, 2026).
+- `GET /api/app-config`: the Wallet button only shows when passes are set up; flyer AI reading asks permission first.
+
+**Not finished / needs you**
+- Publish real upcoming events in production (there are none today): the biggest remaining rejection risk.
+- Build and upload: `eas build --platform ios --profile production --auto-submit` (docs/APP-STORE.md).
+- Backend e2e: the upload tests return 503 in a fresh cloud container with or without these changes; check
+  locally with `docker compose up -d`.
+
+**Test (TestFlight)**
+- Create a paid event on iPhone: no card form, "comes out of your first ticket sales", Publish works.
+- Post "sh1t" in Community: blocked. Quote "the cock crew": allowed.
+- A ticket page shows no Wallet button unless APPLE_PASS_* is set in Railway.

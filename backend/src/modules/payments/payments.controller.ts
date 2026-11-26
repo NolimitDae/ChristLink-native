@@ -71,6 +71,14 @@ export class PaymentsController {
     return this.payments.chargeListingFee(user, body);
   }
 
+  /** The listing fee comes out of the event's first ticket sales instead of a card payment (the iOS app). */
+  @Post('listing-fee-from-sales')
+  @HttpCode(200)
+  @Throttle(PAYMENT_LIMIT)
+  listingFeeFromSales(@CurrentUser() user: AuthUser, @Body() body: Loose) {
+    return this.payments.listingFeeFromSales(user, body?.eventId, body?.promoCode);
+  }
+
   @Post('validate-listing-promo')
   @HttpCode(200)
   validateListingPromo(@Body() body: Loose) {

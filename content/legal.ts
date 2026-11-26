@@ -14,7 +14,7 @@ export interface LegalDoc {
   sections: LegalSection[];
 }
 
-export const LEGAL_UPDATED = 'November 17, 2026';
+export const LEGAL_UPDATED = 'November 26, 2026';
 /**
  * Shown under the title of every legal page when set. Empty since 2026-11-16: these are the terms people agree to at
  * sign-in, and a "Draft" label on live terms undermined trust. The text has not been reviewed by a lawyer yet
@@ -150,12 +150,13 @@ const terms: LegalDoc = {
       paragraphs: [
         'You own what you post. By posting, you give us a worldwide, non-exclusive, royalty-free license to host, display and distribute it within Christ Link Social and in share cards you choose to create, for as long as it remains on the service.',
         'You are responsible for your content and must have the rights to anything you upload. Do not post anything that breaks the law or our Community Guidelines.',
+        'There is no tolerance for objectionable content or abusive users. Posts with profanity, slurs or sexual language are blocked automatically, and anyone who posts objectionable content or abuses other members will have that content removed and may be removed from Christ Link Social.',
       ],
     },
     {
       heading: '5. Moderation, reports and blocking',
       paragraphs: [
-        'Members can report posts, replies, prayers, forum messages, profiles, events and churches. Our team aims to review reports within 24 hours. We may remove content, limit features or suspend accounts that violate these Terms or our Community Guidelines, with or without notice.',
+        'Members can report posts, replies, prayers, forum messages, profiles, events and churches. Our team reviews reports within 24 hours, removes content that breaks these Terms or our Community Guidelines, and removes the accounts that posted it when the violation is serious or repeated. We may also limit features or suspend accounts with or without notice.',
         'You can block any member. Blocked members cannot see your posts or prayers or contact you, and you will not see theirs.',
       ],
     },
@@ -211,7 +212,7 @@ const host: LegalDoc = {
     {
       heading: '3. Fees',
       paragraphs: [
-        'Free events are free to list. Paid events require a one-time $19.99 listing fee per event before they can be published.',
+        'Free events are free to list. Paid events have a one-time $19.99 listing fee per event. On the website you pay it by card when you publish; in the iPhone app it is taken from the event’s first ticket sales (if tickets are refunded, the matching part of the fee is taken from later sales).',
         'Attendees pay a 7% service fee on paid tickets. You can choose to absorb that fee so attendees see a single price; in that case it is deducted from your payout. Stripe’s payment processing fees also apply and are shown in your sales breakdown.',
       ],
     },
@@ -302,7 +303,7 @@ const guidelines: LegalDoc = {
     {
       heading: 'What happens next',
       paragraphs: [
-        'Content that breaks these guidelines may be removed. Repeated or serious violations can lead to limited features or account suspension.',
+        'We have no tolerance for objectionable content or abusive users. Profanity, slurs and sexual language are blocked automatically when you post. Content that breaks these guidelines is removed within 24 hours of a report, and serious or repeated violations lead to the account being removed.',
       ],
     },
   ],

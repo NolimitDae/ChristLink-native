@@ -17,6 +17,7 @@ import {
   toInt,
 } from './event-helpers';
 import { applyToUpcoming, createSeries, parseRepeat, seriesSummary, syncDraftSeries, topUpSeries } from './series';
+import { assertAllowed } from '../../common/content-filter';
 
 type Body = Record<string, unknown>;
 type EventRow = Record<string, unknown> & { id: string; lat: number | null; lng: number | null };
@@ -45,6 +46,7 @@ export function pickEventFields(body: Body, keys: string[]): Record<string, unkn
     } else if (DATE_FIELDS.includes(k)) out[k] = toDate(v, k);
     else if (k === 'max_capacity') out[k] = toInt(v, k);
   }
+  assertAllowed(out.name, out.description, out.venue_name, out.tags);
   return out;
 }
 

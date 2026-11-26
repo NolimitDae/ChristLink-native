@@ -22,6 +22,21 @@ Profiles, and lists no apps. That means the **Apple Developer Program membership
 belongs to an account that isn't a member of that team). Check https://developer.apple.com/account → Membership.
 Until it is active nothing can be signed, so there is no store build yet.
 
+## App Review hardening (2026-11-26)
+
+- **Listing fee (Guideline 3.1.1):** the iOS app never charges a card for a listing. Hosts publish paid events and the
+  $19.99 fee comes out of the event's first ticket sales (`POST /api/listing-fee-from-sales`; checkout puts the owed
+  amount into the platform's share; refunds add it back). Website and Android still offer the card.
+- **Objectionable content (Guideline 1.2):** posts, replies, prayers, event chat, events, shared events, profiles and
+  churches are checked by a server-side filter (`backend/src/common/content-filter.ts`, `obscenity`) that blocks
+  profanity, slurs and sexual language, with Bible wording and honest prayer topics allowed. Terms and Community
+  Guidelines now say there is no tolerance for objectionable content or abusive users.
+- **No dead buttons:** "Add to Apple/Google Wallet" only shows when the server has the pass certificates
+  (`GET /api/app-config`).
+- **AI disclosure (Guideline 5.1.2(i)):** when flyer reading is on, the app asks before sending a flyer photo to Anthropic.
+
+**Membership is active (2026-11-25)**; the steps below are what's left.
+
 ## Once the membership is active
 
 1. **Merchant ID for Apple Pay** (Certificates, Identifiers & Profiles → Identifiers → Merchant IDs):
@@ -128,10 +143,7 @@ Data and Performance Data, not linked, App Functionality.
 1. **Real, upcoming events in production.** Every event copied from the old site is in the past, so Discover is
    empty today. Publish a few real upcoming events (and a prayer or two on the Prayer Wall) before submitting; an
    app that opens to empty lists is a common rejection (Guideline 2.1 / 4.2).
-2. **Host listing fee.** Hosts of paid events pay a listing fee by card inside the app. Apple may treat paying to
-   list something *in the app* as a digital service that must use In-App Purchase (Guideline 3.1.1); ticket sales
-   themselves are fine. Lowest-risk options: waive the listing fee for events created in the iOS app, or take it
-   out of ticket sales instead of charging the host up front. Decide before submitting.
+2. **Host listing fee:** done. On iOS it comes out of ticket sales, with no card payment in the app (see above).
 3. **Privacy policy and terms haven't been reviewed by a lawyer.** The "Draft — pending legal review" label was removed
    on 2026-11-16 (it sat on the live terms people agree to at sign-in); a review is still recommended before launch.
    To show a notice again, set `LEGAL_DRAFT_NOTICE` in content/legal.ts.

@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isAdmin, OK } from '../reports/is-admin';
+import { assertAllowed } from '../../common/content-filter';
 
 export const PRAYER_FILTERS = ['all', 'answered', 'mine', 'friends', 'church'];
 export const PRAYED_WINDOW_HOURS = 6;
@@ -55,6 +56,7 @@ export class PrayersService {
   async create(uid: string, body: string, isAnonymous: boolean, churchId: string | null) {
     const text = body.trim();
     if (text.length < 3 || text.length > 1000) throw new BadRequestException('Prayer must be 3 to 1000 characters.');
+    assertAllowed(text);
     if (churchId && !(await this.prisma.churches.findUnique({ where: { id: churchId }, select: { id: true } }))) {
       throw new NotFoundException('Church not found.');
     }

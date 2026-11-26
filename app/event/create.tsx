@@ -12,6 +12,7 @@ import {
   chargeListingFee,
   createEvent,
   createTicketType,
+  listingFeeFromSales,
   getEvent,
   publishEvent,
   scheduleEvent,
@@ -20,7 +21,7 @@ import {
   validateListingPromo,
 } from '../../lib/api';
 import { confirmHostAdult } from '../../lib/features';
-import { LISTING_FEE_CENTS } from '../../lib/fees';
+import { LISTING_FEE_CENTS, listingFeeFromSales as feeFromSalesOn } from '../../lib/fees';
 import { haptic } from '../../lib/haptics';
 import type { Event } from '../../lib/types';
 import { EventCard } from '../../components/EventCard';
@@ -125,6 +126,7 @@ export default function CreateEventScreen() {
   const payoutsReady = !!acct?.payouts_enabled;
   const listingPaid = !!existing?.listing_fee_paid || feePaid.current;
   const needsFee = draft.is_paid && !listingPaid;
+  const feeFromSales = feeFromSalesOn(Platform.OS);
 
   const preview = useMemo(
     () => draftToPreviewEvent(draft, user?.id ?? 'me', profile?.full_name ?? 'You', existing?.ticket_types),
@@ -137,9 +139,9 @@ export default function CreateEventScreen() {
     if (!adultConfirmed) out.push({ key: 'adult', title: 'Confirm the Host Agreement', body: 'Tick the 18+ confirmation on the Tickets step' });
     if (!isVerifiedHost) out.push({ key: 'id', title: 'Verify your identity', body: 'Required for paid events', route: '/host/verify' });
     if (!payoutsReady) out.push({ key: 'payouts', title: acct ? 'Finish Stripe setup' : 'Set up payouts', body: 'So ticket sales can reach you', route: '/host/payouts' });
-    if (needsFee && finalCents > 0 && !cardComplete) out.push({ key: 'card', title: 'Add a card for the listing fee', body: 'Enter your card details below' });
+    if (needsFee && finalCents > 0 && !cardComplete && !feeFromSales) out.push({ key: 'card', title: 'Add a card for the listing fee', body: 'Enter your card details below' });
     return out;
-  }, [draft.is_paid, adultConfirmed, isVerifiedHost, payoutsReady, acct, needsFee, finalCents, cardComplete]);
+  }, [draft.is_paid, adultConfirmed, isVerifiedHost, payoutsReady, acct, needsFee, finalCents, cardComplete, feeFromSales]);
 
   const goTo = (i: number) => {
     setStep(i);
@@ -256,7 +258,10 @@ export default function CreateEventScreen() {
     setBusy('publish');
     try {
       const id = await persist();
-      if (needsFee) {
+      if (needsFee && feeFromSales) {
+        await listingFeeFromSales(id, appliedPromo ?? undefined, token);
+        feePaid.current = true;
+      } else if (needsFee) {
         let paymentMethodId: string | undefined;
         if (finalCents > 0) {
           const { paymentMethod, error } = await createPaymentMethod({
@@ -413,6 +418,7 @@ export default function CreateEventScreen() {
               promoBusy={promoBusy}
               promoError={promoError}
               finalCents={finalCents}
+              fromSales={feeFromSales}
               onCardComplete={setCardComplete}
               blockers={canPublish ? blockers : []}
               onBlockerPress={route => router.push(route)}
@@ -439,7 +445,7 @@ export default function CreateEventScreen() {
               />
               {canPublish ? (
                 <Button
-                  title={draft.schedule ? 'Schedule' : needsFee && finalCents > 0 ? 'Pay & publish' : 'Publish'}
+                  title={draft.schedule ? 'Schedule' : needsFee && finalCents > 0 && !feeFromSales ? 'Pay & publish' : 'Publish'}
                   icon="checkmark-circle-outline"
                   onPress={publish}
                   loading={busy === 'publish'}

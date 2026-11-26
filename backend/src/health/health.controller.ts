@@ -3,6 +3,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { Public } from '../common/auth.decorators';
 import { HealthService } from './health.service';
+import { appCapabilities } from './app-config';
 
 // GET /api/health (Railway healthcheck). The root GET /health is registered in bootstrap.ts.
 @Public()
@@ -15,5 +16,11 @@ export class HealthController {
   async get(@Res() res: Response) {
     const { status, body } = await this.health.report();
     res.status(status).json(body);
+  }
+
+  /** GET /api/app-config: which optional features are on (app-config.ts). */
+  @Get('app-config')
+  appConfig() {
+    return appCapabilities();
   }
 }
