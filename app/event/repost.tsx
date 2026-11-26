@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +14,7 @@ import { DateTimeField } from '../../components/host/DateTimeField';
 import { PickError, pickImage } from '../../components/host/pickImage';
 import { errorMessage } from '../../components/host/errors';
 import { confirmAction } from '../../components/admin/confirm';
+import { useAppConfig } from '../../lib/appConfig';
 
 const TYPES = EVENT_TYPES.filter(x => x !== 'All');
 const FORMATS: { value: RepostDraft['format']; label: string }[] = [
@@ -95,8 +96,20 @@ export default function RepostScreen() {
     }
   };
 
+  const appConfig = useAppConfig();
+  const aiConsent = useRef(false);
   const addPhoto = async () => {
     if (!token) return;
+    // App Store Guideline 5.1.2(i): ask before a photo goes to a third-party AI service to be read
+    if (appConfig?.flyer_reading && !aiConsent.current) {
+      const ok = await confirmAction(
+        'Read the flyer with AI?',
+        'To fill in the details for you, your flyer photo is sent to Anthropic, an AI service, which reads the text on it. It isn’t used to train AI models. Don’t include photos of people or personal information.',
+        'Continue',
+      );
+      if (!ok) return;
+      aiConsent.current = true;
+    }
     setBusy('photo');
     try {
       const img = await pickImage({ quality: 0.8 });

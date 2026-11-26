@@ -434,6 +434,26 @@ export function validateListingPromo(
   return apiFetch('/api/validate-listing-promo', json({ code }), accessToken);
 }
 
+/**
+ * The listing fee comes out of the event's first ticket sales instead of a card payment. The iOS app always uses this
+ * (a card payment for a listing inside the app could count as a digital purchase under App Store Guideline 3.1.1).
+ */
+export function listingFeeFromSales(eventId: string, promoCode: string | undefined, accessToken: string): Promise<{ success: boolean; owed_cents: number }> {
+  return apiFetch('/api/listing-fee-from-sales', json({ eventId, promoCode }), accessToken);
+}
+
+/** Which optional features the server has switched on (Wallet passes, flyer reading) and the listing fee price. */
+export interface AppConfig {
+  apple_wallet: boolean;
+  google_wallet: boolean;
+  flyer_reading: boolean;
+  listing_fee_cents: number;
+}
+
+export function getAppConfig(): Promise<AppConfig> {
+  return apiFetch('/api/app-config');
+}
+
 export function chargeListingFee(
   payload: { paymentMethodId?: string; eventId: string; hostEmail?: string; promoCode?: string },
   accessToken: string,

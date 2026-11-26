@@ -42,6 +42,7 @@
     "ioredis": "^5.6.1",
     "jszip": "^3.10.2",
     "node-forge": "^1.4.0",
+    "obscenity": "0.4.6",
     "prisma": "^7",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",

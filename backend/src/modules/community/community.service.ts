@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AUTHOR_SELECT, clampInt, isUuid, prismaCode, sanitizeText } from './text';
+import { assertAllowed } from '../../common/content-filter';
 
 export const POST_TYPES = ['prayer', 'praise', 'testimony', 'encouragement'];
 const MAX_POST = 5000;
@@ -50,6 +51,7 @@ export class CommunityService {
     const safe = sanitizeText(body);
     if (!safe) throw new BadRequestException(message);
     if (safe.length > max) throw new BadRequestException(tooLong);
+    assertAllowed(safe);
     return safe;
   }
 

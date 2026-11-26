@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { dbBadRequest, isUuid } from '../events/event-helpers';
+import { assertAllowed } from '../../common/content-filter';
 
 const POST_SELECT = { id: true, content: true, image_url: true, message_type: true, created_at: true, user_id: true } as const;
 
@@ -38,6 +39,7 @@ export class ForumService {
     const { content, image_url, message_type = 'text' } = body;
     const text = typeof content === 'string' ? content.trim() : '';
     if (!text && !image_url) throw new BadRequestException('Message content or image required.');
+    assertAllowed(text);
     if ((image_url != null && typeof image_url !== 'string') || typeof message_type !== 'string') {
       throw new BadRequestException('Invalid message.');
     }

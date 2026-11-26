@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { parseDataUrl, StorageService } from '../storage/storage.service';
 import { AuthUser } from '../../common/auth.decorators';
 import { AUTHOR_SELECT, isUuid, prismaCode, sanitizeText } from '../community/text';
+import { assertAllowed } from '../../common/content-filter';
 
 /** server.js PATCH /api/profile whitelist (role, identity_verified, email stay server-only). */
 const TEXT_FIELDS = [
@@ -34,6 +35,7 @@ export function pickProfileUpdates(body: Record<string, unknown>) {
   if (body?.connect_tags !== undefined) {
     updates.connect_tags = Array.isArray(body.connect_tags) ? body.connect_tags.filter((t) => typeof t === 'string') : [];
   }
+  assertAllowed(updates.full_name, updates.bio, updates.city, updates.hot_takes, updates.hobbies, updates.prayer_request, updates.testimony);
   return updates;
 }
 

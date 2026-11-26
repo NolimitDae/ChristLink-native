@@ -8,7 +8,7 @@ import { makeStyles, useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { ApiError, startConnectOnboarding, syncConnectStatus } from '../../lib/api';
-import { formatCents, LISTING_FEE_CENTS } from '../../lib/fees';
+import { formatCents, LISTING_FEE_CENTS, listingFeeFromSales } from '../../lib/fees';
 import { AppText, Badge, Button, Card, EmptyState, Screen } from '../../components/ui';
 import { errorMessage } from '../../components/host/errors';
 import { CONNECT_EMBEDDED, PayoutHistory, PayoutNotices, PayoutSetup, StripeConnect } from '../../components/host/StripeConnect';
@@ -222,7 +222,12 @@ export default function PayoutsScreen() {
               title="You receive face value"
               body="Minus card processing (2.9% + 30¢), unless you choose to pass processing on to attendees when you create the event."
             />
-            <FeeItem icon="pricetag-outline" title={`${formatCents(LISTING_FEE_CENTS)} listing fee`} body="A one-time fee per paid event, charged when you publish. Free events are always free." />
+            <FeeItem icon="pricetag-outline" title={`${formatCents(LISTING_FEE_CENTS)} listing fee`} body={
+                listingFeeFromSales(Platform.OS)
+                  ? 'A one-time fee per paid event, taken from its first ticket sales. Free events are always free.'
+                  : 'A one-time fee per paid event, charged when you publish. Free events are always free.'
+              }
+            />
             <FeeItem
               icon="calendar-outline"
               title="Paid after your event"

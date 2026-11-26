@@ -9,6 +9,13 @@ export const STRIPE_PERCENT = 0.029;
 export const STRIPE_FIXED_CENTS = 30;
 export const LISTING_FEE_CENTS = 1999;
 
+/**
+ * In the iOS app the listing fee is taken from the event's first ticket sales instead of charged by card (a card
+ * payment for a listing inside the app could count as a digital purchase under App Store Guideline 3.1.1). The
+ * website and Android still offer the card.
+ */
+export const listingFeeFromSales = (os: string) => os === 'ios';
+
 export interface PriceBreakdown {
   face: number;
   discount: number;

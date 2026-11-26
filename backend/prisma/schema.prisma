@@ -320,6 +320,8 @@ model events {
   source_url         String?
   ticket_url         String?
   organizer_name     String?
+  /// Listing fee still to be taken from ticket sales (payments.service.ts listingFeeFromSales)
+  listing_fee_owed_cents Int               @default(0)
   /// One date of a repeating free event (series.ts); series_index 0 is the first date
   series_id          String?             @db.Uuid
   series_index       Int?
@@ -696,6 +698,8 @@ model ticket_types {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model tickets {
+  /// Part of this ticket's platform share that went toward the event's listing fee
+  listing_fee_cents      Int              @default(0)
   id                     String           @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
   event_id               String           @db.Uuid
   ticket_type_id         String           @db.Uuid

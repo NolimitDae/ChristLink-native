@@ -74,7 +74,10 @@ export class PaymentsService {
     const ev = isUuid(eventId)
       ? await this.prisma.events.findUnique({
           where: { id: eventId },
-          select: { id: true, name: true, status: true, is_paid: true, absorb_stripe_fee: true, host_id: true, end_date: true, sales_cutoff: true },
+          select: {
+            id: true, name: true, status: true, is_paid: true, absorb_stripe_fee: true, host_id: true, end_date: true, sales_cutoff: true,
+            listing_fee_owed_cents: true,
+          },
         })
       : null;
     if (!ev) throw new NotFoundException('Event not found. It may have been removed or unpublished.');
@@ -114,6 +117,9 @@ export class PaymentsService {
       }
     }
     const amounts = calcAmounts(adjustedPriceCents, parsedQty, ev.absorb_stripe_fee !== false);
+    // A listing fee the host chose to pay from sales comes out of the host's share, sale by sale, until it is covered
+    const listingFee = amounts.chargeAmount > 0 ? await this.listingFeeShare(eventId, ev.listing_fee_owed_cents, amounts.hostReceives) : 0;
+    const hostReceives = amounts.hostReceives - listingFee;
     const email = (typeof buyerEmail === 'string' && buyerEmail.trim()) || user.email;
     const ticketCode = Array.from({ length: 8 }, () => '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'[randomInt(36)]).join('');
     const ticketRow = {
@@ -145,7 +151,7 @@ export class PaymentsService {
       // Adding the amount and the buyer's finished tickets keeps double taps on one PaymentIntent but lets a
       // second purchase (or a changed coupon) get a new one.
       const finished = await this.prisma.tickets.count({ where: { user_id: user.id, ticket_type_id: ticketTypeId, status: { not: 'pending' } } });
-      const idempotencyKey = `pi-${user.id}-${eventId}-${ticketTypeId}-${parsedQty}-${amounts.chargeAmount}-${finished}`;
+      const idempotencyKey = `pi-${user.id}-${eventId}-${ticketTypeId}-${parsedQty}-${amounts.chargeAmount}-${finished}${listingFee ? `-lf${listingFee}` : ''}`;
       const intent = await this.stripe.paymentIntents.create(
         {
           amount: amounts.chargeAmount,
@@ -159,10 +165,11 @@ export class PaymentsService {
             buyer_id: user.id,
             qty: String(parsedQty),
             platform_fee: String(amounts.platformFee),
+            ...(listingFee ? { listing_fee: String(listingFee) } : {}),
           },
           transfer_data: { destination: acct.stripe_account_id },
           // The platform keeps its fee plus the card processing it pays Stripe, so the host gets exactly host_receives
-          application_fee_amount: amounts.chargeAmount - amounts.hostReceives,
+          application_fee_amount: amounts.chargeAmount - hostReceives,
         },
         { idempotencyKey },
       );
@@ -178,7 +185,8 @@ export class PaymentsService {
             total_charged_cents: amounts.chargeAmount,
             platform_fee_cents: amounts.platformFee,
             stripe_fee_cents: amounts.stripeFee,
-            host_receives_cents: amounts.hostReceives,
+            host_receives_cents: hostReceives,
+            listing_fee_cents: listingFee,
             stripe_payment_intent: intent.id,
             stripe_idempotency_key: idempotencyKey,
             status: 'pending',
@@ -230,6 +238,7 @@ export class PaymentsService {
       data: { status: 'confirmed', confirmed_at: new Date() },
       select: SALE_SELECT,
     });
+    await this.applyListingFee(rows.map((r) => r.id), -1);
     if (rows.length > 0 && rows[0].ticket_type_id) {
       await this.incrementSold(rows[0].ticket_type_id, rows[0].quantity || 1);
       void this.afterSale(rows[0]);
@@ -246,6 +255,8 @@ export class PaymentsService {
       select: SALE_SELECT,
     });
     for (const t of rows) await this.incrementSold(t.ticket_type_id, -(t.quantity || 1));
+    // A refund returns the whole price, the platform's share included, so that part of the listing fee is owed again
+    await this.applyListingFee(rows.map((r) => r.id), 1);
     // Returned seats go to the waitlist first
     for (const eventId of new Set(rows.map((t) => t.event_id))) void this.waitlist.spotsOpened(eventId);
     return rows;
@@ -445,6 +456,66 @@ export class PaymentsService {
   // ── Listing fee ───────────────────────────────────────────
   private async findPromo(code: string) {
     return this.prisma.listing_promo_codes.findFirst({ where: { code: code.toUpperCase().trim(), active: true } });
+  }
+
+  /**
+   * How much of this sale goes toward a listing fee the host is paying from ticket sales: what is still owed, less
+   * what open checkouts (in the last two hours) have already set aside, at most the host's share of this sale.
+   */
+  private async listingFeeShare(eventId: string, owed: number, hostShare: number): Promise<number> {
+    if (owed <= 0 || hostShare <= 0) return 0;
+    const since = new Date(Date.now() - 2 * 3_600_000);
+    const open = await this.prisma.tickets.aggregate({
+      where: { event_id: eventId, status: 'pending', created_at: { gte: since }, listing_fee_cents: { gt: 0 } },
+      _sum: { listing_fee_cents: true },
+    });
+    return Math.max(0, Math.min(owed - (open._sum.listing_fee_cents ?? 0), hostShare));
+  }
+
+  /** Confirmed tickets (sign -1) pay off the listing fee they carried; refunded ones (sign 1) owe it again. */
+  private async applyListingFee(ticketIds: string[], sign: 1 | -1) {
+    if (!ticketIds.length) return;
+    const rows = await this.prisma.tickets.findMany({
+      where: { id: { in: ticketIds }, listing_fee_cents: { gt: 0 } },
+      select: { event_id: true, listing_fee_cents: true },
+    });
+    for (const r of rows) {
+      await this.prisma.$executeRaw`
+        update public.events set listing_fee_owed_cents = greatest(0, listing_fee_owed_cents + ${sign * r.listing_fee_cents}::int)
+        where id = ${r.event_id}::uuid`;
+    }
+  }
+
+  /**
+   * The host pays the listing fee from ticket sales instead of by card (what the iOS app offers: a card payment for a
+   * listing inside the app could count as a digital purchase under App Store Guideline 3.1.1). The event can be
+   * published straight away; the fee (less any promo code) comes out of the host's share of its first sales.
+   */
+  async listingFeeFromSales(user: AuthUser, eventId: unknown, promoCode: unknown) {
+    const ev = isUuid(eventId)
+      ? await this.prisma.events.findFirst({
+          where: { id: eventId, host_id: user.id },
+          select: { id: true, is_paid: true, listing_fee_paid: true, listing_fee_owed_cents: true },
+        })
+      : null;
+    if (!ev) throw new NotFoundException('Event not found or not yours.');
+    if (!ev.is_paid) throw new BadRequestException('Free events don’t have a listing fee.');
+    if (ev.listing_fee_paid) return { success: true, owed_cents: ev.listing_fee_owed_cents };
+    let owed = HOST_LISTING_FEE;
+    let appliedPromoId: string | null = null;
+    if (typeof promoCode === 'string' && promoCode.trim()) {
+      const promo = await this.findPromo(promoCode);
+      if (promo && !(promo.expires_at && new Date() > promo.expires_at) && (promo.max_uses === null || promo.uses_count < promo.max_uses)) {
+        owed = listingFeeAfter(listingDiscountCents(promo.discount_type, Number(promo.discount_value)));
+        appliedPromoId = promo.id;
+      }
+    }
+    const { count } = await this.prisma.events.updateMany({
+      where: { id: ev.id, listing_fee_paid: false },
+      data: { listing_fee_paid: true, listing_payment_id: owed > 0 ? 'from_sales' : 'promo_free', listing_fee_owed_cents: owed },
+    });
+    if (count && appliedPromoId) await this.prisma.listing_promo_codes.update({ where: { id: appliedPromoId }, data: { uses_count: { increment: 1 } } });
+    return { success: true, owed_cents: owed };
   }
 
   async validateListingPromo(code: unknown) {

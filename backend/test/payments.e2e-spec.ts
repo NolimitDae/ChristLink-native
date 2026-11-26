@@ -302,6 +302,52 @@ describe('Payments, tickets, refunds, check-in, wallet (e2e)', () => {
     expect((await prisma.listing_promo_codes.findUnique({ where: { code: 'E2EPAYHALF' } })).uses_count).toBe(1);
   });
 
+  it('listing fee from ticket sales (iOS): publish without a card, the fee comes out of the host share until paid', async () => {
+    const draft = await prisma.events.create({
+      data: { host_id: users.host.id, name: 'Paid From Sales', is_paid: true, start_date: new Date(Date.now() + 2 * 86_400_000) },
+    });
+    const tt = await prisma.ticket_types.create({ data: { event_id: draft.id, name: 'GA', price_cents: 1500 } });
+    await http.post('/api/events/' + draft.id + '/publish').set(as('host')).expect(404);
+    await http.patch(`/api/events/${draft.id}/publish`).set(as('host')).expect(402);
+    await http.post('/api/listing-fee-from-sales').set(as('stranger')).send({ eventId: draft.id }).expect(404);
+    await http.post('/api/listing-fee-from-sales').set(as('host')).send({ eventId: draft.id }).expect(200, { success: true, owed_cents: 1999 });
+    expect(await prisma.events.findUnique({ where: { id: draft.id } })).toMatchObject({ listing_fee_paid: true, listing_payment_id: 'from_sales', listing_fee_owed_cents: 1999 });
+    // Asking again changes nothing; no card was charged
+    const before = stripe.paymentIntents.create.mock.calls.length;
+    await http.post('/api/listing-fee-from-sales').set(as('host')).send({ eventId: draft.id }).expect(200, { success: true, owed_cents: 1999 });
+    expect(stripe.paymentIntents.create.mock.calls.length).toBe(before);
+    await http.patch(`/api/events/${draft.id}/publish`).set(as('host')).expect(200);
+
+    const buy = async (who: string) => {
+      const r = await http.post('/api/create-payment-intent').set(as(who)).send({ eventId: draft.id, ticketTypeId: tt.id, qty: 1 }).expect(200);
+      const [params] = stripe.paymentIntents.create.mock.calls[stripe.paymentIntents.create.mock.calls.length - 1];
+      return { id: r.body.intentId as string, appFee: params.application_fee_amount as number, ticket: await prisma.tickets.findUnique({ where: { stripe_payment_intent: r.body.intentId } }) };
+    };
+    // First sale: the whole host share (1423) goes to the fee; the second, while the first is open, takes the rest (576)
+    const a = await buy('buyer');
+    expect(a.ticket).toMatchObject({ listing_fee_cents: 1423, host_receives_cents: 0 });
+    expect(a.appFee).toBe(1605);
+    const b = await buy('stranger');
+    expect(b.ticket).toMatchObject({ listing_fee_cents: 576, host_receives_cents: 847 });
+    expect(b.appFee).toBe(1605 - 847);
+    for (const [who, x] of [['buyer', a], ['stranger', b]] as const) {
+      intents.get(x.id).status = 'succeeded';
+      await http.post('/api/tickets/confirm-by-intent').set(as(who)).send({ paymentIntentId: x.id }).expect(200);
+    }
+    expect((await prisma.events.findUnique({ where: { id: draft.id } })).listing_fee_owed_cents).toBe(0);
+    // Paid off: later sales are normal
+    await makeUser('third');
+    const c = await buy('third');
+    expect(c.ticket).toMatchObject({ listing_fee_cents: 0, host_receives_cents: 1423 });
+    expect(c.appFee).toBe(182);
+    // A refund gives the buyer everything back, so that part of the fee is owed again
+    await http.post(`/api/tickets/${b.ticket.id}/refund`).set(as('host')).expect(200);
+    expect((await prisma.events.findUnique({ where: { id: draft.id } })).listing_fee_owed_cents).toBe(576);
+    // A free event has no listing fee
+    const free = await prisma.events.create({ data: { host_id: users.host.id, name: 'Free one', is_paid: false } });
+    await http.post('/api/listing-fee-from-sales').set(as('host')).send({ eventId: free.id }).expect(400);
+  });
+
   it('Connect onboard, sync, account.updated (Connect secret) and disconnect', async () => {
     const onboard = await http.post('/api/connect-onboard').set(as('stranger')).expect(200);
     expect(onboard.body).toEqual({ url: 'https://connect.stripe.com/setup', accountId: 'acct_new' });

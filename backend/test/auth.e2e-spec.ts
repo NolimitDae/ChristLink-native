@@ -1,4 +1,6 @@
 import { Test } from '@nestjs/testing';
+import { randomUUID } from 'crypto';
+import { JwtService } from '@nestjs/jwt';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import request = require('supertest');
 import { AppModule } from '../src/app.module';
@@ -39,6 +41,27 @@ describe('Auth flow (e2e)', () => {
       const res = await http.get(path).expect(200);
       expect(res.body).toMatchObject({ status: 'ok', service: 'christlink' });
     }
+  });
+
+  it('app-config says which optional features are on, without secrets', async () => {
+    const res = await http.get('/api/app-config').expect(200);
+    expect(res.body).toEqual({ apple_wallet: expect.any(Boolean), google_wallet: expect.any(Boolean), flyer_reading: expect.any(Boolean), listing_fee_cents: 1999 });
+  });
+
+  it('community posts with profanity are blocked; Bible wording is not', async () => {
+    const prisma = app.get(PrismaService);
+    const jwt = app.get(JwtService);
+    const id = randomUUID();
+    const mail = `filter-${id}@example.com`;
+    await prisma.users.create({ data: { id, email: mail } });
+    await prisma.profiles.create({ data: { id, email: mail, full_name: 'Filter Test' } });
+    const auth = { Authorization: `Bearer ${jwt.sign({ sub: id, email: mail })}` };
+    const bad = await http.post('/api/community-posts').set(auth).send({ body: 'this sh1t is great' }).expect(400);
+    expect(JSON.stringify(bad.body)).toMatch(/isn’t allowed/);
+    await http.post('/api/prayers').set(auth).send({ body: 'what the fuck' }).expect(400);
+    await http.patch('/api/profile').set(auth).send({ bio: 'f*ck this' }).expect(400);
+    await http.post('/api/community-posts').set(auth).send({ body: 'And immediately the cock crew. Praying against sex trafficking.' }).expect(200);
+    await prisma.users.deleteMany({ where: { id } });
   });
 
   it('signup → verify-otp → authenticated GET → refresh → signout', async () => {

@@ -44,6 +44,8 @@ const cases: Case[] = [
   ['hostRefundTicket', () => api.hostRefundTicket('t1', T), 'POST', '/api/tickets/t1/refund'],
   ['validateListingPromo', () => api.validateListingPromo('LAUNCH', T), 'POST', '/api/validate-listing-promo', { code: 'LAUNCH' }],
   ['chargeListingFee', () => api.chargeListingFee({ eventId: 'e1', paymentMethodId: 'pm_1' }, T), 'POST', '/api/charge-listing-fee'],
+  ['listingFeeFromSales', () => api.listingFeeFromSales('e1', 'LAUNCH', T), 'POST', '/api/listing-fee-from-sales', { eventId: 'e1', promoCode: 'LAUNCH' }],
+  ['getAppConfig', () => api.getAppConfig(), 'GET', '/api/app-config'],
   ['getRefundRequests', () => api.getRefundRequests('e1', T), 'GET', '/api/refund-requests?eventId=e1'],
   ['decideRefundRequest', () => api.decideRefundRequest('r1', 'approve', T), 'POST', '/api/refund-requests/r1/approve'],
   ['getAttendance', () => api.getAttendance('e1', T), 'GET', '/api/events/e1/attendance'],

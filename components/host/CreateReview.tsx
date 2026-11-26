@@ -27,6 +27,8 @@ interface ReviewProps {
   promoBusy: boolean;
   promoError: string | null;
   finalCents: number;
+  /** iOS: the fee comes out of the first ticket sales, so there is no card form. */
+  fromSales: boolean;
   onCardComplete: (v: boolean) => void;
   blockers: Blocker[];
   onBlockerPress: (route: string) => void;
@@ -116,7 +118,9 @@ export function CreateReview(p: ReviewProps) {
             </View>
           </View>
           <AppText variant="caption" tone="muted">
-            A one-time {formatCents(LISTING_FEE_CENTS)} listing fee applies to each paid event. Charged when you publish.
+            {p.fromSales
+              ? `A one-time ${formatCents(LISTING_FEE_CENTS)} listing fee applies to each paid event. Nothing to pay now: it comes out of your first ticket sales.`
+              : `A one-time ${formatCents(LISTING_FEE_CENTS)} listing fee applies to each paid event. Charged when you publish.`}
           </AppText>
           <View style={s.row}>
             <Field
@@ -132,7 +136,7 @@ export function CreateReview(p: ReviewProps) {
             <Button title="Apply" variant="secondary" onPress={p.onApplyPromo} loading={p.promoBusy} disabled={!p.promo.trim()} style={{ marginTop: 1 }} />
           </View>
           {p.finalCents !== LISTING_FEE_CENTS && !p.promoError ? <Badge label="Promo applied" tone="success" /> : null}
-          {p.finalCents > 0 ? (
+          {p.finalCents > 0 && !p.fromSales ? (
             <View style={{ gap: 6 }}>
               <AppText variant="caption" tone="muted" style={{ fontSize: 13 }}>
                 Card

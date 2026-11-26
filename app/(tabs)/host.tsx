@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, RefreshControl, View } from 'react-native';
+import { Alert, Animated, Platform, RefreshControl, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { makeStyles, useTheme } from '../../contexts/ThemeContext';
@@ -8,6 +8,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { duplicateEvent, getEventSales, getHostStats, getMyEvents, publishEvent } from '../../lib/api';
 import { formatCents, salesPerDay, summarizeSales } from '../../lib/fees';
 import { editEventPath } from '../../lib/eventHelpers';
+import { listingFeeFromSales } from '../../lib/fees';
 import { isRepeatRule, nextOfEachSeries, repeatTag } from '../../lib/eventRepeat';
 import { haptic } from '../../lib/haptics';
 import { pluralize } from '../../lib/format';
@@ -140,6 +141,12 @@ export default function HostTab() {
 
   const runPublish = async (e: Event) => {
     if (!token) return;
+    // iOS: a paid event's listing fee is settled in the editor (it comes out of ticket sales; lib/fees.ts)
+    if (e.is_paid && !e.listing_fee_paid && listingFeeFromSales(Platform.OS)) {
+      setSheetEvent(null);
+      router.push(editEventPath(e) as never);
+      return;
+    }
     setActionBusy(true);
     try {
       await publishEvent(e.id, token);
@@ -355,7 +362,13 @@ export default function HostTab() {
               <ListRow
                 icon="rocket-outline"
                 title="Publish now"
-                subtitle={sheetEvent.is_paid && !sheetEvent.listing_fee_paid ? 'Paid events need the listing fee paid first' : undefined}
+                subtitle={
+                  sheetEvent.is_paid && !sheetEvent.listing_fee_paid
+                    ? listingFeeFromSales(Platform.OS)
+                      ? 'Opens the editor to finish the listing fee'
+                      : 'Paid events need the listing fee paid first'
+                    : undefined
+                }
                 disabled={actionBusy}
                 onPress={() => runPublish(sheetEvent)}
                 last

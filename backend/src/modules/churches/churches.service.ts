@@ -4,6 +4,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { isAdmin, OK } from '../reports/is-admin';
 import type { ChurchDto } from './churches.controller';
 import { RecurringInput, recurringOut, toRecurringData } from './recurring';
+import { assertAllowed } from '../../common/content-filter';
 
 export const VISIT_WINDOW_DAYS = 60;
 
@@ -67,6 +68,7 @@ export class ChurchesService {
    */
   async create(uid: string, b: ChurchDto) {
     if (!b.name) throw new BadRequestException('Church name is required.');
+    assertAllowed(b.name, (b as { description?: unknown }).description);
     const { verified, hidden, as_member: asMember, ...fields } = b;
     if (asMember) {
       if (!fields.city?.trim()) throw new BadRequestException('City is required.');
@@ -95,6 +97,7 @@ export class ChurchesService {
   /** churches_guard on update: verified/hidden only change for admins; claimed_by/created_by never through this route. */
   async update(uid: string, id: string, b: ChurchDto) {
     const admin = await this.assertManager(uid, id);
+    assertAllowed(b.name, (b as { description?: unknown }).description);
     const { verified, hidden, ...fields } = b;
     return this.prisma.churches.update({
       where: { id },
